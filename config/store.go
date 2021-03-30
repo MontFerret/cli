@@ -9,21 +9,19 @@ import (
 	"github.com/MontFerret/cli/runtime"
 )
 
-const (
-	LoggerLevel        = "log-level"
-	RuntimeType        = "runtime"
-	RuntimeCDPAddress  = "browser"
-	RuntimeProxy       = "proxy"
-	RuntimeUserAgent   = "user-agent"
-	RuntimeKeepCookies = "browser-cookies"
-)
+type (
+	KV struct {
+		Key   string
+		Value interface{}
+	}
 
-type Store struct {
-	appName   string
-	version   string
-	envPrefix string
-	v         *viper.Viper
-}
+	Store struct {
+		appName   string
+		version   string
+		envPrefix string
+		v         *viper.Viper
+	}
+)
 
 func NewStore(appName, version string) (*Store, error) {
 	v := viper.New()
@@ -105,4 +103,35 @@ func (s *Store) GetRuntimeOptions() runtime.Options {
 	}
 
 	return opts
+}
+
+func (s *Store) Get(key string) (interface{}, error) {
+	if !isSupportedFlag(key) {
+		return nil, ErrInvalidFlag
+	}
+
+	return s.v.Get(key), nil
+}
+
+func (s *Store) Set(key, val string) error {
+	if !isSupportedFlag(key) {
+		return ErrInvalidFlag
+	}
+
+	s.v.Set(key, val)
+
+	return s.v.WriteConfig()
+}
+
+func (s *Store) List() []KV {
+	list := make([]KV, 0, len(Flags))
+
+	for _, key := range Flags {
+		list = append(list, KV{
+			Key:   key,
+			Value: s.v.Get(key),
+		})
+	}
+
+	return list
 }

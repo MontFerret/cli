@@ -47,6 +47,7 @@ func main() {
 
 	rootCmd.AddCommand(
 		cmd.VersionCommand(store),
+		cmd.ConfigCommand(store),
 		cmd.ExecCommand(store),
 	)
 
