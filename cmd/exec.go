@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/MontFerret/cli/repl"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/MontFerret/cli/config"
+	"github.com/MontFerret/cli/repl"
 	"github.com/MontFerret/cli/runtime"
 )
 
@@ -44,17 +46,36 @@ func ExecCommand(store *config.Store) *cobra.Command {
 
 			rt, err := runtime.New(store.GetRuntimeOptions())
 
-			println(store.GetRuntimeOptions().Type)
-
 			if err != nil {
 				return err
+			}
+
+			stat, _ := os.Stdin.Stat()
+
+			if (stat.Mode() & os.ModeCharDevice) == 0 {
+				// check whether the app is getting a query via standard input
+				std := bufio.NewReader(os.Stdin)
+
+				content, err := ioutil.ReadAll(std)
+
+				if err != nil {
+					return err
+				}
+
+				return execScript(cmd, rt, params, string(content))
 			}
 
 			if len(args) == 0 {
 				return startRepl(cmd, rt, params)
 			}
 
-			return execScript(cmd, rt, params, args[0])
+			content, err := os.ReadFile(args[0])
+
+			if err != nil {
+				return err
+			}
+
+			return execScript(cmd, rt, params, string(content))
 		},
 	}
 
@@ -72,14 +93,8 @@ func startRepl(cmd *cobra.Command, rt runtime.Runtime, params map[string]interfa
 	return repl.Start(cmd.Context(), rt, params)
 }
 
-func execScript(cmd *cobra.Command, rt runtime.Runtime, params map[string]interface{}, filename string) error {
-	content, err := os.ReadFile(filename)
-
-	if err != nil {
-		return err
-	}
-
-	out, err := rt.Run(cmd.Context(), string(content), params)
+func execScript(cmd *cobra.Command, rt runtime.Runtime, params map[string]interface{}, query string) error {
+	out, err := rt.Run(cmd.Context(), query, params)
 
 	if err != nil {
 		return err
