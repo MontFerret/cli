@@ -72,7 +72,7 @@ func (rt *Remote) Run(ctx context.Context, query string, params map[string]inter
 }
 
 func (rt *Remote) createRequest(ctx context.Context, method, endpoint string, body []byte) (*http.Request, error) {
-	var reader io.Reader = nil
+	var reader io.Reader
 
 	if body != nil {
 		reader = bytes.NewReader(body)

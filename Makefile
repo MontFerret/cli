@@ -5,7 +5,7 @@ NAME = ferret
 
 default: build
 
-build: vet test compile
+build: vet lint test compile
 
 install:
 	go get
@@ -17,13 +17,6 @@ compile:
 
 test:
 	go test ./...
-
-cover:
-	go test -race -coverprofile=coverage.txt -covermode=atomic ... && \
-	curl -s https://codecov.io/bash | bash
-
-doc:
-	godoc -http=:6060 -index
 
 fmt:
 	go fmt ./...
