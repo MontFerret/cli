@@ -1,88 +1,65 @@
 package browser
 
-import (
-	"fmt"
-	"sort"
-	"strings"
-
-	"github.com/pkg/errors"
-)
-
-type Flags map[string]interface{}
-
-func (flags Flags) Has(arg string) bool {
-	_, exists := flags[arg]
-
-	return exists
-}
-
-func (flags Flags) Get(arg string) (interface{}, error) {
-	var values interface{}
-	var err error
-
-	if !flags.Has(arg) {
-		err = errors.Errorf("The specified argument '%s' does not exist", arg)
-	} else {
-		values = flags[arg]
-	}
-
-	return values, err
-}
-
-func (flags Flags) Set(arg string, value interface{}) (err error) {
-	if value == nil {
-		if _, ok := flags[arg]; !ok {
-			flags[arg] = nil
-		}
-	}
-
-	if value != nil {
-		switch value.(type) {
-		case int:
-			flags[arg] = value
-		case string:
-			flags[arg] = value
-		default:
-			return errors.Errorf("Invalid data type '%T' for argument %s: %+v", value, arg, value)
-		}
-	}
-
-	return nil
-}
-
-func (flags Flags) List() []string {
-	orderedFlags := make([]string, 0, 10)
-
-	for arg := range flags {
-		orderedFlags = append(orderedFlags, arg)
-	}
-
-	sort.Strings(orderedFlags)
-
-	list := make([]string, len(orderedFlags))
-
-	for i, arg := range orderedFlags {
-		val, err := flags.Get(arg)
-
-		if err != nil {
-			continue
-		}
-
-		switch v := val.(type) {
-		case int:
-			arg = fmt.Sprintf("--%s=%d", arg, v)
-		case string:
-			arg = fmt.Sprintf("--%s=%s", arg, v)
-		default:
-			arg = fmt.Sprintf("--%s", arg)
-		}
-
-		list[i] = arg
-	}
-
-	return list
-}
-
-func (flags Flags) String() string {
-	return strings.Join(flags.List(), " ")
+var headlessFlags = []string{
+	"--disable-background-networking",
+	"--disable-background-timer-throttling",
+	"--disable-breakpad",
+	"--disable-canvas-aa",
+	"--disable-client-side-phishing-detection",
+	"--disable-cloud-import",
+	"--disable-composited-antialiasing",
+	"--disable-default-apps",
+	"--disable-demo-mode",
+	"--disable-dev-shm-usage",
+	"--disable-extensions",
+	"--disable-hang-monitor",
+	"--disable-gesture-typing",
+	"--disable-gpu",
+	"--disable-gpu-sandbox",
+	"--disable-infobars",
+	"--disable-kill-after-bad-ipc",
+	"--disable-notifications",
+	"--disable-offer-store-unmasked-wallet-cards",
+	"--disable-offer-upload-credit-cards",
+	"--disable-office-editing-component-extension",
+	"--disable-password-generation",
+	"--disable-print-preview",
+	"--disable-prompt-on-repost",
+	"--disable-renderer-backgrounding",
+	"--disable-seccomp-filter-sandbox",
+	"--disable-setuid-sandbox",
+	"--disable-smooth-scrolling",
+	"--disable-speech-api",
+	"--disable-sync",
+	"--disable-tab-for-desktop-share",
+	"--disable-translate",
+	"--disable-voice-input",
+	"--disable-wake-on-wifi",
+	"--disable-web-security",
+	"--disk-cache-dir=/tmp/cache-dir",
+	"--disk-cache-size=10000000",
+	"--enable-async-dns",
+	"--enable-simple-cache-backend",
+	"--enable-tcp-fast-open",
+	"--enable-webgl",
+	"--font-render-hinting=none",
+	"--headless",
+	"--hide-scrollbars",
+	"--ignore-certificate-errors",
+	"--ignore-certificate-errors-spki-list",
+	"--ignore-gpu-blocklist",
+	"--ignore-ssl-errors",
+	"--log-level=0",
+	"--media-cache-size=10000000",
+	"--metrics-recording-only",
+	"--mute-audio",
+	"--no-default-browser-check",
+	"--no-experiments",
+	"--no-first-run",
+	"--no-pings",
+	"--no-sandbox",
+	"--no-zygote",
+	"--prerender-from-omnibox=disabled",
+	"--safebrowsing-disable-auto-update",
+	"--use-gl=swiftshader",
 }

@@ -1,11 +1,13 @@
 package config
 
 import (
-	"github.com/MontFerret/cli/logger"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"strings"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
+	"github.com/MontFerret/cli/browser"
+	"github.com/MontFerret/cli/logger"
 	"github.com/MontFerret/cli/runtime"
 )
 
@@ -100,6 +102,24 @@ func (s *Store) GetRuntimeOptions() runtime.Options {
 
 	if s.v.IsSet(RuntimeKeepCookies) {
 		opts.KeepCookies = s.v.GetBool(RuntimeKeepCookies)
+	}
+
+	return opts
+}
+
+func (s *Store) GetBrowserOptions() browser.Options {
+	opts := browser.NewDefaultOptions()
+
+	if s.v.IsSet(BrowserHeadless) {
+		opts.Headless = s.v.GetBool(BrowserHeadless)
+	}
+
+	if s.v.IsSet(BrowserPort) {
+		opts.Port = s.v.GetUint64(BrowserPort)
+	}
+
+	if s.v.IsSet(BrowserUserDir) {
+		opts.UserDir = s.v.GetString(BrowserUserDir)
 	}
 
 	return opts

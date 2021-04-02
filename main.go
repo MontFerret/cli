@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+
+	"github.com/rs/zerolog"
+	"github.com/spf13/cobra"
+
 	"github.com/MontFerret/cli/cmd"
 	"github.com/MontFerret/cli/config"
 	"github.com/MontFerret/cli/logger"
-	"github.com/rs/zerolog"
-	"github.com/spf13/cobra"
-	"os"
 )
 
 const (
@@ -49,6 +51,7 @@ func main() {
 		cmd.VersionCommand(store),
 		cmd.ConfigCommand(store),
 		cmd.ExecCommand(store),
+		cmd.BrowserCommand(store),
 	)
 
 	if err := rootCmd.ExecuteContext(config.With(context.Background(), store)); err != nil {

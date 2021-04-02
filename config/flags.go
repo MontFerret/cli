@@ -9,6 +9,9 @@ const (
 	RuntimeProxy       = "proxy"
 	RuntimeUserAgent   = "user-agent"
 	RuntimeKeepCookies = "browser-cookies"
+	BrowserPort        = "port"
+	BrowserHeadless    = "headless"
+	BrowserUserDir     = "user-dir"
 )
 
 var Flags = []string{LoggerLevel, RuntimeType, RuntimeCDPAddress, RuntimeProxy, RuntimeUserAgent, RuntimeKeepCookies}
