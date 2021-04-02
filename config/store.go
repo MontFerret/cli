@@ -110,6 +110,10 @@ func (s *Store) GetRuntimeOptions() runtime.Options {
 func (s *Store) GetBrowserOptions() browser.Options {
 	opts := browser.NewDefaultOptions()
 
+	if s.v.IsSet(BrowserDetach) {
+		opts.Detach = s.v.GetBool(BrowserDetach)
+	}
+
 	if s.v.IsSet(BrowserHeadless) {
 		opts.Headless = s.v.GetBool(BrowserHeadless)
 	}

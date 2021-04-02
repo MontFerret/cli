@@ -10,6 +10,7 @@ const (
 	RuntimeUserAgent   = "user-agent"
 	RuntimeKeepCookies = "browser-cookies"
 	BrowserPort        = "port"
+	BrowserDetach      = "detach"
 	BrowserHeadless    = "headless"
 	BrowserUserDir     = "user-dir"
 )

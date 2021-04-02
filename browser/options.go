@@ -3,6 +3,7 @@ package browser
 import "fmt"
 
 type Options struct {
+	Detach   bool
 	Headless bool
 	Address  string
 	Port     uint64

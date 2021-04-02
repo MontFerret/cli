@@ -67,9 +67,10 @@ func ConfigCommand(store *config.Store) *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "ls",
-		Short: "Get a list of Ferret config values",
-		Args:  cobra.MaximumNArgs(0),
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "Get a list of Ferret config values",
+		Args:    cobra.MaximumNArgs(0),
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
