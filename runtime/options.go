@@ -7,24 +7,28 @@ import (
 )
 
 type Options struct {
-	Type        string
-	CDPAddress  string
-	Proxy       string
-	UserAgent   string
-	Headers     *drivers.HTTPHeaders
-	Cookies     *drivers.HTTPCookies
-	KeepCookies bool
+	Type                string
+	Proxy               string
+	UserAgent           string
+	Headers             *drivers.HTTPHeaders
+	Cookies             *drivers.HTTPCookies
+	KeepCookies         bool
+	BrowserAddress      string
+	WithBrowser         bool
+	WithHeadlessBrowser bool
 }
 
 func NewDefaultOptions() Options {
 	return Options{
-		Type:        DefaultRuntime,
-		CDPAddress:  cdp.DefaultAddress,
-		Proxy:       "",
-		UserAgent:   "",
-		Headers:     nil,
-		Cookies:     nil,
-		KeepCookies: false,
+		Type:                DefaultRuntime,
+		BrowserAddress:      cdp.DefaultAddress,
+		Proxy:               "",
+		UserAgent:           "",
+		Headers:             nil,
+		Cookies:             nil,
+		KeepCookies:         false,
+		WithBrowser:         false,
+		WithHeadlessBrowser: false,
 	}
 }
 
@@ -53,8 +57,8 @@ func (opts *Options) ToInMemory() []http.Option {
 func (opts *Options) ToCDP() []cdp.Option {
 	result := make([]cdp.Option, 0, 6)
 
-	if opts.CDPAddress != "" {
-		result = append(result, cdp.WithAddress(opts.CDPAddress))
+	if opts.BrowserAddress != "" {
+		result = append(result, cdp.WithAddress(opts.BrowserAddress))
 	}
 
 	if opts.Proxy != "" {

@@ -84,24 +84,34 @@ func (s *Store) GetLoggerOptions() logger.Options {
 func (s *Store) GetRuntimeOptions() runtime.Options {
 	opts := runtime.NewDefaultOptions()
 
-	if s.v.IsSet(RuntimeType) {
-		opts.Type = s.v.GetString(RuntimeType)
+	if s.v.IsSet(ExecRuntime) {
+		opts.Type = s.v.GetString(ExecRuntime)
 	}
 
-	if s.v.IsSet(RuntimeCDPAddress) {
-		opts.CDPAddress = s.v.GetString(RuntimeCDPAddress)
+	if s.v.IsSet(ExecBrowserAddress) {
+		opts.BrowserAddress = s.v.GetString(ExecBrowserAddress)
 	}
 
-	if s.v.IsSet(RuntimeProxy) {
-		opts.Proxy = s.v.GetString(RuntimeProxy)
+	if s.v.IsSet(ExecKeepCookies) {
+		opts.KeepCookies = s.v.GetBool(ExecKeepCookies)
 	}
 
-	if s.v.IsSet(RuntimeUserAgent) {
-		opts.UserAgent = s.v.GetString(RuntimeUserAgent)
+	if s.v.IsSet(ExecWithBrowserHeadless) {
+		opts.WithHeadlessBrowser = s.v.GetBool(ExecWithBrowserHeadless)
 	}
 
-	if s.v.IsSet(RuntimeKeepCookies) {
-		opts.KeepCookies = s.v.GetBool(RuntimeKeepCookies)
+	if s.v.IsSet(ExecWithBrowser) {
+		opts.WithBrowser = s.v.GetBool(ExecWithBrowser)
+	} else if opts.WithHeadlessBrowser {
+		opts.WithBrowser = true
+	}
+
+	if s.v.IsSet(ExecProxy) {
+		opts.Proxy = s.v.GetString(ExecProxy)
+	}
+
+	if s.v.IsSet(ExecUserAgent) {
+		opts.UserAgent = s.v.GetString(ExecUserAgent)
 	}
 
 	return opts

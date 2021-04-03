@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -19,34 +20,32 @@ func New(opts Options) Browser {
 	return &DarwinBrowser{opts}
 }
 
-func (b *DarwinBrowser) Open(_ context.Context) error {
+func (b *DarwinBrowser) Open(_ context.Context) (uint64, error) {
 	path, err := b.findBinaryPath()
 
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	cmd := exec.Command(path, b.opts.ToFlags()...)
 
 	if b.opts.Detach {
 		if err := cmd.Start(); err != nil {
-			return err
+			return 0, err
 		}
 
-		fmt.Println(cmd.Process.Pid)
-
-		return nil
+		return uint64(cmd.Process.Pid), nil
 	}
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stdout
 
-	return cmd.Run()
+	return 0, cmd.Run()
 }
 
-func (b *DarwinBrowser) Close(_ context.Context, pid string) error {
-	if pid != "" {
-		return exec.Command("kill", pid).Run()
+func (b *DarwinBrowser) Close(_ context.Context, pid uint64) error {
+	if pid > 0 {
+		return exec.Command("kill", fmt.Sprintf("%d", pid)).Run()
 	}
 
 	binaryPath, err := b.findBinaryPath()
@@ -56,8 +55,6 @@ func (b *DarwinBrowser) Close(_ context.Context, pid string) error {
 	}
 
 	cmdStr := fmt.Sprintf("%s %s", binaryPath, strings.Join(b.opts.ToFlags(), " "))
-	//
-	//println(strings.Join(flags, " "))
 
 	psOut, err := exec.Command("ps", "-o", "pid=", "-o", "command=").Output()
 
@@ -71,15 +68,19 @@ func (b *DarwinBrowser) Close(_ context.Context, pid string) error {
 		cmd := pair[2]
 
 		if strings.HasPrefix(cmd, cmdStr) {
-			pid = pair[1]
+			p, err := strconv.ParseUint(pair[1], 10, 64)
+
+			if err == nil {
+				pid = p
+			}
 		}
 	}
 
-	if pid == "" {
+	if pid == 0 {
 		return errors.New("running browser not found")
 	}
 
-	return exec.Command("kill", pid).Run()
+	return exec.Command("kill", fmt.Sprintf("%d", pid)).Run()
 }
 
 func (b *DarwinBrowser) findBinaryPath() (string, error) {

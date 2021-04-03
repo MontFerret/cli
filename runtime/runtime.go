@@ -29,3 +29,13 @@ func New(opts Options) (Runtime, error) {
 
 	return NewRemote(*u, opts), nil
 }
+
+func Run(ctx context.Context, opts Options, query string, params map[string]interface{}) ([]byte, error) {
+	rt, err := New(opts)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rt.Run(ctx, query, params)
+}

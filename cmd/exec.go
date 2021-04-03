@@ -4,8 +4,12 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/MontFerret/cli/browser"
+	"github.com/pkg/errors"
 	"io/ioutil"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/MontFerret/ferret/pkg/runtime/core"
@@ -44,10 +48,38 @@ func ExecCommand(store *config.Store) *cobra.Command {
 
 			store := config.From(cmd.Context())
 
-			rt, err := runtime.New(store.GetRuntimeOptions())
+			rtOpts := store.GetRuntimeOptions()
 
-			if err != nil {
-				return err
+			if rtOpts.WithBrowser {
+				brOpts := store.GetBrowserOptions()
+				brOpts.Detach = true
+				brOpts.Headless = rtOpts.WithHeadlessBrowser
+
+				if rtOpts.BrowserAddress != "" {
+					u, err := url.Parse(rtOpts.BrowserAddress)
+
+					if err != nil {
+						return errors.Wrap(err, "invalid browser address")
+					}
+
+					if u.Port() != "" {
+						p, err := strconv.ParseUint(u.Port(), 10, 64)
+
+						if err != nil {
+							return err
+						}
+
+						brOpts.Port = p
+					}
+				}
+
+				pid, err := browser.Open(cmd.Context(), brOpts)
+
+				if err != nil {
+					return err
+				}
+
+				defer browser.Close(cmd.Context(), brOpts, pid)
 			}
 
 			stat, _ := os.Stdin.Stat()
@@ -62,11 +94,11 @@ func ExecCommand(store *config.Store) *cobra.Command {
 					return err
 				}
 
-				return execScript(cmd, rt, params, string(content))
+				return execScript(cmd, rtOpts, params, string(content))
 			}
 
 			if len(args) == 0 {
-				return startRepl(cmd, rt, params)
+				return startRepl(cmd, rtOpts, params)
 			}
 
 			content, err := os.ReadFile(args[0])
@@ -75,26 +107,28 @@ func ExecCommand(store *config.Store) *cobra.Command {
 				return err
 			}
 
-			return execScript(cmd, rt, params, string(content))
+			return execScript(cmd, rtOpts, params, string(content))
 		},
 	}
 
 	cmd.Flags().StringArrayP(ExecParamFlag, "p", []string{}, "Query bind parameter (--param=foo:\"bar\", --param=id:1)")
-	cmd.Flags().StringP(config.RuntimeType, "r", runtime.DefaultRuntime, "Ferret runtime type (\"builtin\"|$url)")
-	cmd.Flags().StringP(config.RuntimeCDPAddress, "b", runtime.DefaultBrowser, "Browser debugger address")
-	cmd.Flags().String(config.RuntimeProxy, "", "Proxy server address")
-	cmd.Flags().String(config.RuntimeUserAgent, "", "User agent header")
-	cmd.Flags().Bool(config.RuntimeKeepCookies, false, "Keep cookies between queries")
+	cmd.Flags().StringP(config.ExecRuntime, "r", runtime.DefaultRuntime, "Ferret runtime type (\"builtin\"|$url)")
+	cmd.Flags().String(config.ExecProxy, "", "Proxy server address")
+	cmd.Flags().String(config.ExecUserAgent, "", "User agent header")
+	cmd.Flags().StringP(config.ExecBrowserAddress, "a", runtime.DefaultBrowser, "Browser debugger address")
+	cmd.Flags().BoolP(config.ExecWithBrowser, "b", false, "Open browser for script execution")
+	cmd.Flags().Bool(config.ExecWithBrowserHeadless, false, "Open browser for script execution in headless mode")
+	cmd.Flags().Bool(config.ExecKeepCookies, false, "Keep cookies between queries")
 
 	return cmd
 }
 
-func startRepl(cmd *cobra.Command, rt runtime.Runtime, params map[string]interface{}) error {
-	return repl.Start(cmd.Context(), rt, params)
+func startRepl(cmd *cobra.Command, opts runtime.Options, params map[string]interface{}) error {
+	return repl.Start(cmd.Context(), opts, params)
 }
 
-func execScript(cmd *cobra.Command, rt runtime.Runtime, params map[string]interface{}, query string) error {
-	out, err := rt.Run(cmd.Context(), query, params)
+func execScript(cmd *cobra.Command, opts runtime.Options, params map[string]interface{}, query string) error {
+	out, err := runtime.Run(cmd.Context(), opts, query, params)
 
 	if err != nil {
 		return err

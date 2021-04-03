@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/MontFerret/cli/browser"
@@ -35,7 +37,15 @@ func BrowserCommand(store *config.Store) *cobra.Command {
 			store.BindFlags(cmd)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return browser.Open(cmd.Context(), store.GetBrowserOptions())
+			pid, err := browser.Open(cmd.Context(), store.GetBrowserOptions())
+
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(pid)
+
+			return nil
 		},
 	}
 
@@ -52,10 +62,16 @@ func BrowserCommand(store *config.Store) *cobra.Command {
 			store.BindFlags(cmd)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var pid string
+			var pid uint64
 
 			if len(args) > 0 {
-				pid = args[0]
+				p, err := strconv.ParseUint(args[0], 10, 64)
+
+				if err != nil {
+					return errors.Wrap(err, "invalid pid number")
+				}
+
+				pid = p
 			}
 
 			return browser.Close(cmd.Context(), store.GetBrowserOptions(), pid)

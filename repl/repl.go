@@ -10,7 +10,13 @@ import (
 	"github.com/MontFerret/cli/runtime"
 )
 
-func Start(ctx context.Context, rt runtime.Runtime, params map[string]interface{}) error {
+func Start(ctx context.Context, opts runtime.Options, params map[string]interface{}) error {
+	rt, err := runtime.New(opts)
+
+	if err != nil {
+		return err
+	}
+
 	version, err := rt.Version(ctx)
 
 	if err != nil {

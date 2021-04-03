@@ -23,7 +23,7 @@ func VersionCommand(store *config.Store) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP(config.RuntimeType, "r", runtime.DefaultRuntime, "Ferret runtime type (\"builtin\"|$url)")
+	cmd.Flags().StringP(config.ExecRuntime, "r", runtime.DefaultRuntime, "Ferret runtime type (\"builtin\"|$url)")
 
 	return cmd
 }

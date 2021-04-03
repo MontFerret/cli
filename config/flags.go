@@ -3,19 +3,32 @@ package config
 import "strings"
 
 const (
-	LoggerLevel        = "log-level"
-	RuntimeType        = "runtime"
-	RuntimeCDPAddress  = "browser"
-	RuntimeProxy       = "proxy"
-	RuntimeUserAgent   = "user-agent"
-	RuntimeKeepCookies = "browser-cookies"
-	BrowserPort        = "port"
-	BrowserDetach      = "detach"
-	BrowserHeadless    = "headless"
-	BrowserUserDir     = "user-dir"
+	LoggerLevel = "log-level"
+
+	ExecRuntime = "runtime"
+
+	ExecKeepCookies         = "browser-cookies"
+	ExecWithBrowser         = "browser-open"
+	ExecBrowserAddress      = "browser-address"
+	ExecWithBrowserHeadless = "browser-headless"
+	ExecProxy               = "proxy"
+	ExecUserAgent           = "user-agent"
+
+	BrowserPort     = "port"
+	BrowserDetach   = "detach"
+	BrowserHeadless = "headless"
+	BrowserUserDir  = "user-dir"
 )
 
-var Flags = []string{LoggerLevel, RuntimeType, RuntimeCDPAddress, RuntimeProxy, RuntimeUserAgent, RuntimeKeepCookies}
+var Flags = []string{
+	LoggerLevel,
+	ExecRuntime,
+	ExecBrowserAddress,
+	ExecKeepCookies,
+	ExecWithBrowser,
+	ExecProxy,
+	ExecUserAgent,
+}
 var FlagsStr = strings.Join(Flags, `"|"`)
 
 func isSupportedFlag(name string) bool {
