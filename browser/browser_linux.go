@@ -2,7 +2,13 @@ package browser
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"os"
 	"os/exec"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 type LinuxBrowser struct {
@@ -10,7 +16,7 @@ type LinuxBrowser struct {
 }
 
 func New(opts Options) Browser {
-	return *LinuxBrowser{opts}
+	return &LinuxBrowser{opts}
 }
 
 func (b *LinuxBrowser) Open(ctx context.Context) (uint64, error) {
