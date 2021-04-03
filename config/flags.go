@@ -5,8 +5,7 @@ import "strings"
 const (
 	LoggerLevel = "log-level"
 
-	ExecRuntime = "runtime"
-
+	ExecRuntime             = "runtime"
 	ExecKeepCookies         = "browser-cookies"
 	ExecWithBrowser         = "browser-open"
 	ExecBrowserAddress      = "browser-address"
@@ -23,9 +22,10 @@ const (
 var Flags = []string{
 	LoggerLevel,
 	ExecRuntime,
-	ExecBrowserAddress,
 	ExecKeepCookies,
+	ExecBrowserAddress,
 	ExecWithBrowser,
+	ExecWithBrowserHeadless,
 	ExecProxy,
 	ExecUserAgent,
 }
