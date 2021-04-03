@@ -19,7 +19,7 @@ func New(opts Options) Browser {
 	return &LinuxBrowser{opts}
 }
 
-func (b *LinuxBrowser) Open(ctx context.Context) (uint64, error) {
+func (b *LinuxBrowser) Open(_ context.Context) (uint64, error) {
 	path, err := b.findBinaryPath()
 
 	if err != nil {
@@ -42,7 +42,7 @@ func (b *LinuxBrowser) Open(ctx context.Context) (uint64, error) {
 	return 0, cmd.Run()
 }
 
-func (b *LinuxBrowser) Close(ctx context.Context, pid uint64) error {
+func (b *LinuxBrowser) Close(_ context.Context, pid uint64) error {
 	if pid > 0 {
 		return exec.Command("kill", fmt.Sprintf("%d", pid)).Run()
 	}
