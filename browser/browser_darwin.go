@@ -2,7 +2,6 @@ package browser
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -45,7 +44,9 @@ func (b *DarwinBrowser) Open(_ context.Context) (uint64, error) {
 
 func (b *DarwinBrowser) Close(_ context.Context, pid uint64) error {
 	if pid > 0 {
-		return exec.Command("kill", fmt.Sprintf("%d", pid)).Run()
+		if err := exec.Command("kill", fmt.Sprintf("%d", pid)).Run(); err != nil {
+			return ErrProcNotFound
+		}
 	}
 
 	binaryPath, err := b.findBinaryPath()
@@ -59,7 +60,7 @@ func (b *DarwinBrowser) Close(_ context.Context, pid uint64) error {
 	psOut, err := exec.Command("ps", "-o", "pid=", "-o", "command=").Output()
 
 	if err != nil {
-		return err
+		return ErrProcNotFound
 	}
 
 	r := regexp.MustCompile("(\\d+)\\s(.+)")
@@ -77,7 +78,7 @@ func (b *DarwinBrowser) Close(_ context.Context, pid uint64) error {
 	}
 
 	if pid == 0 {
-		return errors.New("running browser not found")
+		return ErrProcNotFound
 	}
 
 	return exec.Command("kill", fmt.Sprintf("%d", pid)).Run()
@@ -106,7 +107,7 @@ func (b *DarwinBrowser) findBinaryPath() (string, error) {
 	}
 
 	if result == "" {
-		return "", errors.New("no compatible browser was found")
+		return "", ErrBinNotFound
 	}
 
 	return result, nil

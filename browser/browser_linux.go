@@ -2,7 +2,6 @@ package browser
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -44,29 +43,25 @@ func (b *LinuxBrowser) Open(_ context.Context) (uint64, error) {
 
 func (b *LinuxBrowser) Close(_ context.Context, pid uint64) error {
 	if pid > 0 {
-		return exec.Command("kill", fmt.Sprintf("%d", pid)).Run()
+		if err := exec.Command("kill", fmt.Sprintf("%d", pid)).Run(); err != nil {
+			return ErrProcNotFound
+		}
 	}
 
-	binaryPath, err := b.findBinaryPath()
-
-	if err != nil {
-		return err
-	}
-
-	cmdStr := fmt.Sprintf("%s %s", binaryPath, strings.Join(b.opts.ToFlags(), " "))
+	cmdStr := strings.Join(b.opts.ToFlags(), " ")
 
 	psOut, err := exec.Command("ps", "-o", "pid=", "-o", "command=").Output()
 
 	if err != nil {
-		return err
+		return ErrProcNotFound
 	}
 
 	r := regexp.MustCompile("(\\d+)\\s(.+)")
 
 	for _, pair := range r.FindAllStringSubmatch(string(psOut), -1) {
-		cmd := pair[2]
+		cmd := strings.TrimSpace(pair[2])
 
-		if strings.HasPrefix(cmd, cmdStr) {
+		if strings.HasSuffix(cmd, cmdStr) {
 			p, err := strconv.ParseUint(pair[1], 10, 64)
 
 			if err == nil {
@@ -76,7 +71,7 @@ func (b *LinuxBrowser) Close(_ context.Context, pid uint64) error {
 	}
 
 	if pid == 0 {
-		return errors.New("running browser not found")
+		return ErrProcNotFound
 	}
 
 	return exec.Command("kill", fmt.Sprintf("%d", pid)).Run()
@@ -96,13 +91,13 @@ func (b *LinuxBrowser) findBinaryPath() (string, error) {
 
 	// Find an installed one
 	for _, name := range variants {
-		out, err := exec.Command("which", name).Output()
+		_, err := exec.Command("which", name).Output()
 
 		if err != nil {
-			return "", err
+			continue
 		}
 
-		result = string(out)
+		result = name
 
 		if result != "" {
 			break
@@ -110,7 +105,7 @@ func (b *LinuxBrowser) findBinaryPath() (string, error) {
 	}
 
 	if result == "" {
-		return "", errors.New("no compatible browser was found")
+		return "", ErrBinNotFound
 	}
 
 	return result, nil
