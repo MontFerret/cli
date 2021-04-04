@@ -113,12 +113,12 @@ func ExecCommand(store *config.Store) *cobra.Command {
 
 	cmd.Flags().StringArrayP(ExecParamFlag, "p", []string{}, "Query bind parameter (--param=foo:\"bar\", --param=id:1)")
 	cmd.Flags().StringP(config.ExecRuntime, "r", runtime.DefaultRuntime, "Ferret runtime type (\"builtin\"|$url)")
-	cmd.Flags().String(config.ExecProxy, "", "Proxy server address")
-	cmd.Flags().String(config.ExecUserAgent, "", "User agent header")
-	cmd.Flags().StringP(config.ExecBrowserAddress, "a", runtime.DefaultBrowser, "Browser debugger address")
-	cmd.Flags().BoolP(config.ExecWithBrowser, "b", false, "Open browser for script execution")
-	cmd.Flags().Bool(config.ExecWithBrowserHeadless, false, "Open browser for script execution in headless mode")
-	cmd.Flags().Bool(config.ExecKeepCookies, false, "Keep cookies between queries")
+	cmd.Flags().String(config.ExecProxy, "x", "Proxy server address")
+	cmd.Flags().String(config.ExecUserAgent, "a", "User agent header")
+	cmd.Flags().StringP(config.ExecBrowserAddress, "d", runtime.DefaultBrowser, "Browser debugger address")
+	cmd.Flags().BoolP(config.ExecWithBrowser, "B", false, "Open browser for script execution")
+	cmd.Flags().BoolP(config.ExecWithBrowserHeadless, "b", false, "Open browser for script execution in headless mode")
+	cmd.Flags().BoolP(config.ExecKeepCookies, "c", false, "Keep cookies between queries")
 
 	return cmd
 }
