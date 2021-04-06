@@ -73,6 +73,7 @@ func (b *DarwinBrowser) Close(_ context.Context, pid uint64) error {
 
 			if err == nil {
 				pid = p
+				break
 			}
 		}
 	}
