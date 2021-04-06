@@ -8,7 +8,7 @@ default: build
 build: vet lint test compile
 
 install:
-	go get
+	go mod download
 
 compile:
 	go build -v -o ${DIR_BIN}/${NAME} \
