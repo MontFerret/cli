@@ -27,9 +27,9 @@ const (
 // RumCommand command to execute FQL scripts
 func ExecCommand(store *config.Store) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "exec",
-		Short: "Executes FQL script",
-		Args:  cobra.MinimumNArgs(0),
+		Use:     "exec",
+		Short:   "Execute a FQL script or launch REPL",
+		Args:    cobra.MinimumNArgs(0),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			store.BindFlags(cmd)
 		},

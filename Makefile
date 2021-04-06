@@ -13,7 +13,7 @@ install:
 compile:
 	go build -v -o ${DIR_BIN}/${NAME} \
 	-ldflags "-X main.version=${VERSION} -X github.com/MontFerret/cli/runtime.version=${FERRET_VERSION}" \
-	./main.go
+	./ferret/main.go
 
 test:
 	go test ./...

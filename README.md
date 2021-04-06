@@ -19,3 +19,76 @@
 </p>
 
 Documentation is available [at our website](https://www.montferret.dev/docs/introduction/).
+
+## Installation
+
+### Binary
+You can download the latest binaries from [here](https://github.com/MontFerret/cli/releases).
+
+### Source
+* Go >=1.16
+
+```bash
+go get https://github.com/MontFerret/cli
+```
+
+## Quick start
+
+### REPL
+
+```bash
+ferret exec
+Welcome to Ferret REPL 0.14.1
+
+Please use `exit` or `Ctrl-D` to exit this program.
+```
+
+### Script execution
+```bash
+ferret exec my-script.fql
+```
+
+### With browser
+
+```bash
+ferret exec --browser-open my-script.fql
+```
+
+#### As headless
+
+```bash
+ferret exec --browser-headless my-script.fql
+```
+
+### Query parameters
+
+```bash
+ferret exec -p 'foo:"bar"' -p 'qaz:"baz"' my-script.fql
+```
+
+### With remote runtime (worker)
+```bash
+ferret exec --runtime 'https://my-worker.com' my-script.fql
+```
+
+## Options
+
+```bash
+Usage:
+  ferret [flags]
+  ferret [command]
+
+Available Commands:
+  browser     Manage Ferret browsers
+  config      Manage Ferret configs
+  exec        Execute a FQL script or launch REPL
+  help        Help about any command
+  version     Show the CLI version information
+
+Flags:
+  -h, --help               help for ferret
+  -l, --log-level string   Set the logging level ("debug"|"info"|"warn"|"error"|"fatal") (default "info")
+
+Use "ferret [command] --help" for more information about a command.
+
+```
