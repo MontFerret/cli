@@ -26,38 +26,35 @@ func (b *WindowsBrowser) Open(ctx context.Context) (uint64, error) {
 	}
 
 	args := []string{
+		"(",
 		"Start-Process",
 		"-FilePath", fmt.Sprintf("'%s'", path),
 		"-ArgumentList", strings.Join(b.opts.ToFlags(), ","),
+		"-PassThru",
+		").ID",
+	}
+
+	cmd := exec.Command("powershell", args...)
+
+	out, err := cmd.Output()
+
+	if err != nil {
+		return 0, err
+	}
+
+	pid, err := strconv.ParseUint(strings.TrimSpace(string(out)), 10, 64)
+
+	if err != nil {
+		return 0, err
 	}
 
 	if b.opts.Detach {
-		args = append(args, "-PassThru", ").ID")
-		args = append([]string{"("}, args...)
-		cmd := exec.Command("powershell", args...)
-
-		out, err := cmd.Output()
-
-		if err != nil {
-			return 0, err
-		}
-
-		pid, err := strconv.ParseUint(strings.TrimSpace(string(out)), 10, 64)
-
-		if err != nil {
-			return 0, err
-		}
-
 		return pid, nil
 	}
 
-	args = append(args, "-Wait")
+	<-ctx.Done()
 
-	cmd := exec.Command("powershell", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stdout
-
-	return 0, cmd.Run()
+	return 0, b.Close(context.Background(), pid)
 }
 
 func (b *WindowsBrowser) Close(ctx context.Context, pid uint64) error {

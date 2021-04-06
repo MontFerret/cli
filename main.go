@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
@@ -54,7 +55,20 @@ func main() {
 		cmd.BrowserCommand(store),
 	)
 
-	if err := rootCmd.ExecuteContext(config.With(context.Background(), store)); err != nil {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, os.Kill)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			<-c
+			cancel()
+		}
+	}()
+
+	if err := rootCmd.ExecuteContext(config.With(ctx, store)); err != nil {
 		exit(err)
 	}
 }

@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/MontFerret/cli/browser"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -13,8 +11,10 @@ import (
 	"strings"
 
 	"github.com/MontFerret/ferret/pkg/runtime/core"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/MontFerret/cli/browser"
 	"github.com/MontFerret/cli/config"
 	"github.com/MontFerret/cli/repl"
 	"github.com/MontFerret/cli/runtime"

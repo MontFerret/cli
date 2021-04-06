@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/MontFerret/cli/config"
+
 	"github.com/spf13/cobra"
+
+	"github.com/MontFerret/cli/config"
 )
 
 // ConfigCommand command to manipulate with config file
