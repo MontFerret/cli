@@ -6,6 +6,9 @@ before:
 
 builds:
   - id: ferret
+    # Path to main.go file or main package.
+    # Default is `.`.
+    main: ./ferret/main.go
     env:
       - CGO_ENABLED=0
       - FERRET_VERSION=$(sh versions.sh ferret)
