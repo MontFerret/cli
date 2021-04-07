@@ -8,7 +8,7 @@ builds:
   -
     # Path to main.go file or main package.
     # Default is `.`.
-    # main: ./ferret/main.go
+    main: ./ferret/main.go
     # Binary name.
     # Can be a path (e.g. `bin/app`) to wrap the binary in a directory.
     # Default is the name of the project directory.
@@ -23,9 +23,9 @@ builds:
     goarch:
       - amd64
       - arm64
-    ldflags:
-      - -s -w -X main.version={{ .Version }}
-      - -s -w -X github.com/MontFerret/cli/runtime.version={{ .Env.FERRET_VERSION }}
+#    ldflags:
+#      - -s -w -X main.version={{ .Version }}
+#      - -s -w -X github.com/MontFerret/cli/runtime.version={{ .Env.FERRET_VERSION }}
 
 archives:
   - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
