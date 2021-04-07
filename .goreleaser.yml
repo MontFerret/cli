@@ -22,9 +22,10 @@ builds:
       - windows
     goarch:
       - amd64
+      - arm64
     ldflags:
       - -s -w -X main.version={{ .Version }}
-      - -s -w -X {{ .ModulePath }}/runtime.version={{ .Env.FERRET_VERSION }}
+      - -s -w -X github.com/MontFerret/cli/runtime.version={{ .Env.FERRET_VERSION }}
 
 archives:
   - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
