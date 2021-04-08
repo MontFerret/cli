@@ -15,7 +15,6 @@ builds:
     binary: ferret
     env:
       - CGO_ENABLED=0
-      - FERRET_VERSION=$(sh versions.sh ferret)
     goos:
       - linux
       - darwin
