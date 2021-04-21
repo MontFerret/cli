@@ -13,8 +13,8 @@
 	<a href="https://github.com/MontFerret/cli/releases">
 		<img alt="Ferret release" src="https://img.shields.io/github/release/MontFerret/cli.svg">
 	</a>
-	<a href="http://opensource.org/licenses/MIT">
-		<img alt="MIT License" src="http://img.shields.io/badge/license-MIT-brightgreen.svg">
+	<a href="https://opensource.org/licenses/Apache-2.0">
+		<img alt="Apache-2.0 License" src="http://img.shields.io/badge/license-Apache-brightgreen.svg">
 	</a>
 </p>
 
