@@ -99,7 +99,7 @@ getPackage() {
             echo "==    following commands may need to be run manually   =="
             echo "========================================================="
             echo
-            echo "  sudo cp $targetFile $location/$projectName"
+            echo "  sudo cp $targetFile $location/$binName"
             echo "  rm -rf $targetDir"
             echo
 
