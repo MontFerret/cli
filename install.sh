@@ -2,7 +2,7 @@
 
 projectName="cli"
 binName="ferret"
-name="Ferret"
+name="Ferret CLI"
 defaultLocation="/usr/local/bin"
 defaultVersion="latest"
 location=${LOCATION:-$defaultLocation}
@@ -130,7 +130,7 @@ getPackage() {
     echo
     echo "Attempting to move $targetFile to $location"
 
-    mv $targetFile "$location/$projectName"
+    mv $targetFile "$location/$binName"
 
     if [ "$?" = "0" ]; then
         echo "New version of $name installed to $location"
@@ -140,7 +140,7 @@ getPackage() {
         rm -rf $targetDir
     fi
 
-    "$location/$projectName" version
+    "$location/$binName" version
 }
 
 getPackage
