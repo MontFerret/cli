@@ -18,6 +18,10 @@
 	</a>
 </p>
 
+<p align="center">
+<img alt="lab" src="https://raw.githubusercontent.com/MontFerret/cli/master/assets/logo.svg" style="margin-left: auto; margin-right: auto;" width="450px" height="430px" />
+</p>
+
 Documentation is available [at our website](https://www.montferret.dev/docs/introduction/).
 
 ## Installation
