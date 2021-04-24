@@ -2,7 +2,8 @@ package runtime
 
 import (
 	"context"
-	"github.com/MontFerret/ferret/pkg/compiler"
+
+	"github.com/MontFerret/ferret"
 	"github.com/MontFerret/ferret/pkg/drivers"
 	"github.com/MontFerret/ferret/pkg/drivers/cdp"
 	"github.com/MontFerret/ferret/pkg/drivers/http"
@@ -18,13 +19,13 @@ const DefaultBrowser = "http://127.0.0.1:9222"
 type Builtin struct {
 	version  string
 	opts     Options
-	compiler *compiler.Compiler
+	compiler *ferret.Instance
 }
 
 func NewBuiltin(opts Options) Runtime {
 	rt := new(Builtin)
 	rt.opts = opts
-	rt.compiler = compiler.New()
+	rt.compiler = ferret.New()
 
 	return rt
 }
