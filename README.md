@@ -33,7 +33,7 @@ You can download the latest binaries from [here](https://github.com/MontFerret/c
 * Go >=1.16
 
 ```bash
-go get https://github.com/MontFerret/cli
+go get github.com/MontFerret/cli
 ```
 
 ## Quick start
