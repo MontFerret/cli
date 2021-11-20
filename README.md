@@ -27,9 +27,11 @@ Documentation is available [at our website](https://www.montferret.dev/docs/intr
 ## Installation
 
 ### Binary
+
 You can download the latest binaries from [here](https://github.com/MontFerret/cli/releases).
 
 ### Source
+
 * Go >=1.16
 
 ```bash
@@ -71,6 +73,7 @@ ferret exec -p 'foo:"bar"' -p 'qaz:"baz"' my-script.fql
 ```
 
 ### With remote runtime (worker)
+
 ```bash
 ferret exec --runtime 'https://my-worker.com' my-script.fql
 ```
@@ -87,6 +90,7 @@ Available Commands:
   config      Manage Ferret configs
   exec        Execute a FQL script or launch REPL
   help        Help about any command
+  selfupdate  Update Ferret CLI
   version     Show the CLI version information
 
 Flags:
