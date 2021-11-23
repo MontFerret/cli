@@ -42,7 +42,7 @@ go get github.com/MontFerret/cli
 
 ```bash
 ferret exec
-Welcome to Ferret REPL 0.14.1
+Welcome to Ferret REPL
 
 Please use `exit` or `Ctrl-D` to exit this program.
 ```
