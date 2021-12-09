@@ -3,7 +3,9 @@ module github.com/MontFerret/cli
 go 1.14
 
 require (
+	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/MontFerret/ferret v0.16.0
+	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
@@ -13,6 +15,8 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.9.0
 	github.com/ziflex/waitfor v1.1.0
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
+	golang.org/x/net v0.0.0-20211105192438-b53810dc28af // indirect
 )
 
 require (

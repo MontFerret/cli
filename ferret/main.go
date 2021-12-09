@@ -18,13 +18,10 @@ const (
 	name = "ferret"
 )
 
-var (
-	version string
-)
+var version string
 
 func main() {
 	store, err := config.NewStore(name, version)
-
 	if err != nil {
 		exit(err)
 	}
@@ -53,6 +50,7 @@ func main() {
 		cmd.ConfigCommand(store),
 		cmd.ExecCommand(store),
 		cmd.BrowserCommand(store),
+		cmd.SelfUpdateCommand(store),
 	)
 
 	c := make(chan os.Signal, 1)

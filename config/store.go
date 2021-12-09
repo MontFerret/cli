@@ -66,6 +66,14 @@ func (s *Store) AppVersion() string {
 	return s.version
 }
 
+func (s *Store) RepoOwner() string {
+	return "MontFerret"
+}
+
+func (s *Store) Repo() string {
+	return "cli"
+}
+
 // Bind the current command's flags to viper
 func (s *Store) BindFlags(cmd *cobra.Command) {
 	bindFlagsFor(s.v, cmd, s.envPrefix)
