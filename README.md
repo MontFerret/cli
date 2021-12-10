@@ -32,10 +32,19 @@ You can download the latest binaries from [here](https://github.com/MontFerret/c
 
 ### Source
 
-* Go >=1.16
-
+#### Go < 1.17
 ```bash
 go get -u github.com/MontFerret/cli/ferret@latest
+```
+
+#### Go >= 1.17
+```bash
+go install github.com/MontFerret/cli/ferret@latest
+```
+
+### SSH
+```shell
+curl https://raw.githubusercontent.com/MontFerret/lab/master/install.sh | sudo sh
 ```
 
 ## Quick start
