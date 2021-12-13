@@ -43,6 +43,7 @@ func main() {
 		},
 	}
 
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.PersistentFlags().StringP(config.LoggerLevel, "l", zerolog.InfoLevel.String(), fmt.Sprintf("Set the logging level (%s)", logger.LevelsFmt()))
 
 	rootCmd.AddCommand(

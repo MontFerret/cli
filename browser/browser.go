@@ -3,7 +3,8 @@ package browser
 import (
 	"context"
 
-	"github.com/ziflex/waitfor/pkg/runner"
+	"github.com/go-waitfor/waitfor"
+	"github.com/go-waitfor/waitfor-http"
 )
 
 type Browser interface {
@@ -29,9 +30,11 @@ func Open(ctx context.Context, opts Options) (uint64, error) {
 }
 
 func Wait(ctx context.Context, opts Options) error {
+	runner := waitfor.New(http.Use())
+
 	return runner.Test(ctx, []string{
 		opts.ToURL(),
-	}, runner.WithAttempts(10))
+	}, waitfor.WithAttempts(10))
 }
 
 func Close(ctx context.Context, opts Options, pid uint64) error {
