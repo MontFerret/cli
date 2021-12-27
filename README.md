@@ -44,7 +44,7 @@ go install github.com/MontFerret/cli/ferret@latest
 
 ### SSH
 ```shell
-curl https://raw.githubusercontent.com/MontFerret/lab/master/install.sh | sudo sh
+curl https://raw.githubusercontent.com/MontFerret/cli/master/install.sh | sudo sh
 ```
 
 ## Quick start
