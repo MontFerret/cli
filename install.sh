@@ -42,7 +42,6 @@ checkHash(){
 
 getPackage() {
     uname=$(uname)
-    userid=$(id -u)
 
     platform=""
     case $uname in
@@ -75,10 +74,6 @@ getPackage() {
     suffix=$platform$arch
     targetDir="/tmp/$projectName$suffix"
 
-    if [ "$userid" != "0" ]; then
-        targetDir="$(pwd)/$projectName$suffix"
-    fi
-
     if [ ! -d $targetDir ]; then
         mkdir $targetDir
     fi
@@ -91,22 +86,6 @@ getPackage() {
 
     echo
 
-    if [ $location = $defaultLocation ]; then
-        if [ "$userid" != "0" ]; then
-            echo
-            echo "========================================================="
-            echo "==    As the script was run as a non-root user the     =="
-            echo "==    following commands may need to be run manually   =="
-            echo "========================================================="
-            echo
-            echo "  sudo cp $targetFile $location/$binName"
-            echo "  rm -rf $targetDir"
-            echo
-
-            exit 1
-        fi
-    fi
-
     if [ ! -d $location ]; then
         mkdir $location
     fi
@@ -115,7 +94,7 @@ getPackage() {
     url=$baseUrl/$projectName$suffix.tar.gz
     echo "Downloading package $url as $targetFile"
 
-    curl -sSL $url | tar xz -C $targetDir
+    curl -sSL $url
 
     if [ "$?" != "0" ]; then
         echo "Failed to download file"
@@ -126,9 +105,18 @@ getPackage() {
 
     chmod +x $targetFile
 
-    echo "Download complete."
+    echo "Download complete"
+    echo "Unpacking the archive..."
+    
+    tar xz -C $targetDir
+    
+    if [ "$?" != "0" ]; then
+        echo "Failed to unpack the archive"
+        exit 1
+    fi
+    
     echo
-    echo "Attempting to move $targetFile to $location"
+    echo "Attempting to move $targetFile to ${location}..."
 
     mv $targetFile "$location/$binName"
 
