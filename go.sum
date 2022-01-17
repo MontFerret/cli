@@ -56,8 +56,8 @@ github.com/Masterminds/semver v1.4.2/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF0
 github.com/Masterminds/semver/v3 v3.1.1 h1:hLg3sBzpNErnxhQtUy/mmLR2I9foDujNK030IGemrRc=
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
 github.com/Masterminds/vcs v1.13.0/go.mod h1:N09YCmOQr6RLxC6UNHzuVwAdodYbbnycGHSmwVJjcKA=
-github.com/MontFerret/ferret v0.16.4 h1:BzT5Zvyf2ZbUvmSyAMc6Vu8mvCtGjiFPi/6QL7KCOnY=
-github.com/MontFerret/ferret v0.16.4/go.mod h1:1/RHBJsdrV99phmnh+lLJsv665u2MPpfw1WDJHeaO5s=
+github.com/MontFerret/ferret v0.16.5 h1:m7m4Lk6lteqtkIDA+Dk2mqadIm/dvz0OUWCibR471HM=
+github.com/MontFerret/ferret v0.16.5/go.mod h1:1/RHBJsdrV99phmnh+lLJsv665u2MPpfw1WDJHeaO5s=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/PuerkitoBio/goquery v1.8.0 h1:PJTF7AmFCFKk1N6V6jmKfrNH9tV5pNE6lZMkG0gta/U=
 github.com/PuerkitoBio/goquery v1.8.0/go.mod h1:ypIiRMtY7COPGk+I/YbZLbxsxn9g5ejnI2HSMtkjZvI=
