@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/Masterminds/semver/v3 v3.1.1
-	github.com/MontFerret/ferret v0.16.5
+	github.com/MontFerret/ferret v0.16.6
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/go-waitfor/waitfor v1.0.0
 	github.com/go-waitfor/waitfor-http v1.0.0
