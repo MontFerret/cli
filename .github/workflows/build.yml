@@ -10,11 +10,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.16
+          go-version: 1.17
         id: go
 
       - name: Set up linters
-        run: go get -u github.com/mgechev/revive
+        run: go install github.com/mgechev/revive@latest
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
