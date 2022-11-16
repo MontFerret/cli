@@ -14,7 +14,7 @@ jobs:
         with:
           go-version: 1.17
       - name: Set up linters
-        run: go get -u github.com/mgechev/revive
+        run: go install github.com/mgechev/revive@latest
       - name: Checkout
         uses: actions/checkout@v2
         with:
