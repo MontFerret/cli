@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/go-waitfor/waitfor"
-	"github.com/go-waitfor/waitfor-http"
+	http "github.com/go-waitfor/waitfor-http"
 )
 
 type Browser interface {

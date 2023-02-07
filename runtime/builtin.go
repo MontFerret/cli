@@ -3,12 +3,13 @@ package runtime
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
 	"github.com/MontFerret/ferret"
 	"github.com/MontFerret/ferret/pkg/drivers"
 	"github.com/MontFerret/ferret/pkg/drivers/cdp"
 	"github.com/MontFerret/ferret/pkg/drivers/http"
 	"github.com/MontFerret/ferret/pkg/runtime"
-	"github.com/pkg/errors"
 )
 
 var version = "unknown"
@@ -17,7 +18,6 @@ const DefaultRuntime = "builtin"
 const DefaultBrowser = "http://127.0.0.1:9222"
 
 type Builtin struct {
-	version  string
 	opts     Options
 	compiler *ferret.Instance
 }

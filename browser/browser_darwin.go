@@ -63,7 +63,7 @@ func (b *DarwinBrowser) Close(_ context.Context, pid uint64) error {
 		return ErrProcNotFound
 	}
 
-	r := regexp.MustCompile("(\\d+)\\s(.+)")
+	r := regexp.MustCompile(`(\d+)\s(.+)`)
 
 	for _, pair := range r.FindAllStringSubmatch(string(psOut), -1) {
 		cmd := pair[2]

@@ -78,7 +78,7 @@ func ConfigCommand(store *config.Store) *cobra.Command {
 		},
 		Run: func(cmd *cobra.Command, _ []string) {
 			for _, kv := range store.List() {
-				fmt.Println(fmt.Sprintf("%s: %v", kv.Key, kv.Value))
+				fmt.Printf("%s: %v\n", kv.Key, kv.Value)
 			}
 		},
 	})
