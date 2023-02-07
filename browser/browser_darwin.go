@@ -19,14 +19,14 @@ func New(opts Options) Browser {
 	return &DarwinBrowser{opts}
 }
 
-func (b *DarwinBrowser) Open(_ context.Context) (uint64, error) {
+func (b *DarwinBrowser) Open(ctx context.Context) (uint64, error) {
 	path, err := b.findBinaryPath()
 
 	if err != nil {
 		return 0, err
 	}
 
-	cmd := exec.Command(path, b.opts.ToFlags()...)
+	cmd := exec.CommandContext(ctx, path, b.opts.ToFlags()...)
 
 	if b.opts.Detach {
 		if err := cmd.Start(); err != nil {
@@ -42,7 +42,7 @@ func (b *DarwinBrowser) Open(_ context.Context) (uint64, error) {
 	return 0, cmd.Run()
 }
 
-func (b *DarwinBrowser) Close(_ context.Context, pid uint64) error {
+func (b *DarwinBrowser) Close(ctx context.Context, pid uint64) error {
 	if pid > 0 {
 		if err := exec.Command("kill", fmt.Sprintf("%d", pid)).Run(); err != nil {
 			return ErrProcNotFound
@@ -82,7 +82,7 @@ func (b *DarwinBrowser) Close(_ context.Context, pid uint64) error {
 		return ErrProcNotFound
 	}
 
-	return exec.Command("kill", fmt.Sprintf("%d", pid)).Run()
+	return exec.CommandContext(ctx, "kill", fmt.Sprintf("%d", pid)).Run()
 }
 
 func (b *DarwinBrowser) findBinaryPath() (string, error) {
