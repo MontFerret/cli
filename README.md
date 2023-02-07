@@ -30,19 +30,12 @@ Documentation is available [at our website](https://www.montferret.dev/docs/intr
 
 You can download the latest binaries from [here](https://github.com/MontFerret/cli/releases).
 
-### Source
-
-#### Go < 1.17
-```bash
-go get -u github.com/MontFerret/cli/ferret@latest
-```
-
-#### Go >= 1.17
+### Source (Go >= 1.18)
 ```bash
 go install github.com/MontFerret/cli/ferret@latest
 ```
 
-### SSH
+### Shell
 ```shell
 curl https://raw.githubusercontent.com/MontFerret/cli/master/install.sh | sh
 ```
