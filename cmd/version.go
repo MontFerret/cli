@@ -42,8 +42,8 @@ func runVersion(cmd *cobra.Command, store *config.Store) error {
 	}
 
 	fmt.Println("Version:")
-	fmt.Println(fmt.Sprintf("  Self: %s", store.AppVersion()))
-	fmt.Println(fmt.Sprintf("  Runtime: %s", ver))
+	fmt.Printf("  Self: %s\n", store.AppVersion())
+	fmt.Printf("  Runtime: %s\n", ver)
 
 	return nil
 }

@@ -92,7 +92,7 @@ func (b *WindowsBrowser) Close(ctx context.Context, pid uint64) error {
 		groups := matches[0]
 
 		cmd := strings.TrimSpace(groups[2])
-		processId := strings.TrimSpace(groups[3])
+		processID := strings.TrimSpace(groups[3])
 
 		if cmd == "" {
 			continue
@@ -101,7 +101,7 @@ func (b *WindowsBrowser) Close(ctx context.Context, pid uint64) error {
 		cmd = strings.ReplaceAll(cmd, `"`, "")
 
 		if strings.HasSuffix(cmd, targetCmd) {
-			p, err := strconv.ParseUint(processId, 10, 64)
+			p, err := strconv.ParseUint(processID, 10, 64)
 
 			if err == nil {
 				pid = p
@@ -115,7 +115,7 @@ func (b *WindowsBrowser) Close(ctx context.Context, pid uint64) error {
 		return ErrProcNotFound
 	}
 
-	return exec.Command("taskkill", "/PID", fmt.Sprintf("%d", pid)).Run()
+	return exec.CommandContext(ctx, "taskkill", "/PID", fmt.Sprintf("%d", pid)).Run()
 }
 
 func (b *WindowsBrowser) findBinaryPath() (string, error) {

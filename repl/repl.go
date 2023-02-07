@@ -23,7 +23,7 @@ func Start(ctx context.Context, opts runtime.Options, params map[string]interfac
 		return err
 	}
 
-	fmt.Println(fmt.Sprintf("Welcome to Ferret REPL %s\n", version))
+	fmt.Printf("Welcome to Ferret REPL %s\n", version)
 	fmt.Println("Please use `exit` or `Ctrl-D` to exit this program.")
 
 	rl, err := readline.NewEx(&readline.Config{

@@ -2,8 +2,9 @@ package logger
 
 import (
 	"fmt"
-	"github.com/rs/zerolog"
 	"strings"
+
+	"github.com/rs/zerolog"
 )
 
 func Levels() []string {

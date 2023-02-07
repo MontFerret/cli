@@ -18,14 +18,14 @@ func New(opts Options) Browser {
 	return &LinuxBrowser{opts}
 }
 
-func (b *LinuxBrowser) Open(_ context.Context) (uint64, error) {
+func (b *LinuxBrowser) Open(ctx context.Context) (uint64, error) {
 	path, err := b.findBinaryPath()
 
 	if err != nil {
 		return 0, err
 	}
 
-	cmd := exec.Command(path, b.opts.ToFlags()...)
+	cmd := exec.CommandContext(ctx, path, b.opts.ToFlags()...)
 
 	if b.opts.Detach {
 		if err := cmd.Start(); err != nil {
@@ -41,7 +41,7 @@ func (b *LinuxBrowser) Open(_ context.Context) (uint64, error) {
 	return 0, cmd.Run()
 }
 
-func (b *LinuxBrowser) Close(_ context.Context, pid uint64) error {
+func (b *LinuxBrowser) Close(ctx context.Context, pid uint64) error {
 	if pid > 0 {
 		if err := exec.Command("kill", fmt.Sprintf("%d", pid)).Run(); err != nil {
 			return ErrProcNotFound
@@ -56,7 +56,7 @@ func (b *LinuxBrowser) Close(_ context.Context, pid uint64) error {
 		return ErrProcNotFound
 	}
 
-	r := regexp.MustCompile("(\\d+)\\s(.+)")
+	r := regexp.MustCompile(`(\d+)\s(.+)`)
 
 	for _, pair := range r.FindAllStringSubmatch(string(psOut), -1) {
 		cmd := strings.TrimSpace(pair[2])
@@ -75,7 +75,7 @@ func (b *LinuxBrowser) Close(_ context.Context, pid uint64) error {
 		return ErrProcNotFound
 	}
 
-	return exec.Command("kill", fmt.Sprintf("%d", pid)).Run()
+	return exec.CommandContext(ctx, "kill", fmt.Sprintf("%d", pid)).Run()
 }
 
 func (b *LinuxBrowser) findBinaryPath() (string, error) {
