@@ -12,7 +12,6 @@ install-tools:
 	go install golang.org/x/tools/cmd/goimports@latest && \
 	go install github.com/mgechev/revive@latest
 
-
 install:
 	go mod download
 
