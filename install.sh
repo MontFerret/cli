@@ -1,26 +1,72 @@
 #!/bin/bash
-# Copyright MontFerret Team 2020
+# Copyright MontFerret Team 2023
 # Licensed under the MIT license.
-projectName="MontFerret"
-appName="cli"
-binName="ferret"
-fullAppName="${projectName} $(fn_echo ${appName} | awk '{print toupper(substr($0,0,1)) substr($0,2)}')"
-defaultLocation="${HOME}/.ferret"
-defaultVersion="latest"
-location=${LOCATION:-$defaultLocation}
-version=${VERSION:-$defaultVersion}
 
-if [ "$version" = "$defaultVersion" ]; then
-    version=$(curl -sI https://github.com/${projectName}/${appName}/releases/latest | awk '{print tolower($0)}' | grep location: | awk -F"/" '{ printf "%s", $NF }' | tr -d '\r')
-fi
+set -e
 
-baseUrl=https://github.com/${projectName}/$appName/releases/download/$version
+# Declare constants
+readonly projectName="MontFerret"
+readonly appName="cli"
+readonly binName="ferret"
+readonly fullAppName="${projectName} $(echo ${appName} | awk '{print toupper(substr($0,0,1)) substr($0,2)}')"
+readonly baseUrl="https://github.com/${projectName}/${appName}/releases/download"
 
+# Declare default values
+readonly defaultLocation="${HOME}/.ferret"
+readonly defaultVersion="latest"
+
+# Print a message to stdout
 report() {
-  command printf %s\\n "$*" 2>/dev/null
+  command printf "%s\n" "$*" 2>/dev/null
 }
 
-detectProfile() {
+# Check if a command is available
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+# Check if a path exists
+check_path() {
+  if [ -z "${1-}" ] || [ ! -f "${1}" ]; then
+    return 1
+  fi
+
+  report "${1}"
+}
+
+# Validate user input
+validate_input() {
+  local location="$1"
+  local version="$2"
+
+  if [ -z "$location" ]; then
+    report "Invalid location: $location"
+    exit 1
+  fi
+
+  # Check if location exists
+  if [ ! -d "$location" ]; then
+    report "Location does not exist: $location"
+    exit 1
+  fi
+
+  # Check if location is writable
+  if [ ! -w "$location" ]; then
+    report "Location is not writable: $location"
+    exit 1
+  fi
+
+  if [ "$version" != "latest" ] && [[ ! "$version" =~ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    report "Invalid version: $version"
+    exit 1
+  fi
+}
+
+# Detect the profile file
+detect_profile() {
+  local profile=""
+  local detected_profile=""
+
   if [ "${PROFILE-}" = '/dev/null' ]; then
     # the user has specifically requested NOT to have nvm touch their profile
     return
@@ -31,37 +77,35 @@ detectProfile() {
     return
   fi
 
-  local DETECTED_PROFILE
-  DETECTED_PROFILE=''
-
-  if [ "${SHELL#*bash}" != "$SHELL" ]; then
+  if command_exists bash; then
     if [ -f "$HOME/.bashrc" ]; then
-      DETECTED_PROFILE="$HOME/.bashrc"
+      detected_profile="$HOME/.bashrc"
     elif [ -f "$HOME/.bash_profile" ]; then
-      DETECTED_PROFILE="$HOME/.bash_profile"
+      detected_profile="$HOME/.bash_profile"
     fi
-  elif [ "${SHELL#*zsh}" != "$SHELL" ]; then
+  elif command_exists zsh; then
     if [ -f "$HOME/.zshrc" ]; then
-      DETECTED_PROFILE="$HOME/.zshrc"
+      detected_profile="$HOME/.zshrc"
     fi
   fi
 
-  if [ -z "$DETECTED_PROFILE" ]; then
-    for EACH_PROFILE in ".profile" ".bashrc" ".bash_profile" ".zshrc"
-    do
-      if DETECTED_PROFILE="$(check_path "${HOME}/${EACH_PROFILE}")"; then
+  if [ -z "$detected_profile" ]; then
+    for profile_name in ".profile" ".bashrc" ".bash_profile" ".zshrc"; do
+      if detected_profile="$(check_path "${HOME}/${profile_name}")"; then
         break
       fi
     done
   fi
 
-  if [ -n "$DETECTED_PROFILE" ]; then
-    report "$DETECTED_PROFILE"
+  if [ -n "$detected_profile" ]; then
+    report "$detected_profile"
   fi
 }
 
-updateProfile() {
-  profile=$(detectProfile)
+# Update the profile file
+update_profile() {
+  local location="$1"
+  local profile="$(detect_profile)"
 
   if [[ ":$PATH:" == *":$location:"* ]]; then
     return
@@ -76,146 +120,108 @@ updateProfile() {
     report "export PATH=\$PATH:${location}"
     report
   else
-    if ! grep -qc "${location}" "$profile"; then
-      report "export PATH=\$PATH:${location}" >> "$profile"
+    if ! grep -q "${location}" "$profile"; then
+      report "export PATH=\$PATH:${location}" >>"$profile"
     fi
   fi
 }
 
-checkHash(){
-    downloadDir=$1
-    sha_cmd="sha256sum"
-
-    if [ ! -x "$(command -v ${sha_cmd})" ]; then
-        sha_cmd="shasum -a 256"
-    fi
-
-    if [ -x "$(command -v "${sha_cmd}")" ]; then
-
-    (cd "${downloadDir}" && curl -sSL "${baseUrl}"/lab_checksums.txt | $sha_cmd -c >/dev/null)
-        if [ "$?" != "0" ]; then
-            # rm $downloadFile
-            report "Binary checksum didn't match. Exiting"
-            exit 1
-        fi
-    fi
-}
-
-getPlatformSuffix() {
-  local platformName=$(uname)
-  local userid=$(id -u)
-
+# Get the platform-specific filename suffix
+get_platform_suffix() {
+  local platform_name="$(uname)"
+  local arch_name="$(uname -m)"
   local platform=""
-  case $platformName in
-  "Darwin")
-  platform="_darwin"
-  ;;
-  "Linux")
-  platform="_linux"
-  ;;
-  "Windows")
-  platform="_windows"
-  ;;
-  esac
-
-  if [ "$platform" = "" ]; then
-      report "$platformName is not supported. Exiting..."
-      exit 1
-  fi
-
-  local archName=$(uname -m)
   local arch=""
-  case $archName in
-  "x86_64")
-  arch="_x86_64"
-  ;;
-  "aarch64")
-  arch="_arm64"
-  ;;
-  "arm64")
-  arch="_arm64"
-  ;;
+
+  case "$platform_name" in
+  "Darwin")
+    platform="_darwin"
+    ;;
+  "Linux")
+    platform="_linux"
+    ;;
+  "Windows")
+    platform="_windows"
+    ;;
+  *)
+    report "$platform_name is not supported. Exiting..."
+    exit 1
+    ;;
   esac
 
-  if [ "${arch}" = "" ]; then
-      report "${archName} is not supported. Exiting..."
-      exit 1
-  fi
+  case "$arch_name" in
+  "x86_64")
+    arch="_x86_64"
+    ;;
+  "aarch64" | "arm64")
+    arch="_arm64"
+    ;;
+  *)
+    report "$arch_name is not supported. Exiting..."
+    exit 1
+    ;;
+  esac
 
   echo "${platform}${arch}"
 }
 
-installPackage() {
-  report "Installing ${fullAppName} ${version}..."
+get_version_tag() {
+  local version="$1"
+
+  if [ "$version" = "latest" ]; then
+    local url="https://api.github.com/repos/${projectName}/${appName}/releases/latest"
+
+    curl -sSL "${url}" | grep "tag_name" | cut -d '"' -f 4
+  else
+    # Check if the version starts with a 'v'
+    if [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      echo "$version"
+    else
+      echo "v$version"
+    fi
+  fi
+}
+
+# Install the package
+install() {
+  local location="${LOCATION:-$defaultLocation}"
+  local version=$(get_version_tag "${VERSION:-$defaultVersion}")
+  local tmp_dir="$(mktemp -d -t "${projectName}.${appName}.XXXXXXX")"
+
+  validate_input "$location" "$version"
+
+  report "Installing ${projectName} ${appName} ${version}..."
+
   # Download the archive to a temporary location
-  local tmpDir=$(mktemp -d -t "${projectName}.${appName}")
-  local suffix=$(getPlatformSuffix)
-  local fileName="${appName}${suffix}"
-  local downloadDir="${tmpDir}/${fileName}@${version}"
+  local suffix="$(get_platform_suffix)"
+  local file_name="${appName}${suffix}"
+  local download_dir="${tmp_dir}/${file_name}@${version}"
 
-  if [ ! -d "${downloadDir}" ]; then
-      mkdir "${downloadDir}"
+  mkdir -p "${download_dir}"
 
-      if [ $? -ne 0 ]; then
-        report "Can't create temp directory. Exiting..."
-        exit 1
-     fi
-  fi
+  local download_file="${download_dir}/${file_name}.tar.gz"
+  local url="${baseUrl}/${version}/${file_name}.tar.gz"
 
-  local downloadFile="${downloadDir}/${fileName}.tar.gz"
-  local url="$baseUrl/${fileName}.tar.gz"
-  report "Downloading package $url as $downloadFile"
+  report "Downloading package $url as $download_file"
 
-  curl -sSL "${url}" | tar xz --directory "${downloadDir}"
+  curl -sSL "${url}" | tar xz --directory "${download_dir}"
 
-  if [ $? -ne 0 ]; then
-      report "Failed to download file. Exiting..."
-      exit 1
-  fi
+  local downloaded_file="${download_dir}/${binName}"
 
-  report "Download complete."
+  report "Copying ${downloaded_file} to ${location}"
 
-  checkHash "${downloadDir}"
+  cp "${downloaded_file}" "${location}"
 
-  if [ $? -ne 0 ]; then
-      report "Failed to check hash. Exiting..."
-      exit 1
-  fi
-
-  local downloadedFile="${downloadDir}/${binName}"
-
-  if [ ! -d "${location}" ]; then
-      mkdir "${location}"
-
-      if [ $? -ne 0 ]; then
-        report "Can't create installation directory. Exiting..."
-        exit 1
-      fi
-  fi
-
-  report "Copying ${downloadedFile} to ${location}"
-  report
-
-  cp "${downloadedFile}" "${location}"
-
-  if [ "$?" != "0" ]; then
-      report "Failed to copy file. Exiting..."
-      exit 1
-  fi
-
-  if [ -d "${downloadDir}" ]; then
-      rm -rf "${downloadDir}"
-  fi
-
-  local executable="$location/$binName"
+  local executable="${location}/${binName}"
 
   chmod +x "${executable}"
 
-  updateProfile "${location}"
+  update_profile "${location}"
 
   report "New version of ${fullAppName} installed to ${location}"
 
   "$executable" version
 }
 
-installPackage
+# Call the main function
+install
