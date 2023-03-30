@@ -56,9 +56,15 @@ validate_input() {
     exit 1
   fi
 
-  if [ "$version" != "latest" ] && [[ ! "$version" =~ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    report "Invalid version: $version"
-    exit 1
+  if [ "$version" != "latest" ]; then
+    # Remove leading 'v' if present
+    version="${version#v}"
+
+    # Check if version is valid using grep
+    if ! echo "$version" | grep -qE "^[0-9]+\.[0-9]+\.[0-9]+$"; then
+      report "Invalid version: $version"
+      exit 1
+    fi
   fi
 }
 
