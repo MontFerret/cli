@@ -102,3 +102,8 @@ Flags:
 Use "ferret [command] --help" for more information about a command.
 
 ```
+
+## Contributors
+<a href="https://github.com/MontFerret/ferret/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=MontFerret/cli" />
+</a>
