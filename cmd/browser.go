@@ -33,7 +33,7 @@ func BrowserCommand(store *config.Store) *cobra.Command {
 		Use:   "open",
 		Short: "Open browser",
 		Args:  cobra.MaximumNArgs(0),
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -58,7 +58,7 @@ func BrowserCommand(store *config.Store) *cobra.Command {
 		Use:   "close",
 		Short: "Close browser",
 		Args:  cobra.MaximumNArgs(1),
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

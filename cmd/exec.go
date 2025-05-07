@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 	"strconv"
@@ -31,7 +31,7 @@ func ExecCommand(store *config.Store) *cobra.Command {
 		Use:   "exec",
 		Short: "Execute a FQL script or launch REPL",
 		Args:  cobra.MinimumNArgs(0),
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -89,7 +89,7 @@ func ExecCommand(store *config.Store) *cobra.Command {
 				// check whether the app is getting a query via standard input
 				std := bufio.NewReader(os.Stdin)
 
-				content, err := ioutil.ReadAll(std)
+				content, err := io.ReadAll(std)
 
 				if err != nil {
 					return err

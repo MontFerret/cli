@@ -32,7 +32,7 @@ func main() {
 		SilenceErrors:    true,
 		SilenceUsage:     true,
 		TraverseChildren: true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -15,7 +15,7 @@ func VersionCommand(store *config.Store) *cobra.Command {
 		Use:   "version",
 		Short: "Show the CLI version information",
 		Args:  cobra.MaximumNArgs(0),
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {

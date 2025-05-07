@@ -33,7 +33,7 @@ func ConfigCommand(store *config.Store) *cobra.Command {
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			val, err := store.Get(args[0])
 
 			if err == nil {
@@ -57,7 +57,7 @@ func ConfigCommand(store *config.Store) *cobra.Command {
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			err := store.Set(args[0], args[1])
 
 			if err == config.ErrInvalidFlag {
@@ -76,7 +76,7 @@ func ConfigCommand(store *config.Store) *cobra.Command {
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
-		Run: func(cmd *cobra.Command, _ []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			for _, kv := range store.List() {
 				fmt.Printf("%s: %v\n", kv.Key, kv.Value)
 			}

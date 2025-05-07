@@ -26,7 +26,7 @@ func SelfUpdateCommand(store *config.Store) *cobra.Command {
 		Use:   "self",
 		Short: "Update Ferret CLI",
 		Args:  cobra.MaximumNArgs(0),
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			updater, err := selfupdate.NewUpdater(
 				store.RepoOwner(),
 				store.Repo(),
