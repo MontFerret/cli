@@ -8,7 +8,7 @@ set -e
 readonly projectName="MontFerret"
 readonly appName="cli"
 readonly binName="ferret"
-readonly fullAppName="${projectName} $(echo ${appName} | awk '{print toupper(substr($0,0,1)) substr($0,2)}')"
+readonly fullAppName="Ferret CLI"
 readonly baseUrl="https://github.com/${projectName}/${appName}/releases/download"
 
 # Declare default values
@@ -74,7 +74,7 @@ detect_profile() {
   local detected_profile=""
 
   if [ "${PROFILE-}" = '/dev/null' ]; then
-    # the user has specifically requested NOT to have nvm touch their profile
+    # the user has specifically requested NOT to have us touch their profile
     return
   fi
 
@@ -96,7 +96,7 @@ detect_profile() {
   fi
 
   if [ -z "$detected_profile" ]; then
-    for profile_name in ".profile" ".bashrc" ".bash_profile" ".zshrc"; do
+    for profile_name in ".zshrc" ".bashrc" ".bash_profile" ".profile"; do
       if detected_profile="$(check_path "${HOME}/${profile_name}")"; then
         break
       fi
@@ -113,7 +113,15 @@ update_profile() {
   local location="$1"
   local profile="$(detect_profile)"
 
-  if [[ ":$PATH:" == *":$location:"* ]]; then
+  if [ -z "$profile" ]; then
+    report "No profile found. Skipping PATH update."
+    return
+  fi
+
+  report "Checking if $location is already in PATH"
+
+  if echo ":$PATH:" | grep -q ":$location:"; then
+    report "$location is already in PATH"
     return
   fi
 
