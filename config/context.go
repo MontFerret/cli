@@ -2,7 +2,9 @@ package config
 
 import "context"
 
-var ctxKey = struct{}{}
+type ctxKeyT struct{}
+
+var ctxKey = ctxKeyT{}
 
 func With(ctx context.Context, store *Store) context.Context {
 	return context.WithValue(ctx, ctxKey, store)
