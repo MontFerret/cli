@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.24.2
 
 require (
-	github.com/Masterminds/semver/v3 v3.3.1
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/MontFerret/ferret v0.18.1
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.0.0
