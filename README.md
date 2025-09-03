@@ -111,7 +111,8 @@ LET items = (
             url: title.href
         }
 )
-RETURN items[0:5]  // Return first 5 items
+// Return items (slice syntax is not supported yet)
+RETURN items
 ```
 
 Run the script:
@@ -160,7 +161,8 @@ Use parameters in your FQL script:
 ```fql
 LET page = DOCUMENT(@url)  // Use the url parameter
 LET items = ELEMENTS(page, ".item")
-RETURN items[0:@limit]     // Use the limit parameter
+// Note: Array slice syntax is not supported yet, return all items
+RETURN items
 ```
 
 ### Remote Runtime
@@ -231,11 +233,11 @@ Configuration files are stored in:
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `browser.address` | Chrome DevTools Protocol address | `http://127.0.0.1:9222` |
-| `browser.userAgent` | Default User-Agent header | System default |
-| `browser.cookies` | Keep cookies between queries | `false` |
-| `runtime.type` | Runtime type (builtin/url) | `builtin` |
-| `log.level` | Logging level | `info` |
+| `browser-address` | Chrome DevTools Protocol address | `http://127.0.0.1:9222` |
+| `user-agent` | Default User-Agent header | System default |
+| `browser-cookies` | Keep cookies between queries | `false` |
+| `runtime` | Runtime type (builtin/url) | `builtin` |
+| `log-level` | Logging level | `info` |
 
 ## Browser Management  
 
@@ -280,8 +282,13 @@ LET products = (
             url: CONCAT("https://shop.example.com", product.href)
         } : NONE
 )
-// Filter out null results
-RETURN products[* FILTER CURRENT != NONE]
+// Filter out null results  
+LET validProducts = (
+    FOR product IN products
+        FILTER product != NONE
+        RETURN product
+)
+RETURN validProducts
 ```
 
 ### Working with Forms
@@ -321,7 +328,10 @@ LET results = (
         RETURN {
             url: url,
             title: ELEMENT(page, "title").innerText,
-            headlines: ELEMENTS(page, "h1, h2, h3")[*].innerText
+            headlines: (
+                FOR headline IN ELEMENTS(page, "h1, h2, h3")
+                RETURN headline.innerText
+            )
         }
 )
 
@@ -365,12 +375,18 @@ RETURN details
 // Extract data from HTML tables
 LET page = DOCUMENT("https://example.com/data-table")
 LET table = ELEMENT(page, "table")
-LET headers = ELEMENTS(table, "thead th")[*].innerText
+LET headers = (
+    FOR header IN ELEMENTS(table, "thead th")
+    RETURN header.innerText
+)
 LET rows = ELEMENTS(table, "tbody tr")
 
 LET data = (
     FOR row IN rows
-        LET cells = ELEMENTS(row, "td")[*].innerText
+        LET cells = (
+            FOR cell IN ELEMENTS(row, "td")
+            RETURN cell.innerText
+        )
         LET record = {}
         
         FOR i, header IN ENUMERATE(headers)
