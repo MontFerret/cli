@@ -387,8 +387,8 @@ LET data = (
         )
         LET record = {}
         
-        FOR i, header IN ENUMERATE(headers)
-            LET record[header] = cells[i]
+        FOR i IN RANGE(0, LENGTH(headers))
+            LET record = SET_KEY(record, headers[i], cells[i])
         
         RETURN record
 )
@@ -397,46 +397,7 @@ RETURN data
 ```
 </details>
 
-<details>
-<summary>🔍 Search and pagination</summary>
 
-```fql
-// Handle paginated search results
-LET page = DOCUMENT("https://example.com/search", { driver: "cdp" })
-
-// Perform search
-INPUT(page, "#search-input", @searchTerm)
-CLICK(page, "#search-button")
-WAIT_ELEMENT(page, ".search-results")
-
-LET allResults = []
-LET currentPage = 1
-LET maxPages = 5
-
-WHILE currentPage <= maxPages
-    // Extract results from current page
-    LET results = ELEMENTS(page, ".search-result")
-    LET pageData = (
-        FOR result IN results
-            RETURN {
-                title: ELEMENT(result, ".title").innerText,
-                url: ELEMENT(result, ".link").href,
-                snippet: ELEMENT(result, ".snippet").innerText
-            }
-    )
-    
-    LET allResults = APPEND(allResults, pageData, true)
-    
-    // Try to go to next page (simplified approach)
-    LET nextButton = ELEMENT(page, ".next-page")
-    CLICK(page, ".next-page")
-    WAIT(2000)  // Wait for page load
-    LET currentPage = currentPage + 1
-END
-
-RETURN FLATTEN(allResults)
-```
-</details>
 
 <details>
 <summary>📱 Mobile viewport simulation</summary>
