@@ -21,6 +21,7 @@ VERBOSE=false
 HELP=false
 AUTO_CREATE_DIR=false
 UNINSTALL=false
+SKIP_CHECKSUM=false
 
 # Print a message to stdout
 report() {
@@ -52,6 +53,7 @@ OPTIONS:
     -d, --dry-run           Show what would be done without actually installing
     -u, --uninstall         Uninstall ${fullAppName}
     -c, --create-dir        Automatically create install directory if it doesn't exist
+    --skip-checksum         Skip checksum verification (not recommended)
     -l, --location PATH     Install location (default: ${defaultLocation})
     -V, --version VERSION   Version to install (default: ${defaultVersion})
 
@@ -63,7 +65,7 @@ EXAMPLES:
     # Install to default location
     ./install.sh
 
-    # Install to custom location
+    # Install to custom location  
     ./install.sh --location /usr/local/bin
 
     # Install specific version
@@ -77,6 +79,10 @@ EXAMPLES:
 
     # Uninstall
     ./install.sh --uninstall
+
+SECURITY:
+    This script downloads binaries from GitHub releases and verifies checksums
+    for security. Use --skip-checksum only if you trust the source completely.
 
 For more information, visit: https://github.com/${projectName}/${appName}
 EOF
@@ -106,6 +112,10 @@ parse_args() {
         AUTO_CREATE_DIR=true
         shift
         ;;
+      --skip-checksum)
+        SKIP_CHECKSUM=true
+        shift
+        ;;
       -l|--location)
         LOCATION="$2"
         shift 2
@@ -126,6 +136,37 @@ parse_args() {
 # Check if a command is available
 command_exists() {
   command -v "$1" >/dev/null 2>&1
+}
+
+# Check if required tools are available
+check_dependencies() {
+  local missing_tools=""
+  
+  if ! command_exists curl; then
+    missing_tools="$missing_tools curl"
+  fi
+  
+  if ! command_exists tar; then
+    missing_tools="$missing_tools tar"
+  fi
+  
+  if [ -n "$missing_tools" ]; then
+    report "Error: Missing required tools:$missing_tools"
+    report ""
+    report "Please install the missing tools:"
+    if command_exists apt; then
+      report "  sudo apt update && sudo apt install$missing_tools"
+    elif command_exists yum; then
+      report "  sudo yum install$missing_tools"
+    elif command_exists brew; then
+      report "  brew install$missing_tools"
+    else
+      report "  Install using your system's package manager"
+    fi
+    exit 1
+  fi
+  
+  verbose "All required tools are available"
 }
 
 # Check if a path exists
@@ -311,6 +352,72 @@ get_platform_suffix() {
   echo "${platform}${arch}"
 }
 
+# Verify checksum of downloaded file
+verify_checksum() {
+  local download_file="$1"
+  local checksum_url="$2"
+  local file_name="$3"
+  
+  if [ "$SKIP_CHECKSUM" = true ]; then
+    verbose "Skipping checksum verification (--skip-checksum specified)"
+    return 0
+  fi
+
+  verbose "Verifying checksum for security..."
+  
+  # Check if we have tools for checksum verification
+  if ! command_exists sha256sum && ! command_exists shasum; then
+    verbose "Warning: No checksum tools available (sha256sum or shasum)"
+    verbose "Skipping checksum verification"
+    return 0
+  fi
+
+  # Download checksum file
+  local checksum_content=""
+  if command_exists curl; then
+    checksum_content=$(curl -sSL "${checksum_url}" 2>/dev/null || echo "")
+  fi
+  
+  if [ -z "$checksum_content" ]; then
+    verbose "Warning: Could not download checksums from $checksum_url"
+    verbose "Skipping checksum verification"
+    return 0
+  fi
+
+  # Extract the expected checksum for our file
+  local expected_checksum=""
+  expected_checksum=$(echo "$checksum_content" | grep "${file_name}.tar.gz" | awk '{print $1}' || echo "")
+  
+  if [ -z "$expected_checksum" ]; then
+    verbose "Warning: No checksum found for ${file_name}.tar.gz"
+    verbose "Skipping checksum verification"
+    return 0
+  fi
+
+  verbose "Expected checksum: $expected_checksum"
+
+  # Calculate actual checksum
+  local actual_checksum=""
+  if command_exists sha256sum; then
+    actual_checksum=$(sha256sum "$download_file" | awk '{print $1}')
+  elif command_exists shasum; then
+    actual_checksum=$(shasum -a 256 "$download_file" | awk '{print $1}')
+  fi
+
+  verbose "Actual checksum:   $actual_checksum"
+
+  if [ "$expected_checksum" != "$actual_checksum" ]; then
+    report "❌ Checksum verification failed!"
+    report "Expected: $expected_checksum"
+    report "Actual:   $actual_checksum"
+    report "This could indicate a corrupted download or security issue."
+    report "Use --skip-checksum to bypass this check (not recommended)"
+    exit 1
+  fi
+
+  verbose "✅ Checksum verification passed"
+}
+
 get_version_tag() {
   local version="$1"
 
@@ -366,10 +473,11 @@ install() {
     report "DRY RUN - Would perform the following actions:"
     report "  1. Create temporary directory"
     report "  2. Download ${projectName} ${appName} ${version}"
-    report "  3. Extract and install to: ${location}"
-    report "  4. Make executable: ${location}/${binName}"
-    report "  5. Update PATH in shell profile"
-    report "  6. Clean up temporary files"
+    report "  3. Verify checksum for security"
+    report "  4. Extract and install to: ${location}"
+    report "  5. Make executable: ${location}/${binName}"
+    report "  6. Update PATH in shell profile"
+    report "  7. Clean up temporary files"
     report ""
     report "To proceed with installation, run without --dry-run"
     return 0
@@ -395,17 +503,29 @@ install() {
 
   local download_file="${download_dir}/${file_name}.tar.gz"
   local url="${baseUrl}/${version}/${file_name}.tar.gz"
+  local checksum_url="${baseUrl}/${version}/${projectName}_checksums.txt"
 
   report "Downloading package from $url"
   verbose "Saving to: $download_file"
 
   # Download with better error handling
-  if ! curl -sSL "${url}" | tar xz --directory "${download_dir}"; then
-    report "Error: Failed to download or extract package from $url"
+  if ! curl -sSL "${url}" -o "${download_file}"; then
+    report "Error: Failed to download package from $url"
     report "Please check:"
     report "  1. Your internet connection"
     report "  2. That version ${version} exists"
     report "  3. That your system architecture is supported"
+    exit 1
+  fi
+
+  # Verify checksum for security
+  verify_checksum "$download_file" "$checksum_url" "$file_name"
+
+  # Extract the archive
+  verbose "Extracting archive..."
+  if ! tar xz -f "${download_file}" --directory "${download_dir}"; then
+    report "Error: Failed to extract package"
+    report "The download may be corrupted"
     exit 1
   fi
 
@@ -435,6 +555,15 @@ install() {
   fi
 
   verbose "Made executable: ${executable}"
+
+  # Check if this is an upgrade
+  local current_version=""
+  if "${executable}" version >/dev/null 2>&1; then
+    current_version=$("${executable}" version 2>/dev/null | grep "Self:" | awk '{print $2}' || echo "unknown")
+    if [ "$current_version" != "unknown" ] && [ "$current_version" != "${version#v}" ]; then
+      report "✅ Upgraded from version $current_version to ${version}"
+    fi
+  fi
 
   update_profile "${location}"
 
@@ -512,6 +641,9 @@ main() {
   if [ "$VERBOSE" = true ]; then
     verbose "Verbose mode enabled"
   fi
+
+  # Check dependencies
+  check_dependencies
 
   # Handle uninstall
   if [ "$UNINSTALL" = true ]; then
