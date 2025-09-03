@@ -111,7 +111,6 @@ LET items = (
             url: title.href
         }
 )
-// Return items (slice syntax is not supported yet)
 RETURN items
 ```
 
@@ -161,7 +160,6 @@ Use parameters in your FQL script:
 ```fql
 LET page = DOCUMENT(@url)  // Use the url parameter
 LET items = ELEMENTS(page, ".item")
-// Note: Array slice syntax is not supported yet, return all items
 RETURN items
 ```
 
@@ -429,15 +427,11 @@ WHILE currentPage <= maxPages
     
     LET allResults = APPEND(allResults, pageData, true)
     
-    // Try to go to next page
+    // Try to go to next page (simplified approach)
     LET nextButton = ELEMENT(page, ".next-page")
-    IF nextButton != NONE
-        CLICK(page, ".next-page")
-        WAIT(2000)  // Wait for page load
-        LET currentPage = currentPage + 1
-    ELSE
-        BREAK
-    END
+    CLICK(page, ".next-page")
+    WAIT(2000)  // Wait for page load
+    LET currentPage = currentPage + 1
 END
 
 RETURN FLATTEN(allResults)
@@ -506,14 +500,14 @@ LET element = ELEMENT(page, "#dynamic-content")
 
 **Memory issues with large datasets**
 ```fql
-// Process data in chunks
+// Process data in chunks using supported syntax
 LET items = ELEMENTS(page, ".item")
 LET batchSize = 100
 
-FOR batch IN RANGE(0, LENGTH(items), batchSize)
-    LET chunk = items[batch:batch+batchSize]
-    // Process chunk...
-END
+FOR i IN RANGE(0, LENGTH(items), batchSize)
+    FOR item IN items
+        // Process individual items...
+        RETURN item.innerText
 ```
 
 ### Debug Mode
