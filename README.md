@@ -388,7 +388,7 @@ LET data = (
         LET record = {}
         
         FOR i IN RANGE(0, LENGTH(headers))
-            LET record = SET_KEY(record, headers[i], cells[i])
+            SET_KEY(record, headers[i], cells[i])
         
         RETURN record
 )
