@@ -21,6 +21,7 @@ VERBOSE=false
 HELP=false
 UNINSTALL=false
 SKIP_CHECKSUM=false
+NO_CREATE_DIR=false
 
 # Print a message to stdout
 report() {
@@ -45,6 +46,7 @@ USAGE:
 DESCRIPTION:
     Downloads and installs the latest version of ${fullAppName} to a specified location.
     By default, installs to ${defaultLocation} and adds it to PATH.
+    Installation directories are created automatically if they don't exist.
 
 OPTIONS:
     -h, --help              Show this help message
@@ -52,6 +54,7 @@ OPTIONS:
     -d, --dry-run           Show what would be done without actually installing
     -u, --uninstall         Uninstall ${fullAppName}
     --skip-checksum         Skip checksum verification (not recommended)
+    --no-create-dir         Don't automatically create installation directory
     -l, --location PATH     Install location (default: ${defaultLocation})
     -V, --version VERSION   Version to install (default: ${defaultVersion})
 
@@ -71,6 +74,9 @@ EXAMPLES:
 
     # Dry run to see what would happen
     ./install.sh --dry-run
+
+    # Install without auto-creating directories
+    ./install.sh --location /opt/ferret --no-create-dir
 
     # Uninstall
     ./install.sh --uninstall
@@ -105,6 +111,10 @@ parse_args() {
         ;;
       --skip-checksum)
         SKIP_CHECKSUM=true
+        shift
+        ;;
+      --no-create-dir)
+        NO_CREATE_DIR=true
         shift
         ;;
       -l|--location)
@@ -185,10 +195,23 @@ validate_input() {
 
   # Check if location exists
   if [ ! -d "$location" ]; then
-    report "Error: Directory does not exist: $location"
-    report "Please create the directory manually:"
-    report "  mkdir -p \"$location\""
-    exit 1
+    if [ "$NO_CREATE_DIR" = true ]; then
+      report "Error: Directory does not exist: $location"
+      report "Please create the directory manually:"
+      report "  mkdir -p \"$location\""
+      exit 1
+    else
+      verbose "Creating directory: $location"
+      if [ "$DRY_RUN" = false ]; then
+        if ! mkdir -p "$location"; then
+          report "Error: Failed to create directory: $location"
+          report "Please check permissions or create manually:"
+          report "  mkdir -p \"$location\""
+          exit 1
+        fi
+        verbose "Successfully created directory: $location"
+      fi
+    fi
   fi
 
   # Check if location is writable (only if not dry run)
@@ -494,12 +517,22 @@ install() {
   if [ "$DRY_RUN" = true ]; then
     report "DRY RUN - Would perform the following actions:"
     report "  1. Create temporary directory"
-    report "  2. Download ${projectName} ${appName} ${version}"
-    report "  3. Verify checksum for security"
-    report "  4. Extract and install to: ${location}"
-    report "  5. Make executable: ${location}/${binName}"
-    report "  6. Update PATH in shell profile"
-    report "  7. Clean up temporary files"
+    if [ ! -d "$location" ] && [ "$NO_CREATE_DIR" = false ]; then
+      report "  2. Create installation directory: $location"
+      report "  3. Download ${projectName} ${appName} ${version}"
+      report "  4. Verify checksum for security"
+      report "  5. Extract and install to: ${location}"
+      report "  6. Make executable: ${location}/${binName}"
+      report "  7. Update PATH in shell profile"
+      report "  8. Clean up temporary files"
+    else
+      report "  2. Download ${projectName} ${appName} ${version}"
+      report "  3. Verify checksum for security"
+      report "  4. Extract and install to: ${location}"
+      report "  5. Make executable: ${location}/${binName}"
+      report "  6. Update PATH in shell profile"
+      report "  7. Clean up temporary files"
+    fi
     report ""
     report "To proceed with installation, run without --dry-run"
     return 0
