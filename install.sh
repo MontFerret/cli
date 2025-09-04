@@ -19,7 +19,6 @@ readonly defaultVersion="latest"
 DRY_RUN=false
 VERBOSE=false
 HELP=false
-AUTO_CREATE_DIR=false
 UNINSTALL=false
 SKIP_CHECKSUM=false
 
@@ -52,7 +51,6 @@ OPTIONS:
     -v, --verbose           Enable verbose output
     -d, --dry-run           Show what would be done without actually installing
     -u, --uninstall         Uninstall ${fullAppName}
-    -c, --create-dir        Automatically create install directory if it doesn't exist
     --skip-checksum         Skip checksum verification (not recommended)
     -l, --location PATH     Install location (default: ${defaultLocation})
     -V, --version VERSION   Version to install (default: ${defaultVersion})
@@ -73,9 +71,6 @@ EXAMPLES:
 
     # Dry run to see what would happen
     ./install.sh --dry-run
-
-    # Auto-create directory if needed
-    ./install.sh --location /opt/ferret --create-dir
 
     # Uninstall
     ./install.sh --uninstall
@@ -106,10 +101,6 @@ parse_args() {
         ;;
       -u|--uninstall)
         UNINSTALL=true
-        shift
-        ;;
-      -c|--create-dir)
-        AUTO_CREATE_DIR=true
         shift
         ;;
       --skip-checksum)
@@ -194,23 +185,10 @@ validate_input() {
 
   # Check if location exists
   if [ ! -d "$location" ]; then
-    if [ "$AUTO_CREATE_DIR" = true ]; then
-      verbose "Auto-creating directory: $location"
-      if [ "$DRY_RUN" = false ]; then
-        mkdir -p "$location" || {
-          report "Error: Failed to create directory: $location"
-          report "Please check permissions or create the directory manually."
-          exit 1
-        }
-      else
-        report "Would create directory: $location"
-      fi
-    else
-      report "Error: Directory does not exist: $location"
-      report "Use --create-dir to automatically create it, or create it manually:"
-      report "  mkdir -p \"$location\""
-      exit 1
-    fi
+    report "Error: Directory does not exist: $location"
+    report "Please create the directory manually:"
+    report "  mkdir -p \"$location\""
+    exit 1
   fi
 
   # Check if location is writable (only if not dry run)
@@ -237,6 +215,8 @@ validate_input() {
 detect_profile() {
   local profile=""
   local detected_profile=""
+  local current_shell=""
+  local is_macos=""
 
   if [ "${PROFILE-}" = '/dev/null' ]; then
     # the user has specifically requested NOT to have us touch their profile
@@ -248,24 +228,66 @@ detect_profile() {
     return
   fi
 
-  if command_exists bash; then
+  # Detect if we're on macOS
+  if [ "$(uname)" = "Darwin" ]; then
+    is_macos=true
+  fi
+
+  # Detect current shell
+  if [ -n "${ZSH_VERSION:-}" ] || [ "${0#-}" != "${0}" ] && [ "${0}" = "zsh" ]; then
+    current_shell="zsh"
+  elif [ -n "${BASH_VERSION:-}" ] || [ "${0#-}" != "${0}" ] && [ "${0}" = "bash" ]; then
+    current_shell="bash"
+  else
+    # Fallback to checking SHELL environment variable
+    case "${SHELL:-}" in
+      */zsh) current_shell="zsh" ;;
+      */bash) current_shell="bash" ;;
+    esac
+  fi
+
+  # For zsh users, prioritize appropriate files
+  if [ "$current_shell" = "zsh" ]; then
+    if [ "$is_macos" = true ]; then
+      # On macOS, prefer .zshenv for PATH changes (loaded for all zsh invocations)
+      if [ -f "$HOME/.zshenv" ]; then
+        detected_profile="$HOME/.zshenv"
+      elif [ -f "$HOME/.zshrc" ]; then
+        detected_profile="$HOME/.zshrc"
+      fi
+    else
+      # On Linux, prefer .zshrc
+      if [ -f "$HOME/.zshrc" ]; then
+        detected_profile="$HOME/.zshrc"
+      elif [ -f "$HOME/.zshenv" ]; then
+        detected_profile="$HOME/.zshenv"
+      fi
+    fi
+  elif [ "$current_shell" = "bash" ]; then
     if [ -f "$HOME/.bashrc" ]; then
       detected_profile="$HOME/.bashrc"
     elif [ -f "$HOME/.bash_profile" ]; then
       detected_profile="$HOME/.bash_profile"
     fi
-  elif command_exists zsh; then
-    if [ -f "$HOME/.zshrc" ]; then
-      detected_profile="$HOME/.zshrc"
-    fi
   fi
 
+  # If we still haven't found a profile, use fallback detection
   if [ -z "$detected_profile" ]; then
-    for profile_name in ".zshrc" ".bashrc" ".bash_profile" ".profile"; do
-      if detected_profile="$(check_path "${HOME}/${profile_name}")"; then
-        break
-      fi
-    done
+    if [ "$is_macos" = true ]; then
+      # On macOS, prioritize zsh files, then bash
+      for profile_name in ".zshenv" ".zshrc" ".bash_profile" ".bashrc" ".profile"; do
+        if detected_profile="$(check_path "${HOME}/${profile_name}")"; then
+          break
+        fi
+      done
+    else
+      # On Linux, try common files
+      for profile_name in ".bashrc" ".zshrc" ".bash_profile" ".zshenv" ".profile"; do
+        if detected_profile="$(check_path "${HOME}/${profile_name}")"; then
+          break
+        fi
+      done
+    fi
   fi
 
   if [ -n "$detected_profile" ]; then
