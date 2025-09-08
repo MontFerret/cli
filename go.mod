@@ -9,7 +9,7 @@ require (
 	github.com/MontFerret/ferret v0.18.1
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.0.0
-	github.com/go-waitfor/waitfor-http v1.0.0
+	github.com/go-waitfor/waitfor-http v1.1.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/pkg/errors v0.9.1
