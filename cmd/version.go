@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/cli/config"
-	"github.com/MontFerret/cli/runtime"
+	"github.com/MontFerret/cli/pkg/config"
+	"github.com/MontFerret/cli/pkg/runtime"
 )
 
 // VersionCommand command to display version

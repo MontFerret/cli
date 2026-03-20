@@ -1,19 +1,17 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/ferret/v2/pkg/file"
 	"github.com/MontFerret/ferret/v2/pkg/formatter"
 
-	"github.com/MontFerret/cli/config"
+	"github.com/MontFerret/cli/pkg/config"
+	"github.com/MontFerret/cli/pkg/source"
 )
 
 func FormatCommand(store *config.Store) *cobra.Command {
@@ -39,42 +37,27 @@ func FormatCommand(store *config.Store) *cobra.Command {
 				return err
 			}
 
-			// If no args, try reading from stdin
-			if len(args) == 0 {
-				stat, _ := os.Stdin.Stat()
+			sources, err := source.Resolve(source.Input{Args: args})
 
-				if (stat.Mode() & os.ModeCharDevice) == 0 {
-					content, err := io.ReadAll(bufio.NewReader(os.Stdin))
+			if err != nil {
+				return err
+			}
 
-					if err != nil {
-						return err
-					}
-
-					return f.Format(os.Stdout, file.NewSource("stdin", string(content)))
-				}
-
+			if sources == nil {
 				return cmd.Help()
 			}
 
-			for _, path := range args {
-				content, err := os.ReadFile(path)
-
-				if err != nil {
-					return fmt.Errorf("reading %s: %w", path, err)
-				}
-
-				src := file.NewSource(path, string(content))
-
+			for i, src := range sources {
 				if dryRun {
-					if len(args) > 1 {
-						fmt.Fprintf(os.Stdout, "==> %s <==\n", path)
+					if len(sources) > 1 {
+						fmt.Fprintf(os.Stdout, "==> %s <==\n", src.Name())
 					}
 
 					if err := f.Format(os.Stdout, src); err != nil {
 						return err
 					}
 
-					if len(args) > 1 {
+					if len(sources) > 1 {
 						fmt.Fprintln(os.Stdout)
 					}
 				} else {
@@ -84,8 +67,8 @@ func FormatCommand(store *config.Store) *cobra.Command {
 						return err
 					}
 
-					if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
-						return fmt.Errorf("writing %s: %w", path, err)
+					if err := os.WriteFile(args[i], buf.Bytes(), 0o644); err != nil {
+						return fmt.Errorf("writing %s: %w", args[i], err)
 					}
 				}
 			}

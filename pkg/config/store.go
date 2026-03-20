@@ -6,9 +6,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/MontFerret/cli/browser"
-	"github.com/MontFerret/cli/logger"
-	"github.com/MontFerret/cli/runtime"
+	"github.com/MontFerret/cli/pkg/browser"
+	"github.com/MontFerret/cli/pkg/logger"
+	"github.com/MontFerret/cli/pkg/runtime"
 )
 
 type (

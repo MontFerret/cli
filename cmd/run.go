@@ -1,29 +1,18 @@
 package cmd
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/ferret/v2/pkg/diagnostics"
 	"github.com/MontFerret/ferret/v2/pkg/file"
 
-	"github.com/MontFerret/ferret/v2/pkg/runtime"
-
-	"github.com/MontFerret/cli/browser"
-	"github.com/MontFerret/cli/config"
-	cliruntime "github.com/MontFerret/cli/runtime"
-)
-
-const (
-	ParamFlag = "param"
+	"github.com/MontFerret/cli/pkg/browser"
+	"github.com/MontFerret/cli/pkg/config"
+	cliruntime "github.com/MontFerret/cli/pkg/runtime"
+	"github.com/MontFerret/cli/pkg/source"
 )
 
 func RunCommand(store *config.Store) *cobra.Command {
@@ -35,7 +24,7 @@ func RunCommand(store *config.Store) *cobra.Command {
 			store.BindFlags(cmd)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			paramFlag, err := cmd.Flags().GetStringArray(ParamFlag)
+			paramFlag, err := cmd.Flags().GetStringArray(paramFlag)
 
 			if err != nil {
 				return err
@@ -58,89 +47,33 @@ func RunCommand(store *config.Store) *cobra.Command {
 			}
 
 			store := config.From(cmd.Context())
-
 			rtOpts := store.GetRuntimeOptions()
 
-			if rtOpts.WithBrowser {
-				brOpts := store.GetBrowserOptions()
-				brOpts.Detach = true
-				brOpts.Headless = rtOpts.WithHeadlessBrowser
-
-				if rtOpts.BrowserAddress != "" {
-					u, err := url.Parse(rtOpts.BrowserAddress)
-
-					if err != nil {
-						return runtime.Error(err, "invalid browser address")
-					}
-
-					if u.Port() != "" {
-						p, err := strconv.ParseUint(u.Port(), 10, 64)
-
-						if err != nil {
-							return err
-						}
-
-						brOpts.Port = p
-					}
-				}
-
-				pid, err := browser.Open(cmd.Context(), brOpts)
-
-				if err != nil {
-					return err
-				}
-
-				defer browser.Close(cmd.Context(), brOpts, pid)
-			}
-
-			if eval != "" {
-				return runScript(cmd, rtOpts, params, file.NewSource("<eval>", eval))
-			}
-
-			stat, _ := os.Stdin.Stat()
-
-			if (stat.Mode() & os.ModeCharDevice) == 0 {
-				// check whether the app is getting a query via standard input
-				std := bufio.NewReader(os.Stdin)
-
-				content, err := io.ReadAll(std)
-
-				if err != nil {
-					return err
-				}
-
-				name := "stdin"
-
-				if len(args) > 0 {
-					name = args[0]
-				}
-
-				return runScript(cmd, rtOpts, params, file.NewSource(name, string(content)))
-			}
-
-			if len(args) == 0 {
-				return cmd.Help()
-			}
-
-			content, err := os.ReadFile(args[0])
+			cleanup, err := browser.EnsureBrowser(cmd.Context(), rtOpts, store.GetBrowserOptions())
 
 			if err != nil {
 				return err
 			}
 
-			return runScript(cmd, rtOpts, params, file.NewSource(args[0], string(content)))
+			defer cleanup()
+
+			sources, err := source.Resolve(source.Input{Eval: eval, Args: args})
+
+			if err != nil {
+				return err
+			}
+
+			if sources == nil {
+				return cmd.Help()
+			}
+
+			return runScript(cmd, rtOpts, params, sources[0])
 		},
 	}
 
-	cmd.Flags().StringP("eval", "e", "", "Inline FQL expression to evaluate")
-	cmd.Flags().StringArrayP(ParamFlag, "p", []string{}, "Query bind parameter (--param=foo:\"bar\", --param=id:1)")
-	cmd.Flags().StringP(config.ExecRuntime, "r", cliruntime.DefaultRuntime, "Ferret runtime type (\"builtin\"|$url)")
-	cmd.Flags().String(config.ExecProxy, "x", "Proxy server address")
-	cmd.Flags().String(config.ExecUserAgent, "a", "User agent header")
-	cmd.Flags().StringP(config.ExecBrowserAddress, "d", cliruntime.DefaultBrowser, "Browser debugger address")
-	cmd.Flags().BoolP(config.ExecWithBrowser, "B", false, "Open browser for script execution")
-	cmd.Flags().BoolP(config.ExecWithBrowserHeadless, "b", false, "Open browser for script execution in headless mode")
-	cmd.Flags().BoolP(config.ExecKeepCookies, "c", false, "Keep cookies between queries")
+	addEvalFlag(cmd)
+	addParamFlags(cmd)
+	addRuntimeFlags(cmd)
 
 	return cmd
 }
@@ -149,37 +82,11 @@ func runScript(cmd *cobra.Command, opts cliruntime.Options, params map[string]in
 	out, err := cliruntime.Run(cmd.Context(), opts, query, params)
 
 	if err != nil {
-		fmt.Println(diagnostics.Format(err))
+		printError(err)
 		return err
 	}
 
 	_, err = io.Copy(os.Stdout, out)
 
 	return err
-}
-
-func parseParams(flags []string) (map[string]interface{}, error) {
-	res := make(map[string]interface{})
-
-	for _, entry := range flags {
-		pair := strings.SplitN(entry, ":", 2)
-
-		if len(pair) < 2 {
-			return nil, runtime.Error(runtime.ErrInvalidArgument, entry)
-		}
-
-		var value interface{}
-		key := pair[0]
-
-		err := json.Unmarshal([]byte(pair[1]), &value)
-
-		if err != nil {
-			fmt.Println(pair[1])
-			return nil, err
-		}
-
-		res[key] = value
-	}
-
-	return res, nil
 }

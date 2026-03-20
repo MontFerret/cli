@@ -17,7 +17,7 @@ install:
 
 compile:
 	go build -v -o ${DIR_BIN}/${NAME} \
-	-ldflags "-X main.version=${VERSION} -X github.com/MontFerret/cli/runtime.version=${FERRET_VERSION}" \
+	-ldflags "-X main.version=${VERSION} -X github.com/MontFerret/cli/pkg/runtime.version=${FERRET_VERSION}" \
 	./ferret/main.go
 
 test:
@@ -25,7 +25,7 @@ test:
 
 fmt:
 	go fmt ./... && \
-	goimports -w -local github.com/MontFerret ./browser ./cmd ./config ./ferret ./internal ./logger ./repl ./runtime
+	goimports -w -local github.com/MontFerret ./pkg/browser ./cmd ./pkg/config ./ferret ./pkg/logger ./pkg/repl ./pkg/runtime
 
 lint:
 	staticcheck ./... && \

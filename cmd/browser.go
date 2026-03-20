@@ -7,8 +7,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/cli/browser"
-	"github.com/MontFerret/cli/config"
+	"github.com/MontFerret/cli/pkg/browser"
+	"github.com/MontFerret/cli/pkg/config"
 )
 
 func BrowserCommand(store *config.Store) *cobra.Command {

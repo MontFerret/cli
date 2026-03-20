@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/cli/config"
+	"github.com/MontFerret/cli/pkg/config"
 )
 
 // ConfigCommand command to manipulate with config file

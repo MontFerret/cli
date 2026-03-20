@@ -11,7 +11,7 @@ import (
 
 	"github.com/MontFerret/ferret/v2/pkg/file"
 
-	"github.com/MontFerret/cli/runtime"
+	"github.com/MontFerret/cli/pkg/runtime"
 )
 
 func Start(ctx context.Context, opts runtime.Options, params map[string]interface{}) error {
@@ -100,7 +100,8 @@ func Start(ctx context.Context, opts runtime.Options, params map[string]interfac
 		_, err = io.Copy(os.Stdout, out)
 
 		if err != nil {
-			panic(err)
+			fmt.Fprintln(os.Stderr, err)
+			break
 		}
 	}
 
