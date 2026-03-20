@@ -23,13 +23,13 @@ func ReplCommand(store *config.Store) *cobra.Command {
 			store.BindFlags(cmd)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			paramFlag, err := cmd.Flags().GetStringArray(ExecParamFlag)
+			paramFlag, err := cmd.Flags().GetStringArray(ParamFlag)
 
 			if err != nil {
 				return err
 			}
 
-			params, err := parseExecParams(paramFlag)
+			params, err := parseParams(paramFlag)
 
 			if err != nil {
 				return err
@@ -75,7 +75,7 @@ func ReplCommand(store *config.Store) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringArrayP(ExecParamFlag, "p", []string{}, "Query bind parameter (--param=foo:\"bar\", --param=id:1)")
+	cmd.Flags().StringArrayP(ParamFlag, "p", []string{}, "Query bind parameter (--param=foo:\"bar\", --param=id:1)")
 	cmd.Flags().StringP(config.ExecRuntime, "r", cliruntime.DefaultRuntime, "Ferret runtime type (\"builtin\"|$url)")
 	cmd.Flags().String(config.ExecProxy, "x", "Proxy server address")
 	cmd.Flags().String(config.ExecUserAgent, "a", "User agent header")

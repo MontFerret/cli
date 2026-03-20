@@ -23,29 +23,38 @@ import (
 )
 
 const (
-	ExecParamFlag = "param"
+	ParamFlag = "param"
 )
 
-// RumCommand command to execute FQL scripts
-func ExecCommand(store *config.Store) *cobra.Command {
+func RunCommand(store *config.Store) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "exec",
-		Short: "Execute a FQL script",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "run [script]",
+		Short: "Run a FQL script",
+		Args:  cobra.MinimumNArgs(0),
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			paramFlag, err := cmd.Flags().GetStringArray(ExecParamFlag)
+			paramFlag, err := cmd.Flags().GetStringArray(ParamFlag)
 
 			if err != nil {
 				return err
 			}
 
-			params, err := parseExecParams(paramFlag)
+			params, err := parseParams(paramFlag)
 
 			if err != nil {
 				return err
+			}
+
+			eval, err := cmd.Flags().GetString("eval")
+
+			if err != nil {
+				return err
+			}
+
+			if eval != "" && len(args) > 0 {
+				return fmt.Errorf("cannot use --eval with file arguments")
 			}
 
 			store := config.From(cmd.Context())
@@ -84,6 +93,10 @@ func ExecCommand(store *config.Store) *cobra.Command {
 				defer browser.Close(cmd.Context(), brOpts, pid)
 			}
 
+			if eval != "" {
+				return runScript(cmd, rtOpts, params, file.NewSource("<eval>", eval))
+			}
+
 			stat, _ := os.Stdin.Stat()
 
 			if (stat.Mode() & os.ModeCharDevice) == 0 {
@@ -96,7 +109,17 @@ func ExecCommand(store *config.Store) *cobra.Command {
 					return err
 				}
 
-				return execScript(cmd, rtOpts, params, file.NewSource(args[0], string(content)))
+				name := "stdin"
+
+				if len(args) > 0 {
+					name = args[0]
+				}
+
+				return runScript(cmd, rtOpts, params, file.NewSource(name, string(content)))
+			}
+
+			if len(args) == 0 {
+				return cmd.Help()
 			}
 
 			content, err := os.ReadFile(args[0])
@@ -105,11 +128,12 @@ func ExecCommand(store *config.Store) *cobra.Command {
 				return err
 			}
 
-			return execScript(cmd, rtOpts, params, file.NewSource(args[0], string(content)))
+			return runScript(cmd, rtOpts, params, file.NewSource(args[0], string(content)))
 		},
 	}
 
-	cmd.Flags().StringArrayP(ExecParamFlag, "p", []string{}, "Query bind parameter (--param=foo:\"bar\", --param=id:1)")
+	cmd.Flags().StringP("eval", "e", "", "Inline FQL expression to evaluate")
+	cmd.Flags().StringArrayP(ParamFlag, "p", []string{}, "Query bind parameter (--param=foo:\"bar\", --param=id:1)")
 	cmd.Flags().StringP(config.ExecRuntime, "r", cliruntime.DefaultRuntime, "Ferret runtime type (\"builtin\"|$url)")
 	cmd.Flags().String(config.ExecProxy, "x", "Proxy server address")
 	cmd.Flags().String(config.ExecUserAgent, "a", "User agent header")
@@ -121,7 +145,7 @@ func ExecCommand(store *config.Store) *cobra.Command {
 	return cmd
 }
 
-func execScript(cmd *cobra.Command, opts cliruntime.Options, params map[string]interface{}, query *file.Source) error {
+func runScript(cmd *cobra.Command, opts cliruntime.Options, params map[string]interface{}, query *file.Source) error {
 	out, err := cliruntime.Run(cmd.Context(), opts, query, params)
 
 	if err != nil {
@@ -134,7 +158,7 @@ func execScript(cmd *cobra.Command, opts cliruntime.Options, params map[string]i
 	return err
 }
 
-func parseExecParams(flags []string) (map[string]interface{}, error) {
+func parseParams(flags []string) (map[string]interface{}, error) {
 	res := make(map[string]interface{})
 
 	for _, entry := range flags {
