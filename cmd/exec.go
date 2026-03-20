@@ -10,9 +10,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/MontFerret/ferret/v2/pkg/diagnostics"
 	"github.com/MontFerret/ferret/v2/pkg/file"
-	"github.com/spf13/cobra"
 
 	"github.com/MontFerret/ferret/v2/pkg/runtime"
 

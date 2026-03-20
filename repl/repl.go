@@ -7,8 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/MontFerret/ferret/v2/pkg/file"
 	"github.com/chzyer/readline"
+
+	"github.com/MontFerret/ferret/v2/pkg/file"
 
 	"github.com/MontFerret/cli/runtime"
 )
