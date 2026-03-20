@@ -1,10 +1,10 @@
 module github.com/MontFerret/cli
 
-go 1.25.6
+go 1.26.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/MontFerret/contrib/modules/html v0.0.0-20260320002250-5c4d6286f49c
+	github.com/MontFerret/contrib/modules/html v0.0.0-20260320005250-d56e1385f33b
 	github.com/MontFerret/ferret/v2 v2.0.0-20260319234121-2ed2bd097956
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
@@ -45,7 +45,6 @@ require (
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MontFerret/ferret/v2/pkg/diagnostics"
 	"github.com/MontFerret/ferret/v2/pkg/file"
 	"github.com/spf13/cobra"
 
@@ -132,6 +133,7 @@ func execScript(cmd *cobra.Command, opts cliruntime.Options, params map[string]i
 	out, err := cliruntime.Run(cmd.Context(), opts, query, params)
 
 	if err != nil {
+		fmt.Println(diagnostics.Format(err))
 		return err
 	}
 
