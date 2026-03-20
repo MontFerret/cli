@@ -3,6 +3,7 @@ package runtime
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/MontFerret/contrib/modules/html"
@@ -31,12 +32,16 @@ func NewBuiltin(opts Options) (Runtime, error) {
 		),
 	)
 
+	if err != nil {
+		return nil, fmt.Errorf("initialize html module: %w", err)
+	}
+
 	engine, err := ferret.New(
 		ferret.WithModules(htmlmod),
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("initialize engine: %w", err)
 	}
 
 	return &Builtin{
