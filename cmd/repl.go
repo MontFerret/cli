@@ -1,37 +1,24 @@
 package cmd
 
 import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"io"
 	"net/url"
-	"os"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
-
-	"github.com/MontFerret/ferret/v2/pkg/diagnostics"
-	"github.com/MontFerret/ferret/v2/pkg/file"
 
 	"github.com/MontFerret/ferret/v2/pkg/runtime"
 
 	"github.com/MontFerret/cli/browser"
 	"github.com/MontFerret/cli/config"
+	"github.com/MontFerret/cli/repl"
 	cliruntime "github.com/MontFerret/cli/runtime"
 )
 
-const (
-	ExecParamFlag = "param"
-)
-
-// RumCommand command to execute FQL scripts
-func ExecCommand(store *config.Store) *cobra.Command {
+func ReplCommand(store *config.Store) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "exec",
-		Short: "Execute a FQL script",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "repl",
+		Short: "Launch interactive FQL shell",
+		Args:  cobra.NoArgs,
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
@@ -84,28 +71,7 @@ func ExecCommand(store *config.Store) *cobra.Command {
 				defer browser.Close(cmd.Context(), brOpts, pid)
 			}
 
-			stat, _ := os.Stdin.Stat()
-
-			if (stat.Mode() & os.ModeCharDevice) == 0 {
-				// check whether the app is getting a query via standard input
-				std := bufio.NewReader(os.Stdin)
-
-				content, err := io.ReadAll(std)
-
-				if err != nil {
-					return err
-				}
-
-				return execScript(cmd, rtOpts, params, file.NewSource(args[0], string(content)))
-			}
-
-			content, err := os.ReadFile(args[0])
-
-			if err != nil {
-				return err
-			}
-
-			return execScript(cmd, rtOpts, params, file.NewSource(args[0], string(content)))
+			return repl.Start(cmd.Context(), rtOpts, params)
 		},
 	}
 
@@ -119,43 +85,4 @@ func ExecCommand(store *config.Store) *cobra.Command {
 	cmd.Flags().BoolP(config.ExecKeepCookies, "c", false, "Keep cookies between queries")
 
 	return cmd
-}
-
-func execScript(cmd *cobra.Command, opts cliruntime.Options, params map[string]interface{}, query *file.Source) error {
-	out, err := cliruntime.Run(cmd.Context(), opts, query, params)
-
-	if err != nil {
-		fmt.Println(diagnostics.Format(err))
-		return err
-	}
-
-	_, err = io.Copy(os.Stdout, out)
-
-	return err
-}
-
-func parseExecParams(flags []string) (map[string]interface{}, error) {
-	res := make(map[string]interface{})
-
-	for _, entry := range flags {
-		pair := strings.SplitN(entry, ":", 2)
-
-		if len(pair) < 2 {
-			return nil, runtime.Error(runtime.ErrInvalidArgument, entry)
-		}
-
-		var value interface{}
-		key := pair[0]
-
-		err := json.Unmarshal([]byte(pair[1]), &value)
-
-		if err != nil {
-			fmt.Println(pair[1])
-			return nil, err
-		}
-
-		res[key] = value
-	}
-
-	return res, nil
 }
