@@ -52,6 +52,7 @@ func main() {
 		cmd.ConfigCommand(store),
 		cmd.ExecCommand(store),
 		cmd.FormatCommand(store),
+		cmd.CheckCommand(store),
 		cmd.BrowserCommand(store),
 		cmd.SelfUpdateCommand(store),
 	)
