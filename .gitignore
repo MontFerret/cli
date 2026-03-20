@@ -91,4 +91,4 @@ $RECYCLE.BIN/
 # Project
 bin/
 dist/
-
+vendor/

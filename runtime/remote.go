@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 
-	"github.com/pkg/errors"
+	"github.com/MontFerret/ferret/v2/pkg/file"
 )
 
 type (
@@ -47,26 +48,32 @@ func (rt *Remote) Version(ctx context.Context) (string, error) {
 	data, err := rt.makeRequest(ctx, "GET", "/info", nil)
 
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("make request: %w", err)
 	}
 
 	info := remoteInfo{}
 
-	if err := json.Unmarshal(data, &info); err != nil {
-		return "", errors.Wrap(err, "deserialize response data")
+	b, err := io.ReadAll(data)
+
+	if err != nil {
+		return "", fmt.Errorf("read response data: %w", err)
+	}
+
+	if err := json.Unmarshal(b, &info); err != nil {
+		return "", fmt.Errorf("deserialize response data: %w", err)
 	}
 
 	return info.Version.Ferret, nil
 }
 
-func (rt *Remote) Run(ctx context.Context, query string, params map[string]interface{}) ([]byte, error) {
+func (rt *Remote) Run(ctx context.Context, query *file.Source, params map[string]any) (io.Reader, error) {
 	body, err := json.Marshal(&remoteQuery{
-		Text:   query,
+		Text:   query.Content(),
 		Params: params,
 	})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "serialize query")
+		return nil, fmt.Errorf("serialize query: %w", err)
 	}
 
 	return rt.makeRequest(ctx, "POST", "/", body)
@@ -88,44 +95,42 @@ func (rt *Remote) createRequest(ctx context.Context, method, endpoint string, bo
 	req, err := http.NewRequestWithContext(ctx, method, rt.url.ResolveReference(u2).String(), reader)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	if rt.opts.Headers != nil {
-		rt.opts.Headers.ForEach(func(value []string, key string) bool {
-			for _, v := range value {
-				req.Header.Add(key, v)
-			}
-
-			return true
-		})
+	if rt.opts.Headers != nil && len(rt.opts.Headers.Data) > 0 {
+		for key := range rt.opts.Headers.Data {
+			value := rt.opts.Headers.Data.Get(key)
+			req.Header.Set(key, value)
+		}
 	}
 
-	req.Header.Set("Content-Type", "application/jsonw")
+	req.Header.Set("Content-Type", "application/json")
 
 	return req, nil
 }
 
-func (rt *Remote) makeRequest(ctx context.Context, method, endpoint string, body []byte) ([]byte, error) {
+func (rt *Remote) makeRequest(ctx context.Context, method, endpoint string, body []byte) (io.Reader, error) {
 	req, err := rt.createRequest(ctx, method, endpoint, body)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "create request")
+		return nil, fmt.Errorf("create request: %w", err)
 	}
 
 	resp, err := rt.client.Do(req)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "make HTTP request to remote runtime")
+		return nil, fmt.Errorf("make HTTP request to remote runtime: %w", err)
 	}
 
 	defer resp.Body.Close()
 
-	data, err := io.ReadAll(resp.Body)
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(resp.Body)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "read response data")
+		return nil, fmt.Errorf("read response data: %w", err)
 	}
 
-	return data, nil
+	return &buf, nil
 }

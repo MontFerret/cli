@@ -1,9 +1,9 @@
 package runtime
 
 import (
-	"github.com/MontFerret/ferret/pkg/drivers"
-	"github.com/MontFerret/ferret/pkg/drivers/cdp"
-	"github.com/MontFerret/ferret/pkg/drivers/http"
+	"github.com/MontFerret/contrib/modules/html/drivers"
+	"github.com/MontFerret/contrib/modules/html/drivers/cdp"
+	"github.com/MontFerret/contrib/modules/html/drivers/http"
 )
 
 type Options struct {
@@ -48,7 +48,13 @@ func (opts *Options) ToInMemory() []http.Option {
 	}
 
 	if opts.Cookies != nil {
-		result = append(result, http.WithCookies(opts.Cookies.Values()))
+		cookies := make([]drivers.HTTPCookie, 0, len(opts.Cookies.Data))
+
+		for _, cookie := range opts.Cookies.Data {
+			cookies = append(cookies, cookie)
+		}
+
+		result = append(result, http.WithCookies(cookies))
 	}
 
 	return result
@@ -70,11 +76,17 @@ func (opts *Options) ToCDP() []cdp.Option {
 	}
 
 	if opts.Headers != nil {
-		result = append(result, cdp.WithHeaders(opts.Headers))
+		result = append(result, cdp.WithHeaders(opts.Headers.Data))
 	}
 
 	if opts.Cookies != nil {
-		result = append(result, cdp.WithCookies(opts.Cookies.Values()))
+		cookies := make([]drivers.HTTPCookie, 0, len(opts.Cookies.Data))
+
+		for _, cookie := range opts.Cookies.Data {
+			cookies = append(cookies, cookie)
+		}
+
+		result = append(result, cdp.WithCookies(cookies))
 	}
 
 	if opts.KeepCookies {
