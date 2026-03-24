@@ -87,6 +87,8 @@ func runScript(cmd *cobra.Command, opts cliruntime.Options, params map[string]in
 		return err
 	}
 
+	defer out.Close()
+
 	_, err = io.Copy(os.Stdout, out)
 
 	return err

@@ -13,7 +13,7 @@ import (
 type Runtime interface {
 	Version(ctx context.Context) (string, error)
 
-	Run(ctx context.Context, query *file.Source, params map[string]any) (io.Reader, error)
+	Run(ctx context.Context, query *file.Source, params map[string]any) (io.ReadCloser, error)
 }
 
 func New(opts Options) (Runtime, error) {
@@ -32,7 +32,7 @@ func New(opts Options) (Runtime, error) {
 	return NewRemote(*u, opts), nil
 }
 
-func Run(ctx context.Context, opts Options, query *file.Source, params map[string]any) (io.Reader, error) {
+func Run(ctx context.Context, opts Options, query *file.Source, params map[string]any) (io.ReadCloser, error) {
 	rt, err := New(opts)
 
 	if err != nil {

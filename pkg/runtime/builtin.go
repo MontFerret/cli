@@ -54,8 +54,7 @@ func (rt *Builtin) Version(_ context.Context) (string, error) {
 	return version, nil
 }
 
-func (rt *Builtin) Run(ctx context.Context, query *file.Source, params map[string]any) (io.Reader, error) {
-	buf := bytes.NewBuffer(nil)
+func (rt *Builtin) Run(ctx context.Context, query *file.Source, params map[string]any) (io.ReadCloser, error) {
 	parsedParams, err := runtime.NewParamsFrom(params)
 
 	if err != nil {
@@ -68,7 +67,5 @@ func (rt *Builtin) Run(ctx context.Context, query *file.Source, params map[strin
 		return nil, err
 	}
 
-	buf.Write(res.Content)
-
-	return buf, nil
+	return io.NopCloser(bytes.NewBuffer(res.Content)), nil
 }

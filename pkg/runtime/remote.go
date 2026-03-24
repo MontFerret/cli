@@ -66,7 +66,7 @@ func (rt *Remote) Version(ctx context.Context) (string, error) {
 	return info.Version.Ferret, nil
 }
 
-func (rt *Remote) Run(ctx context.Context, query *file.Source, params map[string]any) (io.Reader, error) {
+func (rt *Remote) Run(ctx context.Context, query *file.Source, params map[string]any) (io.ReadCloser, error) {
 	body, err := json.Marshal(&remoteQuery{
 		Text:   query.Content(),
 		Params: params,
@@ -110,7 +110,7 @@ func (rt *Remote) createRequest(ctx context.Context, method, endpoint string, bo
 	return req, nil
 }
 
-func (rt *Remote) makeRequest(ctx context.Context, method, endpoint string, body []byte) (io.Reader, error) {
+func (rt *Remote) makeRequest(ctx context.Context, method, endpoint string, body []byte) (io.ReadCloser, error) {
 	req, err := rt.createRequest(ctx, method, endpoint, body)
 
 	if err != nil {
@@ -123,14 +123,5 @@ func (rt *Remote) makeRequest(ctx context.Context, method, endpoint string, body
 		return nil, fmt.Errorf("make HTTP request to remote runtime: %w", err)
 	}
 
-	defer resp.Body.Close()
-
-	var buf bytes.Buffer
-	_, err = buf.ReadFrom(resp.Body)
-
-	if err != nil {
-		return nil, fmt.Errorf("read response data: %w", err)
-	}
-
-	return &buf, nil
+	return resp.Body, nil
 }
