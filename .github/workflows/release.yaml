@@ -26,9 +26,8 @@ jobs:
           export FERRET_VERSION=$(sh versions.sh ferret)
           echo "FERRET_VERSION=$FERRET_VERSION" >> $GITHUB_ENV
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
-          version: latest
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
