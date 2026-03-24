@@ -3,11 +3,15 @@ package repl
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/chzyer/readline"
 
-	"github.com/MontFerret/cli/runtime"
+	"github.com/MontFerret/ferret/v2/pkg/file"
+
+	"github.com/MontFerret/cli/pkg/runtime"
 )
 
 func Start(ctx context.Context, opts runtime.Options, params map[string]interface{}) error {
@@ -85,7 +89,7 @@ func Start(ctx context.Context, opts runtime.Options, params map[string]interfac
 			break
 		}
 
-		out, err := rt.Run(ctx, query, params)
+		out, err := rt.Run(ctx, file.NewAnonymousSource(query), params)
 
 		if err != nil {
 			fmt.Println("Failed to execute the query")
@@ -93,7 +97,12 @@ func Start(ctx context.Context, opts runtime.Options, params map[string]interfac
 			continue
 		}
 
-		fmt.Println(string(out))
+		_, err = io.Copy(os.Stdout, out)
+
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			break
+		}
 	}
 
 	return nil

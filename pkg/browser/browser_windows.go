@@ -121,30 +121,13 @@ func (b *WindowsBrowser) Close(ctx context.Context, pid uint64) error {
 func (b *WindowsBrowser) findBinaryPath() (string, error) {
 	variants := []string{
 		"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-		//"C:\\Program Files\\Chromimum\\Application\\chrome.exe",
-		//"C:\\Users\\User\\AppData\\Local\\Google\\Chrome SxS\\Application\\chrome.exe",
 	}
 
-	var result string
-
-	// Find an installed one
 	for _, name := range variants {
-		_, err := os.Stat(name)
-
-		if err != nil {
-			continue
-		}
-
-		result = name
-
-		if result != "" {
-			break
+		if _, err := os.Stat(name); err == nil {
+			return name, nil
 		}
 	}
 
-	if result == "" {
-		return "", ErrBinNotFound
-	}
-
-	return result, nil
+	return "", ErrBinNotFound
 }

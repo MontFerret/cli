@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/MontFerret/cli/cmd"
-	"github.com/MontFerret/cli/config"
-	"github.com/MontFerret/cli/logger"
+	"github.com/MontFerret/cli/pkg/config"
+	"github.com/MontFerret/cli/pkg/logger"
 )
 
 const (
@@ -50,7 +50,11 @@ func main() {
 	rootCmd.AddCommand(
 		cmd.VersionCommand(store),
 		cmd.ConfigCommand(store),
-		cmd.ExecCommand(store),
+		cmd.RunCommand(store),
+		cmd.ReplCommand(store),
+		cmd.FormatCommand(store),
+		cmd.CheckCommand(store),
+		cmd.InspectCommand(store),
 		cmd.BrowserCommand(store),
 		cmd.SelfUpdateCommand(store),
 	)
@@ -74,7 +78,7 @@ func main() {
 
 func exit(err error) {
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
