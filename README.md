@@ -103,15 +103,13 @@ Create a simple script (`example.fql`) to scrape a webpage:
 ```fql
 // Navigate to a website and extract data
 LET page = DOCUMENT("https://news.ycombinator.com")
-LET items = (
-    FOR item IN ELEMENTS(page, ".athing")
-        LET title = ELEMENT(item, ".storylink")
-        RETURN {
-            title: title.innerText,
-            url: title.href
-        }
-)
-RETURN items
+
+FOR item IN ELEMENTS(page, ".submission")
+    LET title = ELEMENT(item, ".title")
+    RETURN { 
+        title: title.innerText, 
+        url: title.href
+    }
 ```
 
 Run the script:

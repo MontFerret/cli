@@ -2,6 +2,9 @@
 # Make sure to check the documentation at http://goreleaser.com
 version: 2
 
+release:
+  draft: true
+
 before:
   hooks:
     - go mod download
