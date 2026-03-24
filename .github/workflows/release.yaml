@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0
       - name: Set up env vars
         run: |
-          export FERRET_VERSION=$(sh versions.sh ferret)
+          export FERRET_VERSION=$(sh scripts/versions.sh ferret)
           echo "FERRET_VERSION=$FERRET_VERSION" >> $GITHUB_ENV
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7

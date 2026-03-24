@@ -1,5 +1,5 @@
-VERSION ?= $(shell sh versions.sh cli)
-FERRET_VERSION = $(shell sh versions.sh ferret)
+VERSION ?= $(shell sh scripts/versions.sh cli)
+FERRET_VERSION = $(shell sh scripts/versions.sh ferret)
 DIR_BIN = ./bin
 NAME = ferret
 
