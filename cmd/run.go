@@ -17,9 +17,10 @@ import (
 
 func RunCommand(store *config.Store) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "run [script]",
-		Short: "Run a FQL script",
-		Args:  cobra.MinimumNArgs(0),
+		Use:     "run [script]",
+		Aliases: []string{"exec"},
+		Short:   "Run a FQL script",
+		Args:    cobra.MinimumNArgs(0),
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
