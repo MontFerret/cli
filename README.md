@@ -22,6 +22,12 @@
 <img alt="lab" src="https://raw.githubusercontent.com/MontFerret/cli/master/assets/logo.svg" style="margin-left: auto; margin-right: auto;" width="450px" height="430px" />
 </p>
 
+---
+
+> **📢 Notice:** This branch contains the upcoming **CLI for Ferret v2**. For the stable v1 release, please visit [CLI v1](https://github.com/MontFerret/cli/tree/v1).
+
+---
+
 ## About Ferret CLI
 
 Ferret CLI is a command-line interface for the [Ferret](https://github.com/MontFerret/ferret) web scraping system. Ferret uses its own query language called **FQL (Ferret Query Language)** - a SQL-like language designed specifically for web scraping, browser automation, and data extraction tasks.
@@ -33,7 +39,7 @@ Ferret CLI is a command-line interface for the [Ferret](https://github.com/MontF
 - [Key Features](#key-features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-- [Options](#options)
+- [Commands Overview](#commands-overview)
 - [Configuration](#configuration)
 - [Browser Management](#browser-management)
 - [Advanced Usage](#advanced-usage)
@@ -81,14 +87,14 @@ go install github.com/MontFerret/cli/ferret@latest
 curl https://raw.githubusercontent.com/MontFerret/cli/master/install.sh | sh
 ```
 
-## Quick start
+## Quick Start
 
 ### Your First FQL Query
 
 The simplest way to get started is with the interactive REPL:
 
 ```bash
-ferret exec
+ferret repl
 Welcome to Ferret REPL
 
 Please use `exit` or `Ctrl-D` to exit this program.
@@ -106,8 +112,8 @@ LET page = DOCUMENT("https://news.ycombinator.com")
 
 FOR item IN ELEMENTS(page, ".submission")
     LET title = ELEMENT(item, ".title")
-    RETURN { 
-        title: title.innerText, 
+    RETURN {
+        title: title.innerText,
         url: title.href
     }
 ```
@@ -115,13 +121,10 @@ FOR item IN ELEMENTS(page, ".submission")
 Run the script:
 
 ```bash
-ferret exec example.fql
+ferret run example.fql
 ```
 
-### Script execution
-```bash
-ferret exec my-script.fql
-```
+> **Note:** `exec` is an alias for `run` — both work interchangeably.
 
 ### Browser Automation
 
@@ -129,10 +132,10 @@ For JavaScript-heavy sites, use browser automation:
 
 ```bash
 # Open browser window for debugging
-ferret exec --browser-open my-script.fql
+ferret run --browser-open my-script.fql
 
 # Run headlessly for production
-ferret exec --browser-headless my-script.fql
+ferret run --browser-headless my-script.fql
 ```
 
 Example browser automation script:
@@ -150,7 +153,7 @@ RETURN ELEMENTS(page, ".result-item")
 Pass dynamic values to your scripts:
 
 ```bash
-ferret exec -p 'url:"https://example.com"' -p 'limit:10' my-script.fql
+ferret run -p 'url:"https://example.com"' -p 'limit:10' my-script.fql
 ```
 
 Use parameters in your FQL script:
@@ -161,26 +164,37 @@ LET items = ELEMENTS(page, ".item")
 RETURN items
 ```
 
+### Inline Evaluation
+
+Run a quick FQL expression without a file:
+
+```bash
+ferret run --eval 'RETURN 2 + 2'
+```
+
 ### Remote Runtime
 
 Execute scripts on remote Ferret workers:
 
 ```bash
-ferret exec --runtime 'https://my-worker.com' my-script.fql
+ferret run --runtime 'https://my-worker.com' my-script.fql
 ```
 
-## Options
+## Commands Overview
 
-```bash
+```
 Usage:
   ferret [flags]
   ferret [command]
 
 Available Commands:
   browser     Manage Ferret browsers
+  check       Check FQL scripts for syntax and semantic errors
   config      Manage Ferret configs
-  exec        Execute a FQL script or launch REPL
-  help        Help about any command
+  fmt         Format FQL scripts
+  inspect     Compile and disassemble a FQL script
+  repl        Launch interactive FQL shell
+  run         Run a FQL script (alias: exec)
   update      Update Ferret CLI
   version     Show the CLI version information
 
@@ -189,8 +203,82 @@ Flags:
   -l, --log-level string   Set the logging level ("debug"|"info"|"warn"|"error"|"fatal") (default "info")
 
 Use "ferret [command] --help" for more information about a command.
-
 ```
+
+### run / exec
+
+Run a FQL script from a file, inline expression, or launch the REPL when called with no arguments.
+
+```bash
+ferret run [script]
+ferret exec [script]   # alias
+```
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--runtime` | `-r` | Runtime type (`"builtin"` or a remote worker URL) | `builtin` |
+| `--proxy` | `-x` | Proxy server address | |
+| `--user-agent` | `-a` | User-Agent header | |
+| `--browser-address` | `-d` | CDP debugger address | `http://127.0.0.1:9222` |
+| `--browser-open` | `-B` | Open a visible browser for execution | `false` |
+| `--browser-headless` | `-b` | Open a headless browser for execution | `false` |
+| `--browser-cookies` | `-c` | Keep cookies between queries | `false` |
+| `--param` | `-p` | Query parameter (`key:value`, repeatable) | |
+| `--eval` | `-e` | Inline FQL expression (cannot be used with file args) | |
+
+### repl
+
+Launch the interactive FQL shell. Supports command history, multiline input (toggle with `%`), and all runtime flags.
+
+```bash
+ferret repl
+```
+
+Accepts the same runtime and `--param` flags as `run` (everything except `--eval`).
+
+### check
+
+Compile one or more FQL scripts without executing them. Reports syntax and semantic errors.
+
+```bash
+ferret check [files...]
+```
+
+### fmt
+
+Format FQL scripts. By default, files are overwritten in place.
+
+```bash
+ferret fmt [files...]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--dry-run` | Print formatted output to stdout instead of overwriting | `false` |
+| `--print-width` | Maximum line length | `80` |
+| `--tab-width` | Indentation size | `4` |
+| `--single-quote` | Use single quotes instead of double quotes | `false` |
+| `--bracket-spacing` | Add spaces inside brackets | `true` |
+| `--case-mode` | Keyword case: `upper`, `lower`, or `ignore` | `upper` |
+
+### inspect
+
+Compile a FQL script and display its disassembled bytecode. Useful for debugging and understanding script compilation.
+
+```bash
+ferret inspect [script]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--eval` / `-e` | Inline FQL expression |
+| `--bytecode` | Show only bytecode instructions |
+| `--constants` | Show only the constant pool |
+| `--functions` | Show only function definitions |
+| `--summary` | Show a high-level program summary |
+| `--spans` | Show debug source spans |
+
+When no filter flags are provided, the full disassembly is printed.
 
 ## Configuration
 
@@ -199,14 +287,14 @@ Ferret CLI can be configured using the `config` command or configuration files.
 ### Setting Configuration Values
 
 ```bash
-# Set a global configuration value
-ferret config set browser.address "http://localhost:9222"
+# Set the CDP browser address
+ferret config set browser-address "http://localhost:9222"
 
 # Set user agent
-ferret config set browser.userAgent "MyBot 1.0"
+ferret config set user-agent "MyBot 1.0"
 
 # Set default runtime
-ferret config set runtime.type "builtin"
+ferret config set runtime "builtin"
 ```
 
 ### Viewing Configuration
@@ -215,8 +303,8 @@ ferret config set runtime.type "builtin"
 # List all configuration values
 ferret config list
 
-# Get a specific value  
-ferret config get browser.address
+# Get a specific value
+ferret config get browser-address
 ```
 
 ### Configuration File Locations
@@ -225,17 +313,29 @@ Configuration files are stored in:
 - **Linux/macOS**: `~/.config/ferret/config.yaml`
 - **Windows**: `%APPDATA%\ferret\config.yaml`
 
+### Configuration Priority
+
+Values are resolved in this order (highest to lowest):
+
+1. Command-line flags
+2. Environment variables (prefixed with `FERRET_`, e.g. `FERRET_RUNTIME`)
+3. Configuration file
+4. Defaults
+
 ### Available Configuration Options
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `browser-address` | Chrome DevTools Protocol address | `http://127.0.0.1:9222` |
-| `user-agent` | Default User-Agent header | System default |
-| `browser-cookies` | Keep cookies between queries | `false` |
-| `runtime` | Runtime type (builtin/url) | `builtin` |
 | `log-level` | Logging level | `info` |
+| `runtime` | Runtime type (`builtin` or a remote URL) | `builtin` |
+| `browser-address` | Chrome DevTools Protocol address | `http://127.0.0.1:9222` |
+| `browser-cookies` | Keep cookies between queries | `false` |
+| `browser-open` | Open a visible browser for execution | `false` |
+| `browser-headless` | Open a headless browser for execution | `false` |
+| `proxy` | Proxy server address | |
+| `user-agent` | Custom User-Agent header | |
 
-## Browser Management  
+## Browser Management
 
 ### Starting a Browser Instance
 
@@ -243,18 +343,34 @@ Configuration files are stored in:
 # Open a new browser instance
 ferret browser open
 
-# Open with specific debugging address
-ferret browser open --address "http://localhost:9223"
+# Open in headless mode
+ferret browser open --headless
+
+# Open on a custom debugging port
+ferret browser open --port 9223
+
+# Start in background and print the process ID
+ferret browser open --detach
+
+# Specify a custom user data directory
+ferret browser open --user-dir /tmp/ferret-profile
 ```
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--detach` | `-d` | Start in background, print PID | `false` |
+| `--headless` | | Launch in headless mode | `false` |
+| `--port` | `-p` | Remote debugging port | `9222` |
+| `--user-dir` | | Browser user data directory | |
 
 ### Closing Browser Instances
 
 ```bash
-# Close browser
+# Close the default browser
 ferret browser close
 
-# Close specific browser by address
-ferret browser close --address "http://localhost:9223"
+# Close a specific browser by PID
+ferret browser close 12345
 ```
 
 ## Advanced Usage
@@ -474,7 +590,7 @@ FOR i IN RANGE(0, LENGTH(items), batchSize)
 Enable debug logging for troubleshooting:
 
 ```bash
-ferret exec --log-level debug my-script.fql
+ferret run --log-level debug my-script.fql
 ```
 
 ### Performance Tips
