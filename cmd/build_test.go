@@ -1,15 +1,16 @@
 package cmd
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestRunBuild_MixedMultiFileBuildContinues(t *testing.T) {
 	dir := t.TempDir()
-	valid := dir + "/valid.fql"
-	invalid := dir + "/invalid.fql"
-	outputDir := dir + "/dist"
+	valid := filepath.Join(dir, "valid.fql")
+	invalid := filepath.Join(dir, "invalid.fql")
+	outputDir := filepath.Join(dir, "dist")
 
 	writeQuery(t, valid, "RETURN 1")
 	writeQuery(t, invalid, "FOR item IN")
@@ -29,9 +30,9 @@ func TestRunBuild_MixedMultiFileBuildContinues(t *testing.T) {
 
 func TestRunBuild_PlanErrorReturned(t *testing.T) {
 	dir := t.TempDir()
-	inputA := dir + "/first.fql"
-	inputB := dir + "/second.fql"
-	output := dir + "/artifact.fqlc"
+	inputA := filepath.Join(dir, "first.fql")
+	inputB := filepath.Join(dir, "second.fql")
+	output := filepath.Join(dir, "artifact.fqlc")
 
 	writeQuery(t, inputA, "RETURN 1")
 	writeQuery(t, inputB, "RETURN 2")

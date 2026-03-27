@@ -3,6 +3,7 @@ package build
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/MontFerret/ferret/v2/pkg/bytecode/artifact"
 	"github.com/MontFerret/ferret/v2/pkg/compiler"
@@ -30,6 +31,12 @@ func WriteArtifact(c *compiler.Compiler, src *file.Source, outputPath string) er
 
 	if err != nil {
 		return fmt.Errorf("serialize %s: %w", src.Name(), err)
+	}
+
+	outputDir := filepath.Dir(outputPath)
+
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return fmt.Errorf("create output directory %s: %w", outputDir, err)
 	}
 
 	if err := os.WriteFile(outputPath, data, 0o644); err != nil {

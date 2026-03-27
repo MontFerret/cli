@@ -178,10 +178,46 @@ func TestWriteArtifact_InvalidQueryDoesNotCreateArtifact(t *testing.T) {
 	}
 }
 
+func TestWriteArtifact_CreatesMissingParentDirectory(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "query.fql")
+	output := filepath.Join(dir, "nested", "out", "query.fqlc")
+
+	writeQuery(t, input, "RETURN 42")
+
+	if err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 42"), output); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	assertArtifactSource(t, output, "RETURN 42")
+}
+
 func TestWriteArtifact_ReplacesExistingDestinationFile(t *testing.T) {
 	dir := t.TempDir()
 	input := filepath.Join(dir, "query.fql")
 	output := filepath.Join(dir, "query.fqlc")
+
+	writeQuery(t, input, "RETURN 1")
+
+	if err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 1"), output); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	assertArtifactSource(t, output, "RETURN 1")
+
+	writeQuery(t, input, "RETURN 2")
+
+	if err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 2"), output); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	assertArtifactSource(t, output, "RETURN 2")
+}
+
+func TestWriteArtifact_ReplacesExistingDestinationFileInNestedDirectory(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "query.fql")
+	output := filepath.Join(dir, "nested", "out", "query.fqlc")
 
 	writeQuery(t, input, "RETURN 1")
 
@@ -212,6 +248,24 @@ func TestWriteArtifact_ArtifactRoundTrip(t *testing.T) {
 	}
 
 	assertArtifactSource(t, output, "RETURN 42")
+}
+
+func TestWriteArtifact_InvalidQueryDoesNotCreateArtifactInMissingParentDirectory(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "broken.fql")
+	output := filepath.Join(dir, "nested", "out", "broken.fqlc")
+
+	writeQuery(t, input, "FOR item IN")
+
+	err := WriteArtifact(compiler.New(), file.NewSource(input, "FOR item IN"), output)
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if _, statErr := os.Stat(output); !os.IsNotExist(statErr) {
+		t.Fatalf("expected artifact to be absent, stat err=%v", statErr)
+	}
 }
 
 func writeQuery(t *testing.T, path, content string) {
