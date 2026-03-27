@@ -1,6 +1,7 @@
 package build
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -236,6 +237,63 @@ func TestWriteArtifact_ReplacesExistingDestinationFileInNestedDirectory(t *testi
 	assertArtifactSource(t, output, "RETURN 2")
 }
 
+func TestWriteArtifact_RenameFailurePreservesExistingDestinationAndCleansTemp(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "query.fql")
+	output := filepath.Join(dir, "query.fqlc")
+
+	writeQuery(t, input, "RETURN 1")
+
+	if err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 1"), output); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	writeQuery(t, input, "RETURN 2")
+
+	restore := stubRenameArtifactFile(func(string, string) error {
+		return errors.New("rename failed")
+	})
+	defer restore()
+
+	err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 2"), output)
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if !strings.Contains(err.Error(), "replace "+output+" with temporary artifact") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	assertArtifactSource(t, output, "RETURN 1")
+	assertNoTempArtifacts(t, filepath.Dir(output), output)
+}
+
+func TestWriteArtifact_RenameFailureDoesNotCreateDestinationAndCleansTemp(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "query.fql")
+	output := filepath.Join(dir, "query.fqlc")
+
+	writeQuery(t, input, "RETURN 42")
+
+	restore := stubRenameArtifactFile(func(string, string) error {
+		return errors.New("rename failed")
+	})
+	defer restore()
+
+	err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 42"), output)
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if _, statErr := os.Stat(output); !os.IsNotExist(statErr) {
+		t.Fatalf("expected artifact to be absent, stat err=%v", statErr)
+	}
+
+	assertNoTempArtifacts(t, filepath.Dir(output), output)
+}
+
 func TestWriteArtifact_ArtifactRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	input := filepath.Join(dir, "query.fql")
@@ -299,5 +357,27 @@ func assertArtifactSource(t *testing.T, path, expected string) {
 
 	if program.Source.Content() != expected {
 		t.Fatalf("expected source %q, got %q", expected, program.Source.Content())
+	}
+}
+
+func assertNoTempArtifacts(t *testing.T, dir, outputPath string) {
+	t.Helper()
+
+	matches, err := filepath.Glob(filepath.Join(dir, artifactTempPattern(outputPath)))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(matches) != 0 {
+		t.Fatalf("expected temporary artifacts to be cleaned up, got %v", matches)
+	}
+}
+
+func stubRenameArtifactFile(fn func(string, string) error) func() {
+	previous := renameArtifactFile
+	renameArtifactFile = fn
+
+	return func() {
+		renameArtifactFile = previous
 	}
 }

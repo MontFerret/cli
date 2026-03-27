@@ -10,6 +10,8 @@ import (
 	"github.com/MontFerret/ferret/v2/pkg/file"
 )
 
+var renameArtifactFile = os.Rename
+
 func WriteArtifact(c *compiler.Compiler, src *file.Source, outputPath string) error {
 	same, err := samePath(src.Name(), outputPath)
 
@@ -39,9 +41,48 @@ func WriteArtifact(c *compiler.Compiler, src *file.Source, outputPath string) er
 		return fmt.Errorf("create output directory %s: %w", outputDir, err)
 	}
 
-	if err := os.WriteFile(outputPath, data, 0o644); err != nil {
-		return fmt.Errorf("writing %s: %w", outputPath, err)
+	tempFile, err := os.CreateTemp(outputDir, artifactTempPattern(outputPath))
+
+	if err != nil {
+		return fmt.Errorf("create temporary artifact for %s: %w", outputPath, err)
 	}
 
+	tempPath := tempFile.Name()
+	cleanupTemp := true
+	defer func() {
+		if !cleanupTemp {
+			return
+		}
+
+		_ = tempFile.Close()
+		_ = os.Remove(tempPath)
+	}()
+
+	if _, err := tempFile.Write(data); err != nil {
+		return fmt.Errorf("write temporary artifact for %s: %w", outputPath, err)
+	}
+
+	if err := tempFile.Chmod(0o644); err != nil {
+		return fmt.Errorf("set permissions on temporary artifact for %s: %w", outputPath, err)
+	}
+
+	if err := tempFile.Sync(); err != nil {
+		return fmt.Errorf("sync temporary artifact for %s: %w", outputPath, err)
+	}
+
+	if err := tempFile.Close(); err != nil {
+		return fmt.Errorf("close temporary artifact for %s: %w", outputPath, err)
+	}
+
+	if err := renameArtifactFile(tempPath, outputPath); err != nil {
+		return fmt.Errorf("replace %s with temporary artifact: %w", outputPath, err)
+	}
+
+	cleanupTemp = false
+
 	return nil
+}
+
+func artifactTempPattern(outputPath string) string {
+	return "." + filepath.Base(outputPath) + ".tmp-*"
 }
