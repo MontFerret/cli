@@ -47,7 +47,7 @@ func TestExecuteRun_CompiledArtifact(t *testing.T) {
 	}
 
 	stdout, err := captureStdout(t, func() error {
-		return executeRun(newTestCommand(), cliruntime.NewDefaultOptions(), browser.Options{}, nil, "", []string{siblingArtifactPath(input)})
+		return executeRun(newTestCommand(), cliruntime.NewDefaultOptions(), browser.Options{}, nil, "", []string{filepath.Join(filepath.Dir(input), "query.fqlc")})
 	})
 
 	if err != nil {
@@ -104,7 +104,7 @@ func TestExecuteRun_CompiledArtifactWithParams(t *testing.T) {
 			browser.Options{},
 			map[string]interface{}{"value": float64(99)},
 			"",
-			[]string{siblingArtifactPath(input)},
+			[]string{filepath.Join(filepath.Dir(input), "query.fqlc")},
 		)
 	})
 
@@ -176,7 +176,7 @@ func TestExecuteRun_ArtifactRemoteRuntimeRejected(t *testing.T) {
 			browser.Options{},
 			nil,
 			"",
-			[]string{siblingArtifactPath(input)},
+			[]string{filepath.Join(filepath.Dir(input), "query.fqlc")},
 		)
 	})
 
@@ -195,6 +195,49 @@ func TestRunCommand_RejectsMultiplePositionalArgs(t *testing.T) {
 	if err := cmd.Args(cmd, []string{"one.fql", "two.fql"}); err == nil {
 		t.Fatal("expected argument validation error")
 	}
+}
+
+func writeQuery(t *testing.T, path, content string) {
+	t.Helper()
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func captureStderr(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+
+	original := os.Stderr
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	os.Stderr = writer
+
+	runErr := fn()
+
+	if closeErr := writer.Close(); closeErr != nil {
+		t.Fatal(closeErr)
+	}
+
+	os.Stderr = original
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if closeErr := reader.Close(); closeErr != nil {
+		t.Fatal(closeErr)
+	}
+
+	return string(data), runErr
 }
 
 func newTestCommand() *cobra.Command {
