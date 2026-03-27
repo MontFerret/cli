@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/MontFerret/contrib/modules/html v0.0.0-20260320005250-d56e1385f33b
-	github.com/MontFerret/ferret/v2 v2.0.0-alpha.1
+	github.com/MontFerret/ferret/v2 v2.0.0-alpha.1.0.20260327121926-6fafc61cbb9f
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
 	github.com/go-waitfor/waitfor-http v1.1.0

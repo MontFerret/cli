@@ -189,6 +189,7 @@ Usage:
 
 Available Commands:
   browser     Manage Ferret browsers
+  build       Compile FQL scripts into bytecode artifacts
   check       Check FQL scripts for syntax and semantic errors
   config      Manage Ferret configs
   fmt         Format FQL scripts
@@ -243,6 +244,20 @@ Compile one or more FQL scripts without executing them. Reports syntax and seman
 ```bash
 ferret check [files...]
 ```
+
+### build
+
+Compile one or more FQL scripts into serialized bytecode artifacts.
+
+```bash
+ferret build [files...]
+```
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--output` | `-o` | Output file path for a single input, or output directory for multiple inputs |
+
+Without `--output`, each input writes a sibling artifact with the same base name and a `.fqlc` extension.
 
 ### fmt
 
