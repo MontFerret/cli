@@ -32,7 +32,7 @@ func BuildCommand(store *config.Store) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("output", "o", "", "Output file path (single input) or directory (multiple inputs)")
+	cmd.Flags().StringP("output", "o", "", "Output path: file (for single input) or directory (for single or multiple inputs)")
 
 	return cmd
 }

@@ -208,7 +208,7 @@ Use "ferret [command] --help" for more information about a command.
 
 ### run / exec
 
-Run a FQL script, a compiled artifact file, or an inline expression. When called with no arguments, `ferret` launches the REPL.
+Run a FQL script, a compiled artifact file, or an inline expression. To launch the interactive REPL, use the `ferret repl` command.
 
 ```bash
 ferret run [script]
@@ -257,7 +257,7 @@ ferret build [files...]
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--output` | `-o` | Output file path for a single input, or output directory for multiple inputs |
+| `--output` | `-o` | Output file path, or output directory (if the path is an existing directory) for one or more inputs |
 
 Without `--output`, each input writes a sibling artifact with the same base name and a `.fqlc` extension.
 
