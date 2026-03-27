@@ -13,13 +13,7 @@ import (
 // ProcessMatcher determines if a running process matches the target browser command.
 type ProcessMatcher func(processCmd, targetCmd string) bool
 
-// openProcess runs the browser binary with the given flags.
-// If detach is true, starts in background and returns PID.
-func openProcess(ctx context.Context, path string, flags []string) (uint64, bool, error) {
-	return openProcessWithOpts(ctx, path, flags, true)
-}
-
-func openProcessWithOpts(ctx context.Context, path string, flags []string, detach bool) (uint64, bool, error) {
+func openProcess(ctx context.Context, path string, flags []string, detach bool) (uint64, bool, error) {
 	cmd := exec.CommandContext(ctx, path, flags...)
 
 	if detach {
@@ -45,7 +39,7 @@ func killPID(pid uint64, killCmd string, killArgs ...string) error {
 
 // findProcessByPS searches for a matching process using ps output and returns its PID.
 func findProcessByPS(ctx context.Context, targetCmd string, matcher ProcessMatcher) (uint64, error) {
-	psOut, err := exec.Command("ps", "-o", "pid=", "-o", "command=").Output()
+	psOut, err := exec.CommandContext(ctx, "ps", "-o", "pid=", "-o", "command=").Output()
 
 	if err != nil {
 		return 0, ErrProcNotFound

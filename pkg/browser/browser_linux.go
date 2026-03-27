@@ -21,7 +21,7 @@ func (b *LinuxBrowser) Open(ctx context.Context) (uint64, error) {
 		return 0, err
 	}
 
-	pid, detached, err := openProcessWithOpts(ctx, path, b.opts.ToFlags(), b.opts.Detach)
+	pid, detached, err := openProcess(ctx, path, b.opts.ToFlags(), b.opts.Detach)
 
 	if err != nil || !detached {
 		return 0, err

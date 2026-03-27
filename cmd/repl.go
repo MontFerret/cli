@@ -16,7 +16,7 @@ func ReplCommand(store *config.Store) *cobra.Command {
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			paramFlag, err := cmd.Flags().GetStringArray(paramFlag)
 
 			if err != nil {
