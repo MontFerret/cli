@@ -227,7 +227,7 @@ ferret exec [script]   # alias
 | `--param` | `-p` | Query parameter (`key:value`, repeatable) | |
 | `--eval` | `-e` | Inline FQL expression (cannot be used with file args) | |
 
-Compiled artifacts are auto-detected by content, so files produced by `ferret build` work even when they do not use a `.fqlc` filename. Artifact execution currently requires the builtin runtime.
+Compiled artifacts are auto-detected by content for file inputs and piped stdin, so artifacts produced by `ferret build` work even when they do not use a `.fqlc` filename. Artifact execution currently requires the builtin runtime.
 
 ### repl
 

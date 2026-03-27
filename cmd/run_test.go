@@ -48,6 +48,46 @@ func TestExecuteRun_ArtifactRemoteRuntimeRejected(t *testing.T) {
 	}
 }
 
+func TestExecuteRun_ArtifactStdinRemoteRuntimeRejected(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "query.fql")
+	artifactPath := filepath.Join(dir, "query.fqlc")
+
+	writeQuery(t, input, "RETURN 42")
+
+	if err := build.WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 42"), artifactPath); err != nil {
+		t.Fatalf("build artifact: %v", err)
+	}
+
+	data, err := os.ReadFile(artifactPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	withStdinBytes(t, data, func() {
+		err := executeRun(
+			newTestCommand(),
+			cliruntime.Options{
+				Type:           "https://worker.example",
+				WithBrowser:    true,
+				BrowserAddress: "://invalid",
+			},
+			browser.Options{},
+			nil,
+			"",
+			nil,
+		)
+
+		if err == nil {
+			t.Fatal("expected error")
+		}
+
+		if !errors.Is(err, cliruntime.ErrArtifactRequiresBuiltinRuntime) {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+}
+
 func TestRunCommand_RejectsMultiplePositionalArgs(t *testing.T) {
 	cmd := RunCommand(new(config.Store))
 
@@ -70,21 +110,11 @@ func TestRunCommand_RejectsEvalWithFileArgs(t *testing.T) {
 
 func TestExecuteRun_NoInputShowsHelp(t *testing.T) {
 	cmd := newTestCommand()
-	original := os.Stdin
-	stdin, err := os.Open(os.DevNull)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stdin.Close()
-
-	os.Stdin = stdin
-	defer func() {
-		os.Stdin = original
-	}()
-
-	if err := executeRun(cmd, cliruntime.NewDefaultOptions(), browser.Options{}, nil, "", nil); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	withDevNullStdin(t, func() {
+		if err := executeRun(cmd, cliruntime.NewDefaultOptions(), browser.Options{}, nil, "", nil); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
 }
 
 func newTestCommand() *cobra.Command {

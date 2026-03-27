@@ -80,3 +80,47 @@ func captureStderr(t *testing.T, fn func() error) (string, error) {
 
 	return string(data), runErr
 }
+
+func withStdinBytes(t *testing.T, data []byte, fn func()) {
+	t.Helper()
+
+	original := os.Stdin
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := writer.Write(data); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	os.Stdin = reader
+	defer func() {
+		os.Stdin = original
+		reader.Close()
+	}()
+
+	fn()
+}
+
+func withDevNullStdin(t *testing.T, fn func()) {
+	t.Helper()
+
+	original := os.Stdin
+	stdin, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	os.Stdin = stdin
+	defer func() {
+		os.Stdin = original
+		stdin.Close()
+	}()
+
+	fn()
+}

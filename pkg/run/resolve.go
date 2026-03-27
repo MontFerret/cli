@@ -1,13 +1,13 @@
 package run
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/MontFerret/ferret/v2/pkg/bytecode/artifact"
 	"github.com/MontFerret/ferret/v2/pkg/file"
-
-	"github.com/MontFerret/cli/pkg/source"
 )
 
 func ResolveInput(eval string, args []string) (*Input, error) {
@@ -21,19 +21,7 @@ func ResolveInput(eval string, args []string) (*Input, error) {
 		return resolveFile(args[0])
 	}
 
-	sources, err := source.Resolve(source.Input{})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if sources == nil {
-		return nil, nil
-	}
-
-	return &Input{
-		Source: sources[0],
-	}, nil
+	return resolveStdin()
 }
 
 func resolveFile(path string) (*Input, error) {
@@ -43,13 +31,37 @@ func resolveFile(path string) (*Input, error) {
 		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
 
+	return resolveData(path, data), nil
+}
+
+func resolveStdin() (*Input, error) {
+	stat, err := os.Stdin.Stat()
+
+	if err != nil {
+		return nil, fmt.Errorf("stat stdin: %w", err)
+	}
+
+	if (stat.Mode() & os.ModeCharDevice) != 0 {
+		return nil, nil
+	}
+
+	data, err := io.ReadAll(bufio.NewReader(os.Stdin))
+
+	if err != nil {
+		return nil, fmt.Errorf("reading stdin: %w", err)
+	}
+
+	return resolveData("stdin", data), nil
+}
+
+func resolveData(name string, data []byte) *Input {
 	if artifact.HasMagic(data) {
 		return &Input{
 			Artifact: data,
-		}, nil
+		}
 	}
 
 	return &Input{
-		Source: file.NewSource(path, string(data)),
-	}, nil
+		Source: file.NewSource(name, string(data)),
+	}
 }
