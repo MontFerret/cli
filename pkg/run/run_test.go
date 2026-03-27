@@ -36,6 +36,22 @@ func TestResolveInput_SourceFile(t *testing.T) {
 	}
 }
 
+func TestResolveInput_RejectsMultipleArgs(t *testing.T) {
+	resolved, err := ResolveInput("", []string{"first.fql", "second.fql"})
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if resolved != nil {
+		t.Fatalf("expected nil input, got %#v", resolved)
+	}
+
+	if !strings.Contains(err.Error(), "at most one file argument") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestResolveInput_StdinSource(t *testing.T) {
 	withStdinBytes(t, []byte("RETURN 42\n"), func() {
 		resolved, err := ResolveInput("", nil)

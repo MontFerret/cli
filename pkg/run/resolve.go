@@ -17,6 +17,10 @@ func ResolveInput(eval string, args []string) (*Input, error) {
 		}, nil
 	}
 
+	if len(args) > 1 {
+		return nil, fmt.Errorf("run accepts at most one file argument")
+	}
+
 	if len(args) == 1 {
 		return resolveFile(args[0])
 	}
