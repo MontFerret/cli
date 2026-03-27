@@ -7,20 +7,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/ferret/v2/pkg/file"
-
 	"github.com/MontFerret/cli/pkg/browser"
 	"github.com/MontFerret/cli/pkg/config"
+	clirun "github.com/MontFerret/cli/pkg/run"
 	cliruntime "github.com/MontFerret/cli/pkg/runtime"
-	"github.com/MontFerret/cli/pkg/source"
 )
 
 func RunCommand(store *config.Store) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "run [script]",
 		Aliases: []string{"exec"},
-		Short:   "Run a FQL script",
-		Args:    cobra.MinimumNArgs(0),
+		Short:   "Run a FQL script or compiled artifact",
+		Args:    cobra.MaximumNArgs(1),
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
@@ -48,27 +46,7 @@ func RunCommand(store *config.Store) *cobra.Command {
 			}
 
 			store := config.From(cmd.Context())
-			rtOpts := store.GetRuntimeOptions()
-
-			cleanup, err := browser.EnsureBrowser(cmd.Context(), rtOpts, store.GetBrowserOptions())
-
-			if err != nil {
-				return err
-			}
-
-			defer cleanup()
-
-			sources, err := source.Resolve(source.Input{Eval: eval, Args: args})
-
-			if err != nil {
-				return err
-			}
-
-			if sources == nil {
-				return cmd.Help()
-			}
-
-			return runScript(cmd, rtOpts, params, sources[0])
+			return executeRun(cmd, store.GetRuntimeOptions(), store.GetBrowserOptions(), params, eval, args)
 		},
 	}
 
@@ -79,8 +57,30 @@ func RunCommand(store *config.Store) *cobra.Command {
 	return cmd
 }
 
-func runScript(cmd *cobra.Command, opts cliruntime.Options, params map[string]interface{}, query *file.Source) error {
-	out, err := cliruntime.Run(cmd.Context(), opts, query, params)
+func executeRun(cmd *cobra.Command, rtOpts cliruntime.Options, brOpts browser.Options, params map[string]interface{}, eval string, args []string) error {
+	input, err := clirun.ResolveInput(eval, args)
+
+	if err != nil {
+		return err
+	}
+
+	if input == nil {
+		return cmd.Help()
+	}
+
+	if len(input.Artifact) > 0 && !cliruntime.IsBuiltinType(rtOpts.Type) {
+		return cliruntime.ErrArtifactRequiresBuiltinRuntime
+	}
+
+	cleanup, err := browser.EnsureBrowser(cmd.Context(), rtOpts, brOpts)
+
+	if err != nil {
+		return err
+	}
+
+	defer cleanup()
+
+	out, err := clirun.Execute(cmd.Context(), rtOpts, params, input)
 
 	if err != nil {
 		printError(err)

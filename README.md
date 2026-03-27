@@ -189,6 +189,7 @@ Usage:
 
 Available Commands:
   browser     Manage Ferret browsers
+  build       Compile FQL scripts into bytecode artifacts
   check       Check FQL scripts for syntax and semantic errors
   config      Manage Ferret configs
   fmt         Format FQL scripts
@@ -207,7 +208,7 @@ Use "ferret [command] --help" for more information about a command.
 
 ### run / exec
 
-Run a FQL script from a file, inline expression, or launch the REPL when called with no arguments.
+Run a FQL script, a compiled artifact file, or an inline expression. To launch the interactive REPL, use the `ferret repl` command.
 
 ```bash
 ferret run [script]
@@ -226,6 +227,8 @@ ferret exec [script]   # alias
 | `--param` | `-p` | Query parameter (`key:value`, repeatable) | |
 | `--eval` | `-e` | Inline FQL expression (cannot be used with file args) | |
 
+Compiled artifacts are auto-detected by content for file inputs and piped stdin, so artifacts produced by `ferret build` work even when they do not use a `.fqlc` filename. Artifact execution currently requires the builtin runtime.
+
 ### repl
 
 Launch the interactive FQL shell. Supports command history, multiline input (toggle with `%`), and all runtime flags.
@@ -243,6 +246,20 @@ Compile one or more FQL scripts without executing them. Reports syntax and seman
 ```bash
 ferret check [files...]
 ```
+
+### build
+
+Compile one or more FQL scripts into serialized bytecode artifacts.
+
+```bash
+ferret build [files...]
+```
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--output` | `-o` | Output file path, or output directory (if the path is an existing directory) for one or more inputs |
+
+Without `--output`, each input writes a sibling artifact with the same base name and a `.fqlc` extension.
 
 ### fmt
 
