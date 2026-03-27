@@ -13,13 +13,10 @@ func PlanOutputs(inputs []string, output string) (Plan, error) {
 	}
 
 	if output == "" {
-		targets := make([]Target, 0, len(inputs))
+		targets, err := planTargets(inputs, siblingArtifactPath)
 
-		for _, input := range inputs {
-			targets = append(targets, Target{
-				SourcePath: input,
-				OutputPath: siblingArtifactPath(input),
-			})
+		if err != nil {
+			return Plan{}, err
 		}
 
 		return Plan{Targets: targets}, nil
@@ -79,30 +76,42 @@ func planMultiOutput(inputs []string, output string) (Plan, error) {
 		return Plan{}, fmt.Errorf("inspect output %s: %w", output, err)
 	}
 
-	targets := make([]Target, 0, len(inputs))
-	seen := make(map[string]string, len(inputs))
+	targets, err := planTargets(inputs, func(input string) string {
+		return filepath.Join(output, artifactFileName(input))
+	})
 
-	for _, input := range inputs {
-		outputPath := filepath.Join(output, artifactFileName(input))
-		key, err := canonicalPath(outputPath)
-
-		if err != nil {
-			return Plan{}, err
-		}
-
-		if prev, exists := seen[key]; exists {
-			return Plan{}, fmt.Errorf("output collision: %s and %s both map to %s", prev, input, outputPath)
-		}
-
-		seen[key] = input
-		targets = append(targets, Target{
-			SourcePath: input,
-			OutputPath: outputPath,
-		})
+	if err != nil {
+		return Plan{}, err
 	}
 
 	return Plan{
 		OutputDir: output,
 		Targets:   targets,
 	}, nil
+}
+
+func planTargets(inputs []string, outputPath func(string) string) ([]Target, error) {
+	targets := make([]Target, 0, len(inputs))
+	seen := make(map[string]string, len(inputs))
+
+	for _, input := range inputs {
+		path := outputPath(input)
+		key, err := canonicalPath(path)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if prev, exists := seen[key]; exists {
+			return nil, fmt.Errorf("output collision: %s and %s both map to %s", prev, input, path)
+		}
+
+		seen[key] = input
+		targets = append(targets, Target{
+			SourcePath: input,
+			OutputPath: path,
+		})
+	}
+
+	return targets, nil
 }

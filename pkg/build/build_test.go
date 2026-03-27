@@ -31,6 +31,62 @@ func TestPlanOutputs_DefaultOutputPath(t *testing.T) {
 	}
 }
 
+func TestPlanOutputs_DefaultOutputPathsMultiFile(t *testing.T) {
+	dir := t.TempDir()
+	inputA := filepath.Join(dir, "first.fql")
+	inputB := filepath.Join(dir, "second.txt")
+
+	plan, err := PlanOutputs([]string{inputA, inputB}, "")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(plan.Targets) != 2 {
+		t.Fatalf("expected 2 targets, got %d", len(plan.Targets))
+	}
+
+	if plan.Targets[0].OutputPath != filepath.Join(dir, "first.fqlc") {
+		t.Fatalf("unexpected first output path: %s", plan.Targets[0].OutputPath)
+	}
+
+	if plan.Targets[1].OutputPath != filepath.Join(dir, "second.fqlc") {
+		t.Fatalf("unexpected second output path: %s", plan.Targets[1].OutputPath)
+	}
+}
+
+func TestPlanOutputs_DefaultOutputCollisionDifferentExtensions(t *testing.T) {
+	dir := t.TempDir()
+	inputA := filepath.Join(dir, "query.fql")
+	inputB := filepath.Join(dir, "query.txt")
+
+	_, err := PlanOutputs([]string{inputA, inputB}, "")
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if !strings.Contains(err.Error(), "output collision") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPlanOutputs_DefaultOutputCollisionExtensionlessAndExtensioned(t *testing.T) {
+	dir := t.TempDir()
+	inputA := filepath.Join(dir, "query")
+	inputB := filepath.Join(dir, "query.fql")
+
+	_, err := PlanOutputs([]string{inputA, inputB}, "")
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if !strings.Contains(err.Error(), "output collision") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestPlanOutputs_SingleFileExplicitOutput(t *testing.T) {
 	dir := t.TempDir()
 	input := filepath.Join(dir, "query.fql")
