@@ -2,171 +2,29 @@ package cmd
 
 import (
 	"context"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 
 	"github.com/MontFerret/cli/pkg/browser"
+	"github.com/MontFerret/cli/pkg/build"
 	"github.com/MontFerret/cli/pkg/config"
 	cliruntime "github.com/MontFerret/cli/pkg/runtime"
+	"github.com/MontFerret/ferret/v2/pkg/compiler"
+	"github.com/MontFerret/ferret/v2/pkg/file"
 )
-
-func TestExecuteRun_SourceFile(t *testing.T) {
-	dir := t.TempDir()
-	input := filepath.Join(dir, "query.fql")
-
-	writeQuery(t, input, "RETURN 42")
-
-	stdout, err := captureStdout(t, func() error {
-		return executeRun(newTestCommand(), cliruntime.NewDefaultOptions(), browser.Options{}, nil, "", []string{input})
-	})
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if strings.TrimSpace(stdout) != "42" {
-		t.Fatalf("expected 42, got %q", stdout)
-	}
-}
-
-func TestExecuteRun_CompiledArtifact(t *testing.T) {
-	dir := t.TempDir()
-	input := filepath.Join(dir, "query.fql")
-
-	writeQuery(t, input, "RETURN 42")
-
-	if _, err := captureStderr(t, func() error {
-		return runBuild([]string{input}, "")
-	}); err != nil {
-		t.Fatalf("unexpected build error: %v", err)
-	}
-
-	stdout, err := captureStdout(t, func() error {
-		return executeRun(newTestCommand(), cliruntime.NewDefaultOptions(), browser.Options{}, nil, "", []string{filepath.Join(filepath.Dir(input), "query.fqlc")})
-	})
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if strings.TrimSpace(stdout) != "42" {
-		t.Fatalf("expected 42, got %q", stdout)
-	}
-}
-
-func TestExecuteRun_CompiledArtifactCustomName(t *testing.T) {
-	dir := t.TempDir()
-	input := filepath.Join(dir, "query.fql")
-	output := filepath.Join(dir, "compiled.bin")
-
-	writeQuery(t, input, "RETURN 42")
-
-	if _, err := captureStderr(t, func() error {
-		return runBuild([]string{input}, output)
-	}); err != nil {
-		t.Fatalf("unexpected build error: %v", err)
-	}
-
-	stdout, err := captureStdout(t, func() error {
-		return executeRun(newTestCommand(), cliruntime.NewDefaultOptions(), browser.Options{}, nil, "", []string{output})
-	})
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if strings.TrimSpace(stdout) != "42" {
-		t.Fatalf("expected 42, got %q", stdout)
-	}
-}
-
-func TestExecuteRun_CompiledArtifactWithParams(t *testing.T) {
-	dir := t.TempDir()
-	input := filepath.Join(dir, "query.fql")
-
-	writeQuery(t, input, "RETURN @value")
-
-	if _, err := captureStderr(t, func() error {
-		return runBuild([]string{input}, "")
-	}); err != nil {
-		t.Fatalf("unexpected build error: %v", err)
-	}
-
-	stdout, err := captureStdout(t, func() error {
-		return executeRun(
-			newTestCommand(),
-			cliruntime.NewDefaultOptions(),
-			browser.Options{},
-			map[string]interface{}{"value": float64(99)},
-			"",
-			[]string{filepath.Join(filepath.Dir(input), "query.fqlc")},
-		)
-	})
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if strings.TrimSpace(stdout) != "99" {
-		t.Fatalf("expected 99, got %q", stdout)
-	}
-}
-
-func TestExecuteRun_PlainTextFQLCIsSource(t *testing.T) {
-	dir := t.TempDir()
-	input := filepath.Join(dir, "query.fqlc")
-
-	writeQuery(t, input, "RETURN 7")
-
-	stdout, err := captureStdout(t, func() error {
-		return executeRun(newTestCommand(), cliruntime.NewDefaultOptions(), browser.Options{}, nil, "", []string{input})
-	})
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if strings.TrimSpace(stdout) != "7" {
-		t.Fatalf("expected 7, got %q", stdout)
-	}
-}
-
-func TestExecuteRun_CorruptArtifactReturnsLoadError(t *testing.T) {
-	dir := t.TempDir()
-	input := filepath.Join(dir, "broken.bin")
-
-	if err := os.WriteFile(input, []byte("FBC2"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := captureStderr(t, func() error {
-		return executeRun(newTestCommand(), cliruntime.NewDefaultOptions(), browser.Options{}, nil, "", []string{input})
-	})
-
-	if err == nil {
-		t.Fatal("expected error")
-	}
-
-	if !strings.Contains(err.Error(), "bytecode artifact") {
-		t.Fatalf("expected artifact load error, got %v", err)
-	}
-}
 
 func TestExecuteRun_ArtifactRemoteRuntimeRejected(t *testing.T) {
 	dir := t.TempDir()
 	input := filepath.Join(dir, "query.fql")
+	artifactPath := filepath.Join(dir, "query.fqlc")
 
 	writeQuery(t, input, "RETURN 42")
 
-	if _, err := captureStderr(t, func() error {
-		return runBuild([]string{input}, "")
-	}); err != nil {
-		t.Fatalf("unexpected build error: %v", err)
+	if err := build.WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 42"), artifactPath); err != nil {
+		t.Fatalf("build artifact: %v", err)
 	}
 
 	_, err := captureStdout(t, func() error {
@@ -176,7 +34,7 @@ func TestExecuteRun_ArtifactRemoteRuntimeRejected(t *testing.T) {
 			browser.Options{},
 			nil,
 			"",
-			[]string{filepath.Join(filepath.Dir(input), "query.fqlc")},
+			[]string{artifactPath},
 		)
 	})
 
@@ -184,7 +42,7 @@ func TestExecuteRun_ArtifactRemoteRuntimeRejected(t *testing.T) {
 		t.Fatal("expected error")
 	}
 
-	if !strings.Contains(err.Error(), "compiled artifacts require the builtin runtime") {
+	if err.Error() != "compiled artifacts require the builtin runtime" {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -197,47 +55,35 @@ func TestRunCommand_RejectsMultiplePositionalArgs(t *testing.T) {
 	}
 }
 
-func writeQuery(t *testing.T, path, content string) {
-	t.Helper()
+func TestRunCommand_RejectsEvalWithFileArgs(t *testing.T) {
+	cmd := RunCommand(new(config.Store))
+	cmd.SetContext(config.With(context.Background(), new(config.Store)))
+	cmd.Flags().Set("eval", "RETURN 1")
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	err := cmd.RunE(cmd, []string{"query.fql"})
 
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatal(err)
+	if err == nil {
+		t.Fatal("expected error")
 	}
 }
 
-func captureStderr(t *testing.T, fn func() error) (string, error) {
-	t.Helper()
-
-	original := os.Stderr
-	reader, writer, err := os.Pipe()
+func TestExecuteRun_NoInputShowsHelp(t *testing.T) {
+	cmd := newTestCommand()
+	original := os.Stdin
+	stdin, err := os.Open(os.DevNull)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer stdin.Close()
 
-	os.Stderr = writer
+	os.Stdin = stdin
+	defer func() {
+		os.Stdin = original
+	}()
 
-	runErr := fn()
-
-	if closeErr := writer.Close(); closeErr != nil {
-		t.Fatal(closeErr)
+	if err := executeRun(cmd, cliruntime.NewDefaultOptions(), browser.Options{}, nil, "", nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-
-	os.Stderr = original
-
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if closeErr := reader.Close(); closeErr != nil {
-		t.Fatal(closeErr)
-	}
-
-	return string(data), runErr
 }
 
 func newTestCommand() *cobra.Command {
@@ -245,35 +91,4 @@ func newTestCommand() *cobra.Command {
 	cmd.SetContext(context.Background())
 
 	return cmd
-}
-
-func captureStdout(t *testing.T, fn func() error) (string, error) {
-	t.Helper()
-
-	original := os.Stdout
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	os.Stdout = writer
-
-	runErr := fn()
-
-	if closeErr := writer.Close(); closeErr != nil {
-		t.Fatal(closeErr)
-	}
-
-	os.Stdout = original
-
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if closeErr := reader.Close(); closeErr != nil {
-		t.Fatal(closeErr)
-	}
-
-	return string(data), runErr
 }

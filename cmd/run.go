@@ -7,20 +7,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/ferret/v2/pkg/bytecode/artifact"
-
-	"github.com/MontFerret/ferret/v2/pkg/file"
-
 	"github.com/MontFerret/cli/pkg/browser"
 	"github.com/MontFerret/cli/pkg/config"
+	clirun "github.com/MontFerret/cli/pkg/run"
 	cliruntime "github.com/MontFerret/cli/pkg/runtime"
-	"github.com/MontFerret/cli/pkg/source"
 )
-
-type runInput struct {
-	Artifact []byte
-	Source   *file.Source
-}
 
 func RunCommand(store *config.Store) *cobra.Command {
 	cmd := &cobra.Command{
@@ -67,7 +58,7 @@ func RunCommand(store *config.Store) *cobra.Command {
 }
 
 func executeRun(cmd *cobra.Command, rtOpts cliruntime.Options, brOpts browser.Options, params map[string]interface{}, eval string, args []string) error {
-	input, err := resolveRunInput(eval, args)
+	input, err := clirun.ResolveInput(eval, args)
 
 	if err != nil {
 		return err
@@ -89,15 +80,7 @@ func executeRun(cmd *cobra.Command, rtOpts cliruntime.Options, brOpts browser.Op
 
 	defer cleanup()
 
-	if len(input.Artifact) > 0 {
-		return runArtifact(cmd, rtOpts, params, input.Artifact)
-	}
-
-	return runScript(cmd, rtOpts, params, input.Source)
-}
-
-func runScript(cmd *cobra.Command, opts cliruntime.Options, params map[string]interface{}, query *file.Source) error {
-	out, err := cliruntime.Run(cmd.Context(), opts, query, params)
+	out, err := clirun.Execute(cmd.Context(), rtOpts, params, input)
 
 	if err != nil {
 		printError(err)
@@ -109,67 +92,4 @@ func runScript(cmd *cobra.Command, opts cliruntime.Options, params map[string]in
 	_, err = io.Copy(os.Stdout, out)
 
 	return err
-}
-
-func runArtifact(cmd *cobra.Command, opts cliruntime.Options, params map[string]interface{}, artifactData []byte) error {
-	out, err := cliruntime.RunArtifact(cmd.Context(), opts, artifactData, params)
-
-	if err != nil {
-		printError(err)
-		return err
-	}
-
-	defer out.Close()
-
-	_, err = io.Copy(os.Stdout, out)
-
-	return err
-}
-
-func resolveRunInput(eval string, args []string) (*runInput, error) {
-	if eval != "" {
-		return &runInput{
-			Source: file.NewSource("<eval>", eval),
-		}, nil
-	}
-
-	if len(args) == 1 {
-		return resolveRunFile(args[0])
-	}
-
-	sources, err := source.Resolve(source.Input{})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if sources == nil {
-		return nil, nil
-	}
-
-	return &runInput{
-		Source: sources[0],
-	}, nil
-}
-
-func resolveRunFile(path string) (*runInput, error) {
-	data, err := os.ReadFile(path)
-
-	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", path, err)
-	}
-
-	if isArtifactData(data) {
-		return &runInput{
-			Artifact: data,
-		}, nil
-	}
-
-	return &runInput{
-		Source: file.NewSource(path, string(data)),
-	}, nil
-}
-
-func isArtifactData(data []byte) bool {
-	return artifact.HasMagic(data)
 }
