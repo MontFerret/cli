@@ -79,6 +79,10 @@ func (rt *Remote) Run(ctx context.Context, query *file.Source, params map[string
 	return rt.makeRequest(ctx, "POST", "/", body)
 }
 
+func (rt *Remote) RunArtifact(_ context.Context, _ []byte, _ map[string]any) (io.ReadCloser, error) {
+	return nil, fmt.Errorf("compiled artifacts require the builtin runtime")
+}
+
 func (rt *Remote) createRequest(ctx context.Context, method, endpoint string, body []byte) (*http.Request, error) {
 	var reader io.Reader
 

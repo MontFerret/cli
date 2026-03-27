@@ -14,12 +14,13 @@ type Runtime interface {
 	Version(ctx context.Context) (string, error)
 
 	Run(ctx context.Context, query *file.Source, params map[string]any) (io.ReadCloser, error)
+	RunArtifact(ctx context.Context, data []byte, params map[string]any) (io.ReadCloser, error)
 }
 
 func New(opts Options) (Runtime, error) {
-	name := strings.ReplaceAll(strings.ToLower(opts.Type), " ", "")
+	name := normalizeRuntimeType(opts.Type)
 
-	if name == DefaultRuntime {
+	if IsBuiltinType(name) {
 		return NewBuiltin(opts)
 	}
 
@@ -40,4 +41,22 @@ func Run(ctx context.Context, opts Options, query *file.Source, params map[strin
 	}
 
 	return rt.Run(ctx, query, params)
+}
+
+func RunArtifact(ctx context.Context, opts Options, data []byte, params map[string]any) (io.ReadCloser, error) {
+	rt, err := New(opts)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rt.RunArtifact(ctx, data, params)
+}
+
+func IsBuiltinType(name string) bool {
+	return normalizeRuntimeType(name) == DefaultRuntime
+}
+
+func normalizeRuntimeType(name string) string {
+	return strings.ReplaceAll(strings.ToLower(strings.TrimSpace(name)), " ", "")
 }
