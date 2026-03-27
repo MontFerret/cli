@@ -2,7 +2,7 @@ package runtime
 
 import (
 	"context"
-	"strings"
+	"errors"
 	"testing"
 )
 
@@ -13,7 +13,7 @@ func TestRunArtifact_RemoteRuntimeRejected(t *testing.T) {
 		t.Fatal("expected error")
 	}
 
-	if !strings.Contains(err.Error(), "compiled artifacts require the builtin runtime") {
+	if !errors.Is(err, ErrArtifactRequiresBuiltinRuntime) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

@@ -69,7 +69,7 @@ func executeRun(cmd *cobra.Command, rtOpts cliruntime.Options, brOpts browser.Op
 	}
 
 	if len(input.Artifact) > 0 && !cliruntime.IsBuiltinType(rtOpts.Type) {
-		return fmt.Errorf("compiled artifacts require the builtin runtime")
+		return cliruntime.ErrArtifactRequiresBuiltinRuntime
 	}
 
 	cleanup, err := browser.EnsureBrowser(cmd.Context(), rtOpts, brOpts)

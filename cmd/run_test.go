@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -42,7 +43,7 @@ func TestExecuteRun_ArtifactRemoteRuntimeRejected(t *testing.T) {
 		t.Fatal("expected error")
 	}
 
-	if err.Error() != "compiled artifacts require the builtin runtime" {
+	if !errors.Is(err, cliruntime.ErrArtifactRequiresBuiltinRuntime) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

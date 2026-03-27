@@ -80,7 +80,7 @@ func (rt *Remote) Run(ctx context.Context, query *file.Source, params map[string
 }
 
 func (rt *Remote) RunArtifact(_ context.Context, _ []byte, _ map[string]any) (io.ReadCloser, error) {
-	return nil, fmt.Errorf("compiled artifacts require the builtin runtime")
+	return nil, ErrArtifactRequiresBuiltinRuntime
 }
 
 func (rt *Remote) createRequest(ctx context.Context, method, endpoint string, body []byte) (*http.Request, error) {
