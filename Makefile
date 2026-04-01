@@ -36,4 +36,4 @@ vet:
 	go vet ./...
 
 release:
-	./scripts/release.sh
+	./scripts/release.sh $(TAG)
