@@ -16,6 +16,7 @@ type Options struct {
 	BrowserAddress      string
 	WithBrowser         bool
 	WithHeadlessBrowser bool
+	FileSystemRoot      string
 }
 
 func NewDefaultOptions() Options {

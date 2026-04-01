@@ -6,6 +6,7 @@ const (
 	LoggerLevel = "log-level"
 
 	ExecRuntime             = "runtime"
+	ExecRuntimeFSRoot       = "runtime-fs-root"
 	ExecKeepCookies         = "browser-cookies"
 	ExecWithBrowser         = "browser-open"
 	ExecBrowserAddress      = "browser-address"
@@ -22,6 +23,7 @@ const (
 var Flags = []string{
 	LoggerLevel,
 	ExecRuntime,
+	ExecRuntimeFSRoot,
 	ExecKeepCookies,
 	ExecBrowserAddress,
 	ExecWithBrowser,
