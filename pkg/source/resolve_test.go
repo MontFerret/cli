@@ -81,7 +81,7 @@ func TestResolve_MultipleFiles(t *testing.T) {
 
 func TestResolve_FileNotFound(t *testing.T) {
 	input := source.Input{
-		Args: []string{"/nonexistent/file.fql"},
+		Args: []string{"/nonexistent/source.fql"},
 	}
 
 	_, err := source.Resolve(input)

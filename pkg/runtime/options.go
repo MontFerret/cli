@@ -1,9 +1,9 @@
 package runtime
 
 import (
-	"github.com/MontFerret/contrib/modules/html/drivers"
-	"github.com/MontFerret/contrib/modules/html/drivers/cdp"
-	"github.com/MontFerret/contrib/modules/html/drivers/http"
+	"github.com/MontFerret/contrib/modules/web/html/drivers"
+	"github.com/MontFerret/contrib/modules/web/html/drivers/cdp"
+	"github.com/MontFerret/contrib/modules/web/html/drivers/http"
 )
 
 type Options struct {

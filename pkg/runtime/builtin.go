@@ -6,12 +6,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/MontFerret/contrib/modules/html"
-	"github.com/MontFerret/contrib/modules/html/drivers/cdp"
-	"github.com/MontFerret/contrib/modules/html/drivers/http"
 	"github.com/MontFerret/ferret/v2"
-	"github.com/MontFerret/ferret/v2/pkg/file"
 	"github.com/MontFerret/ferret/v2/pkg/runtime"
+	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
 var version = "unknown"
@@ -25,20 +22,13 @@ type Builtin struct {
 }
 
 func NewBuiltin(opts Options) (Runtime, error) {
-	htmlmod, err := html.New(
-		html.WithDefaultDriver(http.NewDriver(opts.ToInMemory()...)),
-		html.WithDrivers(
-			cdp.NewDriver(opts.ToCDP()...),
-		),
-	)
+	mods, err := newModules(opts)
 
 	if err != nil {
-		return nil, fmt.Errorf("initialize html module: %w", err)
+		return nil, fmt.Errorf("initialize modules: %w", err)
 	}
 
-	engine, err := ferret.New(
-		ferret.WithModules(htmlmod),
-	)
+	engine, err := ferret.New(ferret.WithModules(mods...))
 
 	if err != nil {
 		return nil, fmt.Errorf("initialize engine: %w", err)
@@ -54,7 +44,7 @@ func (rt *Builtin) Version(_ context.Context) (string, error) {
 	return version, nil
 }
 
-func (rt *Builtin) Run(ctx context.Context, query *file.Source, params map[string]any) (io.ReadCloser, error) {
+func (rt *Builtin) Run(ctx context.Context, query *source.Source, params map[string]any) (io.ReadCloser, error) {
 	parsedParams, err := runtime.NewParamsFrom(params)
 
 	if err != nil {

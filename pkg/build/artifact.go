@@ -7,12 +7,12 @@ import (
 
 	"github.com/MontFerret/ferret/v2/pkg/bytecode/artifact"
 	"github.com/MontFerret/ferret/v2/pkg/compiler"
-	"github.com/MontFerret/ferret/v2/pkg/file"
+	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
 var renameArtifactFile = os.Rename
 
-func WriteArtifact(c *compiler.Compiler, src *file.Source, outputPath string) error {
+func WriteArtifact(c *compiler.Compiler, src *source.Source, outputPath string) error {
 	same, err := samePath(src.Name(), outputPath)
 
 	if err != nil {

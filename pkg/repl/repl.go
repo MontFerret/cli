@@ -9,7 +9,7 @@ import (
 
 	"github.com/chzyer/readline"
 
-	"github.com/MontFerret/ferret/v2/pkg/file"
+	"github.com/MontFerret/ferret/v2/pkg/source"
 
 	"github.com/MontFerret/cli/pkg/runtime"
 )
@@ -89,7 +89,7 @@ func Start(ctx context.Context, opts runtime.Options, params map[string]interfac
 			break
 		}
 
-		out, err := rt.Run(ctx, file.NewAnonymousSource(query), params)
+		out, err := rt.Run(ctx, source.NewAnonymous(query), params)
 
 		if err != nil {
 			fmt.Println("Failed to execute the query")

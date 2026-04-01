@@ -9,7 +9,6 @@ import (
 
 	"github.com/MontFerret/ferret/v2/pkg/bytecode/artifact"
 	"github.com/MontFerret/ferret/v2/pkg/compiler"
-	"github.com/MontFerret/ferret/v2/pkg/file"
 )
 
 func TestPlanOutputs_DefaultOutputPath(t *testing.T) {
@@ -197,7 +196,7 @@ func TestWriteArtifact_RejectsOverwritingSource(t *testing.T) {
 
 	writeQuery(t, input, query)
 
-	err := WriteArtifact(compiler.New(), file.NewSource(input, query), input)
+	err := WriteArtifact(compiler.New(), source.New(input, query), input)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -224,7 +223,7 @@ func TestWriteArtifact_InvalidQueryDoesNotCreateArtifact(t *testing.T) {
 
 	writeQuery(t, input, "FOR item IN")
 
-	err := WriteArtifact(compiler.New(), file.NewSource(input, "FOR item IN"), output)
+	err := WriteArtifact(compiler.New(), source.New(input, "FOR item IN"), output)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -242,7 +241,7 @@ func TestWriteArtifact_CreatesMissingParentDirectory(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 42")
 
-	if err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 42"), output); err != nil {
+	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 42"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -256,7 +255,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFile(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 1")
 
-	if err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 1"), output); err != nil {
+	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 1"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -264,7 +263,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFile(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 2")
 
-	if err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 2"), output); err != nil {
+	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 2"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -278,7 +277,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFileInNestedDirectory(t *testi
 
 	writeQuery(t, input, "RETURN 1")
 
-	if err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 1"), output); err != nil {
+	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 1"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -286,7 +285,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFileInNestedDirectory(t *testi
 
 	writeQuery(t, input, "RETURN 2")
 
-	if err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 2"), output); err != nil {
+	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 2"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -300,7 +299,7 @@ func TestWriteArtifact_RenameFailurePreservesExistingDestinationAndCleansTemp(t 
 
 	writeQuery(t, input, "RETURN 1")
 
-	if err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 1"), output); err != nil {
+	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 1"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -311,7 +310,7 @@ func TestWriteArtifact_RenameFailurePreservesExistingDestinationAndCleansTemp(t 
 	})
 	defer restore()
 
-	err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 2"), output)
+	err := WriteArtifact(compiler.New(), source.New(input, "RETURN 2"), output)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -337,7 +336,7 @@ func TestWriteArtifact_RenameFailureDoesNotCreateDestinationAndCleansTemp(t *tes
 	})
 	defer restore()
 
-	err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 42"), output)
+	err := WriteArtifact(compiler.New(), source.New(input, "RETURN 42"), output)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -357,7 +356,7 @@ func TestWriteArtifact_ArtifactRoundTrip(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 42")
 
-	if err := WriteArtifact(compiler.New(), file.NewSource(input, "RETURN 42"), output); err != nil {
+	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 42"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -371,7 +370,7 @@ func TestWriteArtifact_InvalidQueryDoesNotCreateArtifactInMissingParentDirectory
 
 	writeQuery(t, input, "FOR item IN")
 
-	err := WriteArtifact(compiler.New(), file.NewSource(input, "FOR item IN"), output)
+	err := WriteArtifact(compiler.New(), source.New(input, "FOR item IN"), output)
 
 	if err == nil {
 		t.Fatal("expected error")

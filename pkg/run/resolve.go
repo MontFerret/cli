@@ -7,13 +7,13 @@ import (
 	"os"
 
 	"github.com/MontFerret/ferret/v2/pkg/bytecode/artifact"
-	"github.com/MontFerret/ferret/v2/pkg/file"
+	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
 func ResolveInput(eval string, args []string) (*Input, error) {
 	if eval != "" {
 		return &Input{
-			Source: file.NewSource("<eval>", eval),
+			Source: source.New("<eval>", eval),
 		}, nil
 	}
 
@@ -66,6 +66,6 @@ func resolveData(name string, data []byte) *Input {
 	}
 
 	return &Input{
-		Source: file.NewSource(name, string(data)),
+		Source: source.New(name, string(data)),
 	}
 }

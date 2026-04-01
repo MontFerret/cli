@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/MontFerret/ferret/v2/pkg/file"
+	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
 type Input struct {
@@ -16,9 +16,9 @@ type Input struct {
 
 // Resolve returns file sources from eval, stdin, or file paths.
 // Returns nil, nil when no input is available (caller should show help).
-func Resolve(input Input) ([]*file.Source, error) {
+func Resolve(input Input) ([]*source.Source, error) {
 	if input.Eval != "" {
-		return []*file.Source{file.NewSource("<eval>", input.Eval)}, nil
+		return []*source.Source{source.New("<eval>", input.Eval)}, nil
 	}
 
 	if len(input.Args) == 0 {
@@ -31,13 +31,13 @@ func Resolve(input Input) ([]*file.Source, error) {
 				return nil, err
 			}
 
-			return []*file.Source{file.NewSource("stdin", string(content))}, nil
+			return []*source.Source{source.New("stdin", string(content))}, nil
 		}
 
 		return nil, nil
 	}
 
-	sources := make([]*file.Source, 0, len(input.Args))
+	sources := make([]*source.Source, 0, len(input.Args))
 
 	for _, path := range input.Args {
 		content, err := os.ReadFile(path)
@@ -46,7 +46,7 @@ func Resolve(input Input) ([]*file.Source, error) {
 			return nil, fmt.Errorf("reading %s: %w", path, err)
 		}
 
-		sources = append(sources, file.NewSource(path, string(content)))
+		sources = append(sources, source.New(path, string(content)))
 	}
 
 	return sources, nil

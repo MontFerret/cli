@@ -8,11 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MontFerret/ferret/v2/pkg/compiler"
-	"github.com/MontFerret/ferret/v2/pkg/file"
-
 	"github.com/MontFerret/cli/pkg/build"
 	cliruntime "github.com/MontFerret/cli/pkg/runtime"
+	"github.com/MontFerret/ferret/v2/pkg/compiler"
+	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
 func TestResolveInput_SourceFile(t *testing.T) {
@@ -338,7 +337,7 @@ func buildArtifact(t *testing.T, inputPath, outputPath string) {
 	}
 }
 
-func readSource(t *testing.T, path string) *file.Source {
+func readSource(t *testing.T, path string) *source.Source {
 	t.Helper()
 
 	data, err := os.ReadFile(path)
@@ -346,7 +345,7 @@ func readSource(t *testing.T, path string) *file.Source {
 		t.Fatal(err)
 	}
 
-	return file.NewSource(path, string(data))
+	return source.New(path, string(data))
 }
 
 func readFile(t *testing.T, path string) []byte {
