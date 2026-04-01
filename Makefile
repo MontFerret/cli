@@ -34,3 +34,6 @@ lint:
 
 vet:
 	go vet ./...
+
+release:
+	./scripts/release.sh
