@@ -70,7 +70,7 @@ EXAMPLES:
     ./install.sh --location /usr/local/bin
 
     # Install specific version
-    ./install.sh --version v1.2.3
+    ./install.sh --version v2.0.0
 
     # Dry run to see what would happen
     ./install.sh --dry-run

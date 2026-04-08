@@ -7,7 +7,7 @@ import (
 
 	"github.com/MontFerret/ferret/v2/pkg/runtime"
 
-	cliruntime "github.com/MontFerret/cli/pkg/runtime"
+	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
 )
 
 // EnsureBrowser opens a browser if runtime options require it.

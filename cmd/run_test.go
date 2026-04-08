@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/cli/pkg/browser"
-	"github.com/MontFerret/cli/pkg/build"
-	"github.com/MontFerret/cli/pkg/config"
-	cliruntime "github.com/MontFerret/cli/pkg/runtime"
+	"github.com/MontFerret/cli/v2/pkg/browser"
+	"github.com/MontFerret/cli/v2/pkg/build"
+	"github.com/MontFerret/cli/v2/pkg/config"
+	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
 	"github.com/MontFerret/ferret/v2/pkg/compiler"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 )

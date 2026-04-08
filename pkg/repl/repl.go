@@ -11,7 +11,7 @@ import (
 
 	"github.com/MontFerret/ferret/v2/pkg/source"
 
-	"github.com/MontFerret/cli/pkg/runtime"
+	"github.com/MontFerret/cli/v2/pkg/runtime"
 )
 
 func Start(ctx context.Context, opts runtime.Options, params map[string]interface{}) error {

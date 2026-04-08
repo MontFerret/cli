@@ -1,8 +1,8 @@
 # Ferret CLI
 
 <p align="center">
-	<a href="https://goreportcard.com/report/github.com/MontFerret/cli">
-		<img alt="Go Report Status" src="https://goreportcard.com/badge/github.com/MontFerret/cli">
+	<a href="https://goreportcard.com/report/github.com/MontFerret/cli/v2">
+		<img alt="Go Report Status" src="https://goreportcard.com/badge/github.com/MontFerret/cli/v2">
 	</a>
 	<a href="https://github.com/MontFerret/cli/actions">
 		<img alt="Build Status" src="https://github.com/MontFerret/cli/workflows/build/badge.svg">
@@ -79,7 +79,7 @@ You can download the latest binaries from [here](https://github.com/MontFerret/c
 
 ### Source (Go >= 1.18)
 ```bash
-go install github.com/MontFerret/cli/ferret@latest
+go install github.com/MontFerret/cli/v2/ferret@latest
 ```
 
 ### Shell

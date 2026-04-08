@@ -3,14 +3,14 @@ set -e
 
 if [ -z "$1" ]; then
   echo "Usage: $0 <version>"
-  echo "  e.g. $0 v1.2.3"
+  echo "  e.g. $0 v2.0.0"
   exit 1
 fi
 
 VERSION="$1"
 
 if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-  echo "Error: version must start with 'v' followed by semver (e.g. v1.2.3)"
+  echo "Error: version must start with 'v' followed by semver (e.g. v2.0.0)"
   exit 1
 fi
 

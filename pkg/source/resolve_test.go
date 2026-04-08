@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/MontFerret/cli/pkg/source"
+	"github.com/MontFerret/cli/v2/pkg/source"
 )
 
 func TestResolve_Eval(t *testing.T) {

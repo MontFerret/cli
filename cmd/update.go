@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/MontFerret/cli/pkg/config"
-	"github.com/MontFerret/cli/pkg/selfupdate"
+	"github.com/MontFerret/cli/v2/pkg/config"
+	"github.com/MontFerret/cli/v2/pkg/selfupdate"
 
 	"github.com/spf13/cobra"
 )
