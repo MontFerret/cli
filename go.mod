@@ -12,7 +12,7 @@ require (
 	github.com/MontFerret/contrib/modules/web/sitemap v0.0.0-20260401140623-49c476b0b6da
 	github.com/MontFerret/contrib/modules/xml v0.0.0-20260401140623-49c476b0b6da
 	github.com/MontFerret/contrib/modules/yaml v0.0.0-20260401140623-49c476b0b6da
-	github.com/MontFerret/ferret/v2 v2.0.0-alpha.5
+	github.com/MontFerret/ferret/v2 v2.0.0-alpha.7
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
 	github.com/go-waitfor/waitfor-http v1.1.0
