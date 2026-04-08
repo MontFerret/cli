@@ -7,10 +7,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/cli/pkg/browser"
-	"github.com/MontFerret/cli/pkg/config"
-	clirun "github.com/MontFerret/cli/pkg/run"
-	cliruntime "github.com/MontFerret/cli/pkg/runtime"
+	"github.com/MontFerret/cli/v2/pkg/browser"
+	"github.com/MontFerret/cli/v2/pkg/config"
+	clirun "github.com/MontFerret/cli/v2/pkg/run"
+	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
 )
 
 func RunCommand(store *config.Store) *cobra.Command {

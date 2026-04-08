@@ -1,4 +1,4 @@
-module github.com/MontFerret/cli
+module github.com/MontFerret/cli/v2
 
 go 1.26.1
 

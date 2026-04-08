@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MontFerret/cli/pkg/build"
-	cliruntime "github.com/MontFerret/cli/pkg/runtime"
+	"github.com/MontFerret/cli/v2/pkg/build"
+	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
 	"github.com/MontFerret/ferret/v2/pkg/compiler"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 )

@@ -3,9 +3,9 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/cli/pkg/browser"
-	"github.com/MontFerret/cli/pkg/config"
-	"github.com/MontFerret/cli/pkg/repl"
+	"github.com/MontFerret/cli/v2/pkg/browser"
+	"github.com/MontFerret/cli/v2/pkg/config"
+	"github.com/MontFerret/cli/v2/pkg/repl"
 )
 
 func ReplCommand(store *config.Store) *cobra.Command {

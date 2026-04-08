@@ -10,9 +10,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/cli/cmd"
-	"github.com/MontFerret/cli/pkg/config"
-	"github.com/MontFerret/cli/pkg/logger"
+	"github.com/MontFerret/cli/v2/cmd"
+	"github.com/MontFerret/cli/v2/pkg/config"
+	"github.com/MontFerret/cli/v2/pkg/logger"
 )
 
 const (

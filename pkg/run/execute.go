@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	cliruntime "github.com/MontFerret/cli/pkg/runtime"
+	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
 )
 
 func Execute(ctx context.Context, opts cliruntime.Options, params map[string]any, input *Input) (io.ReadCloser, error) {

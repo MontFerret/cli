@@ -8,9 +8,9 @@ import (
 
 	"github.com/MontFerret/ferret/v2/pkg/compiler"
 
-	"github.com/MontFerret/cli/pkg/build"
-	"github.com/MontFerret/cli/pkg/config"
-	"github.com/MontFerret/cli/pkg/source"
+	"github.com/MontFerret/cli/v2/pkg/build"
+	"github.com/MontFerret/cli/v2/pkg/config"
+	"github.com/MontFerret/cli/v2/pkg/source"
 )
 
 func BuildCommand(store *config.Store) *cobra.Command {
