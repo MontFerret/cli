@@ -7,7 +7,6 @@ import (
 	"io"
 
 	"github.com/MontFerret/ferret/v2"
-	"github.com/MontFerret/ferret/v2/pkg/runtime"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
@@ -45,13 +44,7 @@ func (rt *Builtin) Version(_ context.Context) (string, error) {
 }
 
 func (rt *Builtin) Run(ctx context.Context, query *source.Source, params map[string]any) (io.ReadCloser, error) {
-	parsedParams, err := runtime.NewParamsFrom(params)
-
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := rt.engine.Run(ctx, query, ferret.WithSessionParams(parsedParams))
+	res, err := rt.engine.Run(ctx, query, ferret.WithSessionParams(params))
 
 	if err != nil {
 		return nil, err
@@ -61,12 +54,6 @@ func (rt *Builtin) Run(ctx context.Context, query *source.Source, params map[str
 }
 
 func (rt *Builtin) RunArtifact(ctx context.Context, data []byte, params map[string]any) (io.ReadCloser, error) {
-	parsedParams, err := runtime.NewParamsFrom(params)
-
-	if err != nil {
-		return nil, err
-	}
-
 	plan, err := rt.engine.Load(data)
 
 	if err != nil {
@@ -77,7 +64,7 @@ func (rt *Builtin) RunArtifact(ctx context.Context, data []byte, params map[stri
 		_ = plan.Close()
 	}()
 
-	session, err := plan.NewSession(ctx, ferret.WithSessionParams(parsedParams))
+	session, err := plan.NewSession(ctx, ferret.WithSessionParams(params))
 
 	if err != nil {
 		return nil, err
