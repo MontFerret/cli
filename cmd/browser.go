@@ -52,7 +52,7 @@ func BrowserCommand(store *config.Store) *cobra.Command {
 	openCmd.Flags().BoolP(config.BrowserDetach, "d", false, "Start browser in background and print process ID")
 	openCmd.Flags().Bool(config.BrowserHeadless, false, "Start browser in headless mode")
 	openCmd.Flags().Uint64P(config.BrowserPort, "p", 9222, "Browser remote debugging port")
-	openCmd.Flags().String(config.BrowserUserDir, "", "Browser user directory")
+	openCmd.Flags().String(config.BrowserUserDir, "", "Browser user directory (defaults to .ferret-browser in the current working directory)")
 
 	closeCmd := &cobra.Command{
 		Use:   "close",

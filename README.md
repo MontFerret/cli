@@ -357,7 +357,7 @@ Values are resolved in this order (highest to lowest):
 ### Starting a Browser Instance
 
 ```bash
-# Open a new browser instance
+# Open a new browser instance (uses ./.ferret-browser by default)
 ferret browser open
 
 # Open in headless mode
@@ -378,7 +378,9 @@ ferret browser open --user-dir /tmp/ferret-profile
 | `--detach` | `-d` | Start in background, print PID | `false` |
 | `--headless` | | Launch in headless mode | `false` |
 | `--port` | `-p` | Remote debugging port | `9222` |
-| `--user-dir` | | Browser user data directory | |
+| `--user-dir` | | Browser user data directory | `<cwd>/.ferret-browser` |
+
+If `--user-dir` is omitted, Ferret launches Chrome with a profile under `.ferret-browser` in the current working directory. The same default applies when Ferret opens a managed browser for `run` or `repl`.
 
 ### Closing Browser Instances
 

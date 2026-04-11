@@ -21,7 +21,13 @@ func (b *LinuxBrowser) Open(ctx context.Context) (uint64, error) {
 		return 0, err
 	}
 
-	pid, detached, err := openProcess(ctx, path, b.opts.ToFlags(), b.opts.Detach)
+	flags, err := b.opts.ToFlags()
+
+	if err != nil {
+		return 0, err
+	}
+
+	pid, detached, err := openProcess(ctx, path, flags, b.opts.Detach)
 
 	if err != nil || !detached {
 		return 0, err
@@ -31,7 +37,13 @@ func (b *LinuxBrowser) Open(ctx context.Context) (uint64, error) {
 }
 
 func (b *LinuxBrowser) Close(ctx context.Context, pid uint64) error {
-	targetCmd := strings.Join(b.opts.ToFlags(), " ")
+	flags, err := b.opts.ToFlags()
+
+	if err != nil {
+		return err
+	}
+
+	targetCmd := strings.Join(flags, " ")
 
 	return closePosixProcess(ctx, pid, targetCmd, strings.HasSuffix)
 }

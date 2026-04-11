@@ -1,6 +1,8 @@
 package browser
 
 import (
+	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -30,10 +32,16 @@ func TestOptions_ToURL_CustomAddress(t *testing.T) {
 func TestOptions_ToFlags_Headless(t *testing.T) {
 	opts := Options{
 		Headless: true,
+		UserDir:  "/tmp/chrome",
 		Port:     9222,
 	}
 
-	flags := opts.ToFlags()
+	flags, err := opts.ToFlags()
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
 	joined := strings.Join(flags, " ")
 
 	if !strings.Contains(joined, "--headless") {
@@ -51,7 +59,12 @@ func TestOptions_ToFlags_UserDir(t *testing.T) {
 		Port:    9222,
 	}
 
-	flags := opts.ToFlags()
+	flags, err := opts.ToFlags()
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
 	joined := strings.Join(flags, " ")
 
 	if !strings.Contains(joined, "--user-data-dir=/tmp/chrome") {
@@ -59,12 +72,70 @@ func TestOptions_ToFlags_UserDir(t *testing.T) {
 	}
 }
 
-func TestOptions_ToFlags_NoHeadless(t *testing.T) {
-	opts := Options{
-		Port: 9222,
+func TestOptions_ToFlags_DefaultUserDir(t *testing.T) {
+	wd := t.TempDir()
+	t.Chdir(wd)
+
+	flags, err := (Options{Port: 9222}).ToFlags()
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
 	}
 
-	flags := opts.ToFlags()
+	expected := filepath.Join(wd, defaultUserDir)
+	joined := strings.Join(flags, " ")
+
+	if !strings.Contains(joined, "--user-data-dir="+expected) {
+		t.Errorf("expected --user-data-dir=%s in %q", expected, joined)
+	}
+}
+
+func TestOptions_ToFlags_PreservesExplicitUserDir(t *testing.T) {
+	flags, err := (Options{UserDir: "/tmp/chrome"}).ToFlags()
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	joined := strings.Join(flags, " ")
+
+	if !strings.Contains(joined, "--user-data-dir=/tmp/chrome") {
+		t.Fatalf("expected explicit user dir to be preserved, got %q", joined)
+	}
+}
+
+func TestOptions_ToFlags_GetwdError(t *testing.T) {
+	prev := getwd
+	getwd = func() (string, error) {
+		return "", errors.New("boom")
+	}
+	t.Cleanup(func() {
+		getwd = prev
+	})
+
+	_, err := (Options{}).ToFlags()
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if !strings.Contains(err.Error(), "resolve browser user data dir") {
+		t.Fatalf("expected wrapped error, got %v", err)
+	}
+}
+
+func TestOptions_ToFlags_NoHeadless(t *testing.T) {
+	opts := Options{
+		UserDir: "/tmp/chrome",
+		Port:    9222,
+	}
+
+	flags, err := opts.ToFlags()
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
 	joined := strings.Join(flags, " ")
 
 	if strings.Contains(joined, "--headless") {
@@ -75,10 +146,16 @@ func TestOptions_ToFlags_NoHeadless(t *testing.T) {
 func TestOptions_ToFlags_RemoteAddress(t *testing.T) {
 	opts := Options{
 		Address: "192.168.1.1",
+		UserDir: "/tmp/chrome",
 		Port:    9222,
 	}
 
-	flags := opts.ToFlags()
+	flags, err := opts.ToFlags()
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
 	joined := strings.Join(flags, " ")
 
 	if !strings.Contains(joined, "--remote-debugging-address=192.168.1.1") {

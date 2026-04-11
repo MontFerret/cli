@@ -25,11 +25,17 @@ func (b *WindowsBrowser) Open(ctx context.Context) (uint64, error) {
 		return 0, err
 	}
 
+	flags, err := b.opts.ToFlags()
+
+	if err != nil {
+		return 0, err
+	}
+
 	args := []string{
 		"(",
 		"Start-Process",
 		"-FilePath", fmt.Sprintf("'%s'", path),
-		"-ArgumentList", strings.Join(b.opts.ToFlags(), ","),
+		"-ArgumentList", strings.Join(flags, ","),
 		"-PassThru",
 		").ID",
 	}
@@ -70,7 +76,13 @@ func (b *WindowsBrowser) Close(ctx context.Context, pid uint64) error {
 		return err
 	}
 
-	opts := strings.Join(b.opts.ToFlags(), " ")
+	flags, err := b.opts.ToFlags()
+
+	if err != nil {
+		return err
+	}
+
+	opts := strings.Join(flags, " ")
 	psOut, err := exec.Command("WMIC", "path", "win32_process", "get", "Caption,Processid,Commandline").Output()
 
 	if err != nil {

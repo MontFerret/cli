@@ -23,7 +23,13 @@ func (b *DarwinBrowser) Open(ctx context.Context) (uint64, error) {
 		return 0, err
 	}
 
-	pid, detached, err := openProcess(ctx, path, b.opts.ToFlags(), b.opts.Detach)
+	flags, err := b.opts.ToFlags()
+
+	if err != nil {
+		return 0, err
+	}
+
+	pid, detached, err := openProcess(ctx, path, flags, b.opts.Detach)
 
 	if err != nil || !detached {
 		return 0, err
@@ -39,7 +45,13 @@ func (b *DarwinBrowser) Close(ctx context.Context, pid uint64) error {
 		return err
 	}
 
-	targetCmd := fmt.Sprintf("%s %s", binaryPath, strings.Join(b.opts.ToFlags(), " "))
+	flags, err := b.opts.ToFlags()
+
+	if err != nil {
+		return err
+	}
+
+	targetCmd := fmt.Sprintf("%s %s", binaryPath, strings.Join(flags, " "))
 
 	return closePosixProcess(ctx, pid, targetCmd, strings.HasPrefix)
 }

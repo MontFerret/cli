@@ -1,6 +1,14 @@
 package browser
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
+const defaultUserDir = ".ferret-browser"
+
+var getwd = os.Getwd
 
 type Options struct {
 	Detach   bool
@@ -29,16 +37,26 @@ func (opts Options) ToURL() string {
 	return fmt.Sprintf("%s:%d", url, opts.Port)
 }
 
-func (opts Options) ToFlags() []string {
+func (opts Options) ToFlags() ([]string, error) {
 	flags := make([]string, 0, len(headlessFlags)+5)
 
 	if opts.Headless {
 		flags = append(flags, headlessFlags...)
 	}
 
-	if opts.UserDir != "" {
-		flags = append(flags, fmt.Sprintf("--user-data-dir=%s", opts.UserDir))
+	userDir := opts.UserDir
+
+	if userDir == "" {
+		cwd, err := getwd()
+
+		if err != nil {
+			return nil, fmt.Errorf("resolve browser user data dir: %w", err)
+		}
+
+		userDir = filepath.Join(cwd, defaultUserDir)
 	}
+
+	flags = append(flags, fmt.Sprintf("--user-data-dir=%s", userDir))
 
 	if opts.Address != "" {
 		flags = append(flags, fmt.Sprintf("--remote-debugging-address=%s", opts.Address))
@@ -46,5 +64,5 @@ func (opts Options) ToFlags() []string {
 
 	flags = append(flags, fmt.Sprintf("--remote-debugging-port=%d", opts.Port))
 
-	return flags
+	return flags, nil
 }
