@@ -3,7 +3,7 @@ package runtime
 import (
 	"github.com/MontFerret/contrib/modules/web/html/drivers"
 	"github.com/MontFerret/contrib/modules/web/html/drivers/cdp"
-	"github.com/MontFerret/contrib/modules/web/html/drivers/http"
+	"github.com/MontFerret/contrib/modules/web/html/drivers/memory"
 )
 
 type Options struct {
@@ -33,19 +33,19 @@ func NewDefaultOptions() Options {
 	}
 }
 
-func (opts *Options) ToInMemory() []http.Option {
-	result := make([]http.Option, 0, 4)
+func (opts *Options) ToInMemory() []memory.Option {
+	result := make([]memory.Option, 0, 4)
 
 	if opts.Proxy != "" {
-		result = append(result, http.WithProxy(opts.Proxy))
+		result = append(result, memory.WithProxy(opts.Proxy))
 	}
 
 	if opts.UserAgent != "" {
-		result = append(result, http.WithUserAgent(opts.UserAgent))
+		result = append(result, memory.WithUserAgent(opts.UserAgent))
 	}
 
 	if opts.Headers != nil {
-		result = append(result, http.WithHeaders(opts.Headers))
+		result = append(result, memory.WithHeaders(opts.Headers))
 	}
 
 	if opts.Cookies != nil {
@@ -55,7 +55,7 @@ func (opts *Options) ToInMemory() []http.Option {
 			cookies = append(cookies, cookie)
 		}
 
-		result = append(result, http.WithCookies(cookies))
+		result = append(result, memory.WithCookies(cookies))
 	}
 
 	return result
