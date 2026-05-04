@@ -3,23 +3,23 @@ module github.com/MontFerret/cli/v2
 go 1.26.1
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/MontFerret/contrib/modules/csv v0.0.0-20260401140623-49c476b0b6da
-	github.com/MontFerret/contrib/modules/toml v0.0.0-20260401140623-49c476b0b6da
-	github.com/MontFerret/contrib/modules/web/article v0.0.0-20260401140623-49c476b0b6da
-	github.com/MontFerret/contrib/modules/web/html v0.0.0-20260401140623-49c476b0b6da
-	github.com/MontFerret/contrib/modules/web/robots v0.0.0-20260401140623-49c476b0b6da
-	github.com/MontFerret/contrib/modules/web/sitemap v0.0.0-20260401140623-49c476b0b6da
-	github.com/MontFerret/contrib/modules/xml v0.0.0-20260401140623-49c476b0b6da
-	github.com/MontFerret/contrib/modules/yaml v0.0.0-20260401140623-49c476b0b6da
-	github.com/MontFerret/ferret/v2 v2.0.0-alpha.8
+	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.1
+	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.1
+	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.1
+	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.1
+	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.1
+	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.1
+	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.1
+	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.1
+	github.com/MontFerret/ferret/v2 v2.0.0-alpha.13
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
 	github.com/go-waitfor/waitfor-http v1.1.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.35.0
+	github.com/rs/zerolog v1.35.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
