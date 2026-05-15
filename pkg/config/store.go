@@ -86,11 +86,21 @@ func (s *Store) GetLoggerOptions() logger.Options {
 		opts.Level = logger.ToLevel(s.v.GetString(LoggerLevel))
 	}
 
+	if s.v.IsSet(LoggerOutput) {
+		opts.LogOutput = s.v.GetString(LoggerOutput)
+		opts.LogOutputSet = true
+	}
+
+	if s.v.IsSet(LoggerFile) {
+		opts.LogFilename = s.v.GetString(LoggerFile)
+	}
+
 	return opts
 }
 
 func (s *Store) GetRuntimeOptions() runtime.Options {
 	opts := runtime.NewDefaultOptions()
+	opts.Logger = s.GetLoggerOptions()
 
 	if s.v.IsSet(ExecRuntime) {
 		opts.Type = s.v.GetString(ExecRuntime)

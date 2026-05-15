@@ -21,6 +21,8 @@ func Start(ctx context.Context, opts runtime.Options, params map[string]interfac
 		return err
 	}
 
+	defer rt.Close()
+
 	version, err := rt.Version(ctx)
 
 	if err != nil {

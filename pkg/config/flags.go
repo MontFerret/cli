@@ -3,7 +3,9 @@ package config
 import "strings"
 
 const (
-	LoggerLevel = "log-level"
+	LoggerLevel  = "log-level"
+	LoggerOutput = "log-output"
+	LoggerFile   = "log-file"
 
 	ExecRuntime             = "runtime"
 	ExecRuntimeFSRoot       = "runtime-fs-root"
@@ -22,6 +24,8 @@ const (
 
 var Flags = []string{
 	LoggerLevel,
+	LoggerOutput,
+	LoggerFile,
 	ExecRuntime,
 	ExecRuntimeFSRoot,
 	ExecKeepCookies,

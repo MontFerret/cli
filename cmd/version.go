@@ -35,6 +35,8 @@ func runVersion(cmd *cobra.Command, store *config.Store) error {
 		return err
 	}
 
+	defer rt.Close()
+
 	ver, err := rt.Version(cmd.Context())
 
 	if err != nil {

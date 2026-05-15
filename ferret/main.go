@@ -46,6 +46,8 @@ func main() {
 
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.PersistentFlags().StringP(config.LoggerLevel, "l", zerolog.InfoLevel.String(), fmt.Sprintf("Set the logging level (%s)", logger.LevelsFmt()))
+	rootCmd.PersistentFlags().String(config.LoggerOutput, logger.OutputStderr, fmt.Sprintf("Set the query execution log output (%s)", logger.OutputsFmt()))
+	rootCmd.PersistentFlags().String(config.LoggerFile, "ferret.log", "Set the query execution log file path when --log-output=file")
 
 	rootCmd.AddCommand(
 		cmd.VersionCommand(store),

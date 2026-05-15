@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -15,9 +16,16 @@ type Runtime interface {
 
 	Run(ctx context.Context, query *source.Source, params map[string]any) (io.ReadCloser, error)
 	RunArtifact(ctx context.Context, data []byte, params map[string]any) (io.ReadCloser, error)
+	Close() error
 }
 
 func New(opts Options) (Runtime, error) {
+	opts = NormalizeOptions(opts)
+
+	if err := ValidateOptions(opts); err != nil {
+		return nil, err
+	}
+
 	name := normalizeRuntimeType(opts.Type)
 
 	if IsBuiltinType(name) {
@@ -33,22 +41,34 @@ func New(opts Options) (Runtime, error) {
 	return NewRemote(*u, opts), nil
 }
 
-func Run(ctx context.Context, opts Options, query *source.Source, params map[string]any) (io.ReadCloser, error) {
+func Run(ctx context.Context, opts Options, query *source.Source, params map[string]any) (out io.ReadCloser, err error) {
 	rt, err := New(opts)
 
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if closeErr := rt.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close runtime: %w", closeErr))
+		}
+	}()
 
 	return rt.Run(ctx, query, params)
 }
 
-func RunArtifact(ctx context.Context, opts Options, data []byte, params map[string]any) (io.ReadCloser, error) {
+func RunArtifact(ctx context.Context, opts Options, data []byte, params map[string]any) (out io.ReadCloser, err error) {
 	rt, err := New(opts)
 
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if closeErr := rt.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close runtime: %w", closeErr))
+		}
+	}()
 
 	return rt.RunArtifact(ctx, data, params)
 }
