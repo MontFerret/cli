@@ -83,6 +83,10 @@ func (rt *Remote) RunArtifact(_ context.Context, _ []byte, _ map[string]any) (io
 	return nil, ErrArtifactRequiresBuiltinRuntime
 }
 
+func (rt *Remote) Close() error {
+	return nil
+}
+
 func (rt *Remote) createRequest(ctx context.Context, method, endpoint string, body []byte) (*http.Request, error) {
 	var reader io.Reader
 

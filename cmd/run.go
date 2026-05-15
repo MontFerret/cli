@@ -68,6 +68,10 @@ func executeRun(cmd *cobra.Command, rtOpts cliruntime.Options, brOpts browser.Op
 		return cmd.Help()
 	}
 
+	if err := cliruntime.ValidateOptions(rtOpts); err != nil {
+		return err
+	}
+
 	if len(input.Artifact) > 0 && !cliruntime.IsBuiltinType(rtOpts.Type) {
 		return cliruntime.ErrArtifactRequiresBuiltinRuntime
 	}

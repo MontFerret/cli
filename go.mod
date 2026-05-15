@@ -7,7 +7,7 @@ require (
 	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.1
 	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.1
 	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.1
-	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.1
+	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.2
 	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.1
 	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.1
 	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.1
@@ -32,7 +32,7 @@ require (
 	github.com/MontFerret/cssx v0.2.0 // indirect
 	github.com/PuerkitoBio/goquery v1.12.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
-	github.com/antchfx/htmlquery v1.3.5 // indirect
+	github.com/antchfx/htmlquery v1.3.6 // indirect
 	github.com/antchfx/xpath v1.3.6 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
@@ -49,7 +49,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mafredri/cdp v0.35.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
@@ -63,9 +63,9 @@ require (
 	github.com/wI2L/jettison v0.7.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
-	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )

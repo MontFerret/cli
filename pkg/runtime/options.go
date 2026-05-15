@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"github.com/MontFerret/cli/v2/pkg/logger"
 	"github.com/MontFerret/contrib/modules/web/html/drivers"
 	"github.com/MontFerret/contrib/modules/web/html/drivers/cdp"
 	"github.com/MontFerret/contrib/modules/web/html/drivers/memory"
@@ -17,6 +18,7 @@ type Options struct {
 	WithBrowser         bool
 	WithHeadlessBrowser bool
 	FileSystemRoot      string
+	Logger              logger.Options
 }
 
 func NewDefaultOptions() Options {
@@ -30,7 +32,20 @@ func NewDefaultOptions() Options {
 		KeepCookies:         false,
 		WithBrowser:         false,
 		WithHeadlessBrowser: false,
+		Logger:              logger.NewDefaultOptions(),
 	}
+}
+
+func ValidateOptions(opts Options) error {
+	opts = NormalizeOptions(opts)
+
+	return opts.Logger.Validate()
+}
+
+func NormalizeOptions(opts Options) Options {
+	opts.Logger = logger.NormalizeOptions(opts.Logger)
+
+	return opts
 }
 
 func (opts *Options) ToInMemory() []memory.Option {

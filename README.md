@@ -201,7 +201,9 @@ Available Commands:
 
 Flags:
   -h, --help               help for ferret
-  -l, --log-level string   Set the logging level ("debug"|"info"|"warn"|"error"|"fatal") (default "info")
+      --log-file string    Set the query execution log file path when --log-output=file (default "ferret.log")
+  -l, --log-level string   Set the logging level ("trace"|"debug"|"info"|"warn"|"error"|"fatal") (default "info")
+      --log-output string  Set the query execution log output ("stderr"|"file"|"none") (default "stderr")
 
 Use "ferret [command] --help" for more information about a command.
 ```
@@ -344,6 +346,8 @@ Values are resolved in this order (highest to lowest):
 | Key | Description | Default |
 |-----|-------------|---------|
 | `log-level` | Logging level | `info` |
+| `log-output` | Query execution log output (`stderr`, `file`, or `none`) | `stderr` |
+| `log-file` | Query execution log file path when `log-output` is `file` | `ferret.log` |
 | `runtime` | Runtime type (`builtin` or a remote URL) | `builtin` |
 | `browser-address` | Chrome DevTools Protocol address | `http://127.0.0.1:9222` |
 | `browser-cookies` | Keep cookies between queries | `false` |
@@ -609,8 +613,11 @@ FOR i IN RANGE(0, LENGTH(items), batchSize)
 Enable debug logging for troubleshooting:
 
 ```bash
-ferret run --log-level debug my-script.fql
+ferret run --log-level debug --log-output stderr my-script.fql
+ferret run --log-level debug --log-output file --log-file ferret.log my-script.fql
 ```
+
+Query execution logs are emitted only for the builtin runtime. Remote workers return the query response body through the current HTTP API and do not stream execution logs back to the CLI.
 
 ### Performance Tips
 

@@ -9,6 +9,7 @@ import (
 
 func Levels() []string {
 	return []string{
+		zerolog.TraceLevel.String(),
 		zerolog.DebugLevel.String(),
 		zerolog.InfoLevel.String(),
 		zerolog.WarnLevel.String(),
