@@ -4,15 +4,15 @@ go 1.26.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.1
-	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.1
-	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.1
-	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.2
-	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.1
-	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.1
-	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.1
-	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.1
-	github.com/MontFerret/ferret/v2 v2.0.0-alpha.16
+	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.2
+	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.2
+	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.2
+	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.3
+	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.2
+	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.2
+	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.2
+	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.2
+	github.com/MontFerret/ferret/v2 v2.0.0-alpha.17
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
 	github.com/go-waitfor/waitfor-http v1.1.0
@@ -65,7 +65,7 @@ require (
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
 	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
