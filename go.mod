@@ -4,15 +4,15 @@ go 1.26.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.2
-	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.2
-	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.3
-	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.4
-	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.2
-	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.2
-	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.2
-	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.2
-	github.com/MontFerret/ferret/v2 v2.0.0-alpha.19
+	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.3
+	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.3
+	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.4
+	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.5
+	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.3
+	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.3
+	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.3
+	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.3
+	github.com/MontFerret/ferret/v2 v2.0.0-alpha.20
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
 	github.com/go-waitfor/waitfor-http v1.1.0
