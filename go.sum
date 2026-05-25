@@ -28,6 +28,8 @@ github.com/MontFerret/ferret/v2 v2.0.0-alpha.17 h1:Hy94ku7qRCeSIHfnjIN0qkTrc00oN
 github.com/MontFerret/ferret/v2 v2.0.0-alpha.17/go.mod h1:xnhO/65Sa17LSRC8GLIO51JZ4Wm08JjEtmowGVut4z0=
 github.com/MontFerret/ferret/v2 v2.0.0-alpha.18 h1:fgDAMzQ7j7ro8SgTDgdhUWNRpRdu85QPfTtPalesSBA=
 github.com/MontFerret/ferret/v2 v2.0.0-alpha.18/go.mod h1:xnhO/65Sa17LSRC8GLIO51JZ4Wm08JjEtmowGVut4z0=
+github.com/MontFerret/ferret/v2 v2.0.0-alpha.19 h1:iOcTcVD1ZUOvmD6Yw5VlaRsNHRfXpiC9BjdkEA+oMjQ=
+github.com/MontFerret/ferret/v2 v2.0.0-alpha.19/go.mod h1:xnhO/65Sa17LSRC8GLIO51JZ4Wm08JjEtmowGVut4z0=
 github.com/PuerkitoBio/goquery v1.12.0 h1:pAcL4g3WRXekcB9AU/y1mbKez2dbY2AajVhtkO8RIBo=
 github.com/PuerkitoBio/goquery v1.12.0/go.mod h1:802ej+gV2y7bbIhOIoPY5sT183ZW0YFofScC4q/hIpQ=
 github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kktS1LM=
