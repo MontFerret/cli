@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-
-	"github.com/MontFerret/ferret/v2/pkg/runtime"
 )
 
 const paramFlag = "param"
@@ -14,23 +12,36 @@ func parseParams(flags []string) (map[string]interface{}, error) {
 	res := make(map[string]interface{})
 
 	for _, entry := range flags {
-		pair := strings.SplitN(entry, ":", 2)
-
-		if len(pair) < 2 {
-			return nil, runtime.Error(runtime.ErrInvalidArgument, entry)
-		}
-
-		var value interface{}
-		key := pair[0]
-
-		err := json.Unmarshal([]byte(pair[1]), &value)
-
+		key, value, err := parseParam(entry)
 		if err != nil {
-			return nil, fmt.Errorf("invalid value for parameter %q: %w", key, err)
+			return nil, err
 		}
 
 		res[key] = value
 	}
 
 	return res, nil
+}
+
+func parseParam(input string) (string, any, error) {
+	name, raw, ok := strings.Cut(input, "=")
+	if !ok {
+		name, raw, ok = strings.Cut(input, ":")
+	}
+
+	if !ok {
+		return "", nil, fmt.Errorf("invalid param %q: expected name=value", input)
+	}
+
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", nil, fmt.Errorf("invalid param %q: parameter name cannot be empty", input)
+	}
+
+	var value any
+	if err := json.Unmarshal([]byte(raw), &value); err == nil {
+		return name, value, nil
+	}
+
+	return name, raw, nil
 }

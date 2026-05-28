@@ -19,7 +19,7 @@ func addRuntimeFlags(cmd *cobra.Command) {
 }
 
 func addParamFlags(cmd *cobra.Command) {
-	cmd.Flags().StringArrayP(paramFlag, "p", []string{}, "Query bind parameter (--param=foo:\"bar\", --param=id:1)")
+	cmd.Flags().StringArrayP(paramFlag, "p", []string{}, "Runtime parameter as name=value. Values parse as JSON when possible, otherwise strings. Examples: --param name=Steve, --param age=42, --param active=true, --param tags='[\"admin\",\"editor\"]', --param user='{\"name\":\"Ada\"}', --param code='\"123\"'")
 }
 
 func addEvalFlag(cmd *cobra.Command) {
