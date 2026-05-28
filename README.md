@@ -153,7 +153,18 @@ RETURN ELEMENTS(page, ".result-item")
 Pass dynamic values to your scripts:
 
 ```bash
-ferret run -p 'url:"https://example.com"' -p 'limit:10' my-script.fql
+ferret run --param url=https://example.com --param limit=10 my-script.fql
+```
+
+Parameter values are parsed as JSON when possible; otherwise they are passed as strings. Use JSON string syntax when a value looks like another JSON type but should stay a string:
+
+```bash
+ferret run hello.fql --param name=Steve
+ferret run hello.fql --param age=42
+ferret run hello.fql --param active=true
+ferret run hello.fql --param tags='["admin","editor"]'
+ferret run hello.fql --param user='{"name":"Ada"}'
+ferret run hello.fql --param code='"123"'
 ```
 
 Use parameters in your FQL script:
@@ -226,7 +237,7 @@ ferret exec [script]   # alias
 | `--browser-open` | `-B` | Open a visible browser for execution | `false` |
 | `--browser-headless` | `-b` | Open a headless browser for execution | `false` |
 | `--browser-cookies` | `-c` | Keep cookies between queries | `false` |
-| `--param` | `-p` | Query parameter (`key:value`, repeatable) | |
+| `--param` | `-p` | Runtime parameter (`name=value`, repeatable; values parse as JSON when possible, otherwise strings) | |
 | `--eval` | `-e` | Inline FQL expression (cannot be used with file args) | |
 
 Compiled artifacts are auto-detected by content for file inputs and piped stdin, so artifacts produced by `ferret build` work even when they do not use a `.fqlc` filename. Artifact execution currently requires the builtin runtime.
