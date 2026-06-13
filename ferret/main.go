@@ -53,6 +53,7 @@ func main() {
 		cmd.VersionCommand(store),
 		cmd.ConfigCommand(store),
 		cmd.RunCommand(store),
+		cmd.DebugCommand(store),
 		cmd.ReplCommand(store),
 		cmd.FormatCommand(store),
 		cmd.CheckCommand(store),

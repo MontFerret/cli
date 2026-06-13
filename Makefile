@@ -25,7 +25,7 @@ test:
 
 fmt:
 	go fmt ./... && \
-	goimports -w -local github.com/MontFerret ./pkg/browser ./cmd ./pkg/config ./ferret ./pkg/logger ./pkg/repl ./pkg/runtime
+	goimports -w -local github.com/MontFerret ./pkg/browser ./cmd ./internal/debugcli ./pkg/config ./ferret ./pkg/logger ./pkg/repl ./pkg/runtime
 
 lint:
 	staticcheck ./... && \
