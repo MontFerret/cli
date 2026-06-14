@@ -1,4 +1,4 @@
-package debugcli
+package debugger
 
 import (
 	"context"
@@ -23,6 +23,7 @@ func Start(ctx context.Context, session Session, src *source.Source) error {
 		Stdout:          os.Stdout,
 		Stderr:          os.Stderr,
 	})
+
 	if err != nil {
 		return errors.Join(err, session.Close())
 	}
@@ -43,32 +44,39 @@ func Run(ctx context.Context, session Session, src *source.Source, input LineRea
 	if err != nil {
 		return err
 	}
+
 	renderer.Event(event)
 	fmt.Fprintln(out, `Type "help" for available commands.`)
 
 	for {
 		line, readErr := input.Readline()
+
 		if errors.Is(readErr, readline.ErrInterrupt) {
 			continue
 		}
+
 		if errors.Is(readErr, io.EOF) {
 			fmt.Fprintln(out, "Debug session terminated.")
 			return nil
 		}
+
 		if readErr != nil {
 			return readErr
 		}
 
 		command, parseErr := ParseCommand(line)
+
 		if parseErr != nil {
 			fmt.Fprintln(out, parseErr)
 			continue
 		}
+
 		if command.Name == CommandEmpty {
 			continue
 		}
 
 		quit := executeCommand(ctx, session, src.Name(), renderer, command)
+
 		if quit {
 			fmt.Fprintln(out, "Debug session terminated.")
 			return nil
@@ -82,10 +90,13 @@ func executeCommand(ctx context.Context, session Session, mainFile string, rende
 		renderer.Help()
 	case CommandBreak:
 		location := command.Location
+
 		if location.File == "" {
 			location.File = mainFile
 		}
+
 		breakpoint, err := session.SetBreakpointAt(location, command.BreakpointOptions)
+
 		if err != nil {
 			renderer.Error("Breakpoint error", err)
 		} else {
@@ -123,6 +134,7 @@ func executeCommand(ctx context.Context, session Session, mainFile string, rende
 		}
 	case CommandWhere:
 		frames, err := session.Frames()
+
 		if err != nil {
 			renderer.Error("Stack error", err)
 		} else {
@@ -130,6 +142,7 @@ func executeCommand(ctx context.Context, session Session, mainFile string, rende
 		}
 	case CommandLocals:
 		locals, err := session.Locals()
+
 		if err != nil {
 			renderer.Error("Locals error", err)
 		} else {
@@ -137,6 +150,7 @@ func executeCommand(ctx context.Context, session Session, mainFile string, rende
 		}
 	case CommandPrint:
 		value, err := session.Evaluate(ctx, command.Argument)
+
 		if err != nil {
 			renderer.Error("Evaluation error", err)
 		} else {
@@ -154,5 +168,6 @@ func renderResume(event *ferret.DebugEvent, err error, renderer *Renderer) {
 		renderer.Error("Debugger error", err)
 		return
 	}
+
 	renderer.Event(event)
 }

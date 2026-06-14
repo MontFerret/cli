@@ -1,4 +1,4 @@
-package debugcli
+package debugger
 
 import (
 	"fmt"
@@ -65,6 +65,7 @@ func (r *Renderer) Event(event *ferret.DebugEvent) {
 		default:
 			fmt.Fprintf(r.out, "Paused on breakpoints %s at %s\n", formatBreakpointIDs(event.HitBreakpointIDs), formatLocation(event.Location))
 		}
+
 		r.snippet(event.Location)
 	case ferret.DebugReasonStep:
 		fmt.Fprintf(r.out, "Paused after step at %s\n", formatLocation(event.Location))
@@ -92,6 +93,7 @@ func (r *Renderer) Event(event *ferret.DebugEvent) {
 func (r *Renderer) BreakpointSet(breakpoint ferret.DebugBreakpoint) {
 	requested := formatSourceLocation(breakpoint.File, breakpoint.RequestedLine, breakpoint.RequestedColumn)
 	mode := formatBindingMode(breakpoint.BindingMode)
+
 	if !breakpoint.Bound {
 		fmt.Fprintf(r.out, "Breakpoint %d could not be bound at %s (%s).\n", breakpoint.ID, requested, mode)
 		return
@@ -102,6 +104,7 @@ func (r *Renderer) BreakpointSet(breakpoint ferret.DebugBreakpoint) {
 		fmt.Fprintf(r.out, "Breakpoint %d set at %s (%s).\n", breakpoint.ID, bound, mode)
 		return
 	}
+
 	fmt.Fprintf(r.out, "Breakpoint %d set at %s (requested %s, %s).\n", breakpoint.ID, bound, requested, mode)
 }
 
@@ -118,10 +121,12 @@ func (r *Renderer) Breakpoints(breakpoints []ferret.DebugBreakpoint) {
 		requested := formatSourceLocation(breakpoint.File, breakpoint.RequestedLine, breakpoint.RequestedColumn)
 		bound := "-"
 		state := "unbound"
+
 		if breakpoint.Bound {
 			bound = formatSourceLocation(breakpoint.File, breakpoint.Line, breakpoint.Column)
 			state = "bound"
 		}
+
 		fmt.Fprintf(table, "%d\t%s\t%s\t%s\t%s\n", breakpoint.ID, requested, bound, formatBindingMode(breakpoint.BindingMode), state)
 	}
 
@@ -142,6 +147,7 @@ func (r *Renderer) Frames(frames []ferret.DebugFrame) {
 func (r *Renderer) Locals(variables []ferret.DebugVariable) {
 	locals := make([]ferret.DebugVariable, 0, len(variables))
 	params := make([]ferret.DebugVariable, 0, len(variables))
+
 	for _, variable := range variables {
 		if variable.Param {
 			params = append(params, variable)
@@ -159,6 +165,7 @@ func (r *Renderer) Locals(variables []ferret.DebugVariable) {
 		fmt.Fprintln(r.out, "Locals:")
 		renderVariables(r.out, locals)
 	}
+
 	if len(params) > 0 {
 		fmt.Fprintln(r.out, "Params:")
 		renderVariables(r.out, params)
@@ -173,6 +180,7 @@ func (r *Renderer) Error(prefix string, err error) {
 	if err == nil {
 		return
 	}
+
 	fmt.Fprintf(r.out, "%s: %s\n", prefix, err)
 }
 
@@ -194,9 +202,11 @@ func (r *Renderer) snippet(location ferret.DebugLocation) {
 
 		lineNumber := strconv.Itoa(snippet.Line)
 		fmt.Fprintf(r.out, "%s | %s\n", lineNumber, snippet.Text)
+
 		if snippet.Caret != "" {
 			fmt.Fprintf(r.out, "%s%s\n", strings.Repeat(" ", len(lineNumber)+3), snippet.Caret)
 		}
+
 		return
 	}
 }
@@ -209,9 +219,11 @@ func renderVariables(out io.Writer, variables []ferret.DebugVariable) {
 
 func formatBreakpointIDs(ids []ferret.DebugBreakpointID) string {
 	values := make([]string, 0, len(ids))
+
 	for _, id := range ids {
 		values = append(values, strconv.Itoa(int(id)))
 	}
+
 	return strings.Join(values, ", ")
 }
 
@@ -234,8 +246,10 @@ func formatLocation(location ferret.DebugLocation) string {
 	if location.Column > 0 {
 		return fmt.Sprintf("%s:%d:%d", location.File, location.Line, location.Column)
 	}
+
 	if location.Line > 0 {
 		return fmt.Sprintf("%s:%d", location.File, location.Line)
 	}
+
 	return location.File
 }

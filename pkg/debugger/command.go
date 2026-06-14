@@ -1,4 +1,4 @@
-package debugcli
+package debugger
 
 import (
 	"errors"
@@ -77,6 +77,7 @@ func ParseCommand(input string) (Command, error) {
 		if err != nil {
 			return Command{}, err
 		}
+
 		command.Location = location
 		command.BreakpointOptions = options
 	case CommandDelete:
@@ -84,6 +85,7 @@ func ParseCommand(input string) (Command, error) {
 		if err != nil {
 			return Command{}, err
 		}
+
 		command.BreakpointID = ferret.DebugBreakpointID(id)
 	case CommandPrint:
 		if argument == "" {
@@ -102,12 +104,14 @@ func parseBreakpoint(argument string) (ferret.DebugSourceLocation, ferret.DebugB
 	var location ferret.DebugSourceLocation
 	options := ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFile}
 	tokens := strings.Fields(argument)
+
 	if len(tokens) == 0 {
 		return location, options, errors.New(breakpointUsage)
 	}
 
 	locationText := ""
 	modeSet := false
+
 	for _, token := range tokens {
 		var mode ferret.DebugBreakpointBindingMode
 		switch token {
@@ -121,16 +125,20 @@ func parseBreakpoint(argument string) (ferret.DebugSourceLocation, ferret.DebugB
 			if strings.HasPrefix(token, "--") {
 				return location, options, fmt.Errorf("unknown break option: %s", token)
 			}
+
 			if locationText != "" {
 				return location, options, errors.New(breakpointUsage)
 			}
+
 			locationText = token
+
 			continue
 		}
 
 		if modeSet {
 			return location, options, errors.New("break binding options are mutually exclusive")
 		}
+
 		modeSet = true
 		options.BindingMode = mode
 	}
@@ -150,12 +158,15 @@ func parseBreakpoint(argument string) (ferret.DebugSourceLocation, ferret.DebugB
 func parseBreakpointLocation(value string) (ferret.DebugSourceLocation, error) {
 	var location ferret.DebugSourceLocation
 	lastColon := strings.LastIndex(value, ":")
+
 	if lastColon < 0 {
 		line, err := parsePositiveNumber(value, breakpointUsage)
 		if err != nil {
 			return location, err
 		}
+
 		location.Line = line
+
 		return location, nil
 	}
 
@@ -171,26 +182,33 @@ func parseBreakpointLocation(value string) (ferret.DebugSourceLocation, error) {
 
 	previousColon := strings.LastIndex(prefix, ":")
 	lineText := prefix
+
 	if previousColon >= 0 {
 		lineText = prefix[previousColon+1:]
 	}
+
 	if line, numeric, err := parseOptionalPositiveNumber(lineText); numeric {
 		if err != nil {
 			return location, errors.New(breakpointUsage)
 		}
+
 		location.Line = line
 		location.Column = last
+
 		if previousColon >= 0 {
 			location.File = prefix[:previousColon]
+
 			if location.File == "" {
 				return ferret.DebugSourceLocation{}, errors.New(breakpointUsage)
 			}
 		}
+
 		return location, nil
 	}
 
 	location.File = prefix
 	location.Line = last
+
 	return location, nil
 }
 
@@ -199,9 +217,11 @@ func parseOptionalPositiveNumber(value string) (int, bool, error) {
 	if err != nil {
 		return 0, false, nil
 	}
+
 	if number <= 0 {
 		return 0, true, errors.New("number must be positive")
 	}
+
 	return number, true, nil
 }
 

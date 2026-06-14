@@ -1,4 +1,4 @@
-package debugcli
+package debugger
 
 import (
 	"strings"

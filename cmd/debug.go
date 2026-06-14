@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/cli/v2/internal/debugcli"
 	"github.com/MontFerret/cli/v2/pkg/browser"
 	"github.com/MontFerret/cli/v2/pkg/config"
+	"github.com/MontFerret/cli/v2/pkg/debugger"
 	clirun "github.com/MontFerret/cli/v2/pkg/run"
 	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
 )
@@ -83,5 +83,5 @@ func executeDebug(cmd *cobra.Command, rtOpts cliruntime.Options, brOpts browser.
 		return err
 	}
 
-	return debugcli.Start(cmd.Context(), session, input.Source)
+	return debugger.Start(cmd.Context(), session, input.Source)
 }
