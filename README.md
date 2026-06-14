@@ -126,6 +126,12 @@ ferret run example.fql
 
 > **Note:** `exec` is an alias for `run` — both work interchangeably.
 
+Debug a local source script interactively:
+
+```bash
+ferret debug example.fql
+```
+
 ### Browser Automation
 
 For JavaScript-heavy sites, use browser automation:
@@ -203,6 +209,7 @@ Available Commands:
   build       Compile FQL scripts into bytecode artifacts
   check       Check FQL scripts for syntax and semantic errors
   config      Manage Ferret configs
+  debug       Debug a FQL script interactively
   fmt         Format FQL scripts
   inspect     Compile and disassemble a FQL script
   repl        Launch interactive FQL shell
@@ -241,6 +248,44 @@ ferret exec [script]   # alias
 | `--eval` | `-e` | Inline FQL expression (cannot be used with file args) | |
 
 Compiled artifacts are auto-detected by content for file inputs and piped stdin, so artifacts produced by `ferret build` work even when they do not use a `.fqlc` filename. Artifact execution currently requires the builtin runtime.
+
+### debug
+
+Launch the local source-level debugger for one FQL script:
+
+```bash
+ferret debug example.fql
+ferret debug example.fql --param limit=10
+```
+
+The debugger accepts the same runtime, browser, and repeatable `--param name=value` flags as `run`, but currently requires the builtin runtime and a source file.
+
+```
+Commands:
+  break <location>               Set at next executable location in file
+  break --exact <location>       Set only at the exact executable location
+  break --next <location>        Set at next executable location in file
+  break --in-function <location> Set at next executable location in function
+  breakpoints                    List breakpoints
+  delete <id>                    Delete breakpoint
+  continue                       Resume execution
+  step                           Step into next source location
+  next                           Step over current source location
+  out                            Step out of current frame
+  pause                          Pause at the next source location
+  where                          Show stack trace
+  locals                         Show local variables
+  print <expr>                   Evaluate a safe debug expression
+  quit                           Stop debugging and exit
+```
+
+Breakpoint locations may be written as `12`, `12:4`, `file.fql:12`, or `file.fql:12:4`. The default and `--next` modes bind to the next executable location in the file; `--exact` requires an exact executable location, and `--in-function` stays within the current function context.
+
+`print` uses the conservative debugger evaluator. It supports locals, parameters, literals, member access, scalar arithmetic and comparisons, boolean logic, and conditionals. It does not execute function calls, queries, mutation, asynchronous behavior, or full collection expressions.
+
+Aliases: `b` = `break`, `c` = `continue`, `s` = `step`, `n` = `next`, `bt` = `where`, `p` = `print`, and `q` = `quit`.
+
+Phase 1 does not support compiled artifacts, stdin, inline evaluation, remote debugging, DAP, VS Code integration, conditional or hit-count breakpoints, logpoints, variable mutation, tracing, record/replay, or module-specific inspectors.
 
 ### repl
 

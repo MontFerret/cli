@@ -25,6 +25,10 @@ type Builtin struct {
 }
 
 func NewBuiltin(opts Options) (Runtime, error) {
+	return newBuiltin(opts)
+}
+
+func newBuiltin(opts Options) (*Builtin, error) {
 	mods, err := newModules(opts)
 
 	if err != nil {
