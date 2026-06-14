@@ -25,11 +25,11 @@ test:
 
 fmt:
 	go fmt ./... && \
-	goimports -w -local github.com/MontFerret ./pkg/browser ./cmd ./internal/debugcli ./pkg/config ./ferret ./pkg/logger ./pkg/repl ./pkg/runtime
+	goimports -w -local github.com/MontFerret ./pkg/browser ./cmd ./pkg/debugger ./pkg/config ./ferret ./pkg/logger ./pkg/repl ./pkg/runtime
 
 lint:
 	staticcheck ./... && \
-	revive -config revive.toml -formatter stylish -exclude ./pkg/parser/fql/... -exclude ./vendor/... ./...
+	revive -config revive.toml -formatter stylish -exclude ./vendor/... ./...
 
 
 vet:
