@@ -10,7 +10,7 @@ var ErrArtifactRequiresBuiltinRuntime = errors.New("compiled artifacts require t
 type DebugRequiresBuiltinRuntimeError struct{}
 
 func (*DebugRequiresBuiltinRuntimeError) Error() string {
-	return "debugging requires the builtin runtime"
+	return "debug currently supports only the builtin runtime"
 }
 
 // ErrDebugRequiresBuiltinRuntime indicates source debugging is only available

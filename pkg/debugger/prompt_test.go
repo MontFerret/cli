@@ -47,7 +47,8 @@ func TestRunDispatchesCommandsAndClosesSession(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !session.started || !session.paused || !session.continued || !session.stepped || !session.nexted || !session.outed || session.closeCalls != 1 {
+	if session.startCalls != 1 || session.pauseCalls != 1 || session.continueCalls != 1 || session.stepCalls != 1 ||
+		session.nextCalls != 1 || session.outCalls != 1 || session.closeCalls != 1 {
 		t.Fatalf("unexpected session calls: %#v", session)
 	}
 	if session.breakpointLocation != (ferret.DebugSourceLocation{File: "demo.fql", Line: 2, Column: 1}) {
@@ -137,6 +138,251 @@ func TestRunEOFAndCloseError(t *testing.T) {
 	}
 }
 
+func TestRunRepeatsPreviousResumeCommandOnEmptyInput(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		calls   func(*fakeSession) int
+	}{
+		{name: "next", command: "next", calls: func(session *fakeSession) int { return session.nextCalls }},
+		{name: "step alias", command: "s", calls: func(session *fakeSession) int { return session.stepCalls }},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			session := &fakeSession{
+				startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+				continueEvent: debugEvent(ferret.DebugReasonStep, "demo.fql", 2, source.Span{Start: 9, End: 10}),
+			}
+
+			err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
+				results: []lineResult{{line: test.command}, {line: ""}, {line: "q"}},
+			}, io.Discard)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := test.calls(session); got != 2 {
+				t.Fatalf("expected repeated %s call, got %d calls", test.command, got)
+			}
+		})
+	}
+}
+
+func TestRunEmptyInputDoesNotRepeatNonRepeatableCommands(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		check   func(*testing.T, *fakeSession)
+	}{
+		{
+			name:    "where clears previous resume and is not repeated",
+			command: "where",
+			check: func(t *testing.T, session *fakeSession) {
+				t.Helper()
+				if session.nextCalls != 1 || session.framesCalls != 1 {
+					t.Fatalf("unexpected session calls: %#v", session)
+				}
+			},
+		},
+		{
+			name:    "delete clears previous resume and is not repeated",
+			command: "delete 99",
+			check: func(t *testing.T, session *fakeSession) {
+				t.Helper()
+				if session.nextCalls != 1 || session.deleteCalls != 1 {
+					t.Fatalf("unexpected session calls: %#v", session)
+				}
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			session := &fakeSession{
+				startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+				continueEvent: debugEvent(ferret.DebugReasonStep, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+			}
+
+			err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
+				results: []lineResult{{line: "next"}, {line: test.command}, {line: ""}, {line: "q"}},
+			}, io.Discard)
+			if err != nil {
+				t.Fatal(err)
+			}
+			test.check(t, session)
+		})
+	}
+}
+
+func TestRunParseErrorsDoNotClearRepeatCommand(t *testing.T) {
+	session := &fakeSession{
+		startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		continueEvent: debugEvent(ferret.DebugReasonStep, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+	}
+
+	err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
+		results: []lineResult{{line: "next"}, {line: "wat"}, {line: ""}, {line: "q"}},
+	}, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.nextCalls != 2 {
+		t.Fatalf("expected parse error to preserve repeat command, got %d next calls", session.nextCalls)
+	}
+}
+
+func TestRunBlocksCommandsAfterCompletionAndKeepsSafeCommandsAvailable(t *testing.T) {
+	session := &fakeSession{
+		startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		continueEvent: debugEvent(ferret.DebugReasonCompleted, "", 0, source.Span{}),
+	}
+	var out bytes.Buffer
+
+	err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
+		results: []lineResult{
+			{line: "continue"},
+			{line: ""},
+			{line: "step"},
+			{line: "next"},
+			{line: "out"},
+			{line: "pause"},
+			{line: "where"},
+			{line: "locals"},
+			{line: "print 1"},
+			{line: "help"},
+			{line: "break 1"},
+			{line: "breakpoints"},
+			{line: "delete 1"},
+			{line: "q"},
+		},
+	}, &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if session.continueCalls != 1 || session.stepCalls != 0 || session.nextCalls != 0 || session.outCalls != 0 ||
+		session.pauseCalls != 0 || session.framesCalls != 0 || session.localsCalls != 0 || session.evaluateCalls != 0 {
+		t.Fatalf("terminal commands reached session: %#v", session)
+	}
+	if session.setBreakpointCalls != 1 || session.breakpointsCalls != 1 || session.deleteCalls != 1 || session.closeCalls != 1 {
+		t.Fatalf("safe commands were not dispatched: %#v", session)
+	}
+
+	got := out.String()
+	for _, expected := range []string{
+		"Program completed.",
+		"Program has completed. Start a new debug session to continue debugging.",
+		"Commands:",
+		"Breakpoint 1 set",
+		"Breakpoint 1 deleted.",
+		"Debug session terminated.",
+	} {
+		if !strings.Contains(got, expected) {
+			t.Fatalf("expected %q in %q", expected, got)
+		}
+	}
+}
+
+func TestRunBlocksResumeCommandsAfterTermination(t *testing.T) {
+	session := &fakeSession{
+		startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		continueEvent: debugEvent(ferret.DebugReasonTerminated, "", 0, source.Span{}),
+	}
+	var out bytes.Buffer
+
+	err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
+		results: []lineResult{
+			{line: "continue"},
+			{line: ""},
+			{line: "step"},
+			{line: "next"},
+			{line: "out"},
+			{line: "pause"},
+			{line: "where"},
+			{line: "locals"},
+			{line: "print 1"},
+			{line: "q"},
+		},
+	}, &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if session.continueCalls != 1 || session.stepCalls != 0 || session.nextCalls != 0 || session.outCalls != 0 ||
+		session.pauseCalls != 0 || session.framesCalls != 0 || session.localsCalls != 0 || session.evaluateCalls != 0 {
+		t.Fatalf("terminal commands reached session: %#v", session)
+	}
+	if got := out.String(); !strings.Contains(got, "Program has terminated. Start a new debug session to continue debugging.") {
+		t.Fatalf("unexpected output: %q", got)
+	}
+}
+
+func TestRunTracksTerminalInitialEvent(t *testing.T) {
+	tests := []struct {
+		name    string
+		reason  ferret.DebugReason
+		message string
+	}{
+		{name: "completed", reason: ferret.DebugReasonCompleted, message: "Program has completed. Start a new debug session to continue debugging."},
+		{name: "terminated", reason: ferret.DebugReasonTerminated, message: "Program has terminated. Start a new debug session to continue debugging."},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			session := &fakeSession{startEvent: debugEvent(test.reason, "", 0, source.Span{})}
+			var out bytes.Buffer
+
+			err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
+				results: []lineResult{{line: "continue"}, {line: "q"}},
+			}, &out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if session.continueCalls != 0 {
+				t.Fatalf("continue reached terminal session: %#v", session)
+			}
+			if got := out.String(); !strings.Contains(got, test.message) {
+				t.Fatalf("unexpected output: %q", got)
+			}
+		})
+	}
+}
+
+func TestRunKeepsRuntimeErrorEventActive(t *testing.T) {
+	session := &fakeSession{
+		startEvent:    debugEvent(ferret.DebugReasonRuntimeError, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		continueEvent: debugEvent(ferret.DebugReasonStep, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+	}
+
+	err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
+		results: []lineResult{{line: "next"}, {line: "q"}},
+	}, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.nextCalls != 1 {
+		t.Fatalf("expected next after runtime error, got %d calls", session.nextCalls)
+	}
+}
+
+func TestRunResumeErrorPreservesState(t *testing.T) {
+	session := &fakeSession{
+		startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		continueEvent: debugEvent(ferret.DebugReasonCompleted, "", 0, source.Span{}),
+		continueErr:   errors.New("resume failed"),
+	}
+
+	err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
+		results: []lineResult{{line: "continue"}, {line: "next"}, {line: "q"}},
+	}, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.continueCalls != 1 || session.nextCalls != 1 {
+		t.Fatalf("expected resume error to preserve active state: %#v", session)
+	}
+}
+
 type lineResult struct {
 	line string
 	err  error
@@ -169,46 +415,53 @@ type fakeSession struct {
 	closeErr           error
 	breakpointLocation ferret.DebugSourceLocation
 	breakpointOptions  ferret.DebugBreakpointOptions
-	started            bool
-	continued          bool
-	stepped            bool
-	nexted             bool
-	outed              bool
-	paused             bool
+	startCalls         int
+	continueCalls      int
+	stepCalls          int
+	nextCalls          int
+	outCalls           int
+	pauseCalls         int
+	setBreakpointCalls int
+	deleteCalls        int
+	breakpointsCalls   int
+	framesCalls        int
+	localsCalls        int
+	evaluateCalls      int
 	closeCalls         int
 }
 
 func (f *fakeSession) Start(context.Context) (*ferret.DebugEvent, error) {
-	f.started = true
+	f.startCalls++
 	return f.startEvent, nil
 }
 
 func (f *fakeSession) Continue(context.Context) (*ferret.DebugEvent, error) {
-	f.continued = true
+	f.continueCalls++
 	return f.continueEvent, f.continueErr
 }
 
 func (f *fakeSession) Step(context.Context) (*ferret.DebugEvent, error) {
-	f.stepped = true
+	f.stepCalls++
 	return f.continueEvent, nil
 }
 
 func (f *fakeSession) Next(context.Context) (*ferret.DebugEvent, error) {
-	f.nexted = true
+	f.nextCalls++
 	return f.continueEvent, nil
 }
 
 func (f *fakeSession) Out(context.Context) (*ferret.DebugEvent, error) {
-	f.outed = true
+	f.outCalls++
 	return f.continueEvent, nil
 }
 
 func (f *fakeSession) Pause() error {
-	f.paused = true
+	f.pauseCalls++
 	return nil
 }
 
 func (f *fakeSession) SetBreakpointAt(location ferret.DebugSourceLocation, options ferret.DebugBreakpointOptions) (ferret.DebugBreakpoint, error) {
+	f.setBreakpointCalls++
 	f.breakpointLocation = location
 	f.breakpointOptions = options
 	breakpoint := ferret.DebugBreakpoint{
@@ -226,6 +479,7 @@ func (f *fakeSession) SetBreakpointAt(location ferret.DebugSourceLocation, optio
 }
 
 func (f *fakeSession) DeleteBreakpoint(id ferret.DebugBreakpointID) error {
+	f.deleteCalls++
 	for i, breakpoint := range f.breakpoints {
 		if breakpoint.ID == id {
 			f.breakpoints = append(f.breakpoints[:i], f.breakpoints[i+1:]...)
@@ -236,18 +490,22 @@ func (f *fakeSession) DeleteBreakpoint(id ferret.DebugBreakpointID) error {
 }
 
 func (f *fakeSession) Breakpoints() []ferret.DebugBreakpoint {
+	f.breakpointsCalls++
 	return f.breakpoints
 }
 
 func (f *fakeSession) Frames() ([]ferret.DebugFrame, error) {
+	f.framesCalls++
 	return f.frames, nil
 }
 
 func (f *fakeSession) Locals() ([]ferret.DebugVariable, error) {
+	f.localsCalls++
 	return f.locals, nil
 }
 
 func (f *fakeSession) Evaluate(_ context.Context, expression string) (ferret.DebugValue, error) {
+	f.evaluateCalls++
 	f.expression = expression
 	return f.evaluation, f.evaluateErr
 }

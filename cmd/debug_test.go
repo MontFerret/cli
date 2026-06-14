@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/MontFerret/ferret/v2/pkg/compiler"
@@ -44,6 +43,9 @@ func TestExecuteDebugRejectsRemoteRuntimeBeforeStarting(t *testing.T) {
 	if !errors.Is(err, cliruntime.ErrDebugRequiresBuiltinRuntime) {
 		t.Fatalf("expected builtin runtime error, got %v", err)
 	}
+	if got := err.Error(); got != "debug currently supports only the builtin runtime" {
+		t.Fatalf("unexpected builtin runtime error: %q", got)
+	}
 }
 
 func TestExecuteDebugRejectsArtifact(t *testing.T) {
@@ -62,7 +64,7 @@ func TestExecuteDebugRejectsArtifact(t *testing.T) {
 		nil,
 		[]string{artifactPath},
 	)
-	if err == nil || !strings.Contains(err.Error(), "compiled artifacts") {
+	if err == nil || err.Error() != "debugging compiled artifacts is not supported yet; run debug with the original .fql source file" {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

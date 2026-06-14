@@ -159,4 +159,7 @@ func TestNewDebugSessionRejectsRemoteRuntime(t *testing.T) {
 	if !errors.As(err, &typed) {
 		t.Fatalf("expected typed builtin runtime error, got %T", err)
 	}
+	if got := err.Error(); got != "debug currently supports only the builtin runtime" {
+		t.Fatalf("unexpected builtin runtime error: %q", got)
+	}
 }

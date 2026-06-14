@@ -133,3 +133,25 @@ func TestRendererEmptyCollections(t *testing.T) {
 		}
 	}
 }
+
+func TestRendererHelpIncludesAliasesAndPauseBehavior(t *testing.T) {
+	var out bytes.Buffer
+	renderer := NewRenderer(&out, nil)
+
+	renderer.Help()
+
+	got := out.String()
+	for _, expected := range []string{
+		"break, b <location>",
+		"delete, d <id>",
+		"breakpoints, bp, bl",
+		"where, w, bt",
+		"locals, l",
+		"print, p, eval, e <expr>",
+		"Request pause after the next resume",
+	} {
+		if !strings.Contains(got, expected) {
+			t.Fatalf("expected %q in %q", expected, got)
+		}
+	}
+}

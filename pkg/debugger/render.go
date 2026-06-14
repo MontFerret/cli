@@ -13,25 +13,23 @@ import (
 )
 
 const helpText = `Commands:
-  break <location>              Set at next executable location in file
+  break, b <location>           Set at next executable location in file
   break --exact <location>      Set only at the exact executable location
   break --next <location>       Set at next executable location in file
   break --in-function <location> Set at next executable location in function
-  breakpoints                   List breakpoints
-  delete <id>                   Delete breakpoint
-  continue                      Resume execution
-  step                          Step into next source location
-  next                          Step over current source location
+  breakpoints, bp, bl           List breakpoints
+  delete, d <id>                Delete breakpoint
+  continue, c                   Resume execution
+  step, s                       Step into next source location
+  next, n                       Step over current source location
   out                           Step out of current frame
-  pause                         Pause at the next source location
-  where                         Show stack trace
-  locals                        Show local variables
-  print <expr>                  Evaluate a safe expression (no calls, queries, or mutation)
-  quit                          Stop debugging and exit
+  pause                         Request pause after the next resume
+  where, w, bt                  Show stack trace
+  locals, l                     Show local variables
+  print, p, eval, e <expr>      Evaluate a safe expression (no calls, queries, or mutation)
+  quit, q                       Stop debugging and exit
 
-Locations: 12, 12:4, file.fql:12, file.fql:12:4
-
-Aliases: b=break, c=continue, s=step, n=next, bt=where, p=print, q=quit`
+Locations: 12, 12:4, file.fql:12, file.fql:12:4`
 
 type Renderer struct {
 	out    io.Writer

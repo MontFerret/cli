@@ -38,13 +38,20 @@ type Command struct {
 }
 
 var aliases = map[string]CommandName{
-	"b":  CommandBreak,
-	"c":  CommandContinue,
-	"s":  CommandStep,
-	"n":  CommandNext,
-	"bt": CommandWhere,
-	"p":  CommandPrint,
-	"q":  CommandQuit,
+	"b":    CommandBreak,
+	"d":    CommandDelete,
+	"bp":   CommandBreakpoints,
+	"bl":   CommandBreakpoints,
+	"c":    CommandContinue,
+	"s":    CommandStep,
+	"n":    CommandNext,
+	"w":    CommandWhere,
+	"bt":   CommandWhere,
+	"l":    CommandLocals,
+	"p":    CommandPrint,
+	"e":    CommandPrint,
+	"eval": CommandPrint,
+	"q":    CommandQuit,
 }
 
 func ParseCommand(input string) (Command, error) {

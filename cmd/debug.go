@@ -56,7 +56,7 @@ func executeDebug(cmd *cobra.Command, rtOpts cliruntime.Options, brOpts browser.
 	}
 
 	if input != nil && len(input.Artifact) > 0 {
-		return fmt.Errorf("debugging compiled artifacts is not supported")
+		return fmt.Errorf("debugging compiled artifacts is not supported yet; run debug with the original .fql source file")
 	}
 
 	if input == nil || input.Source == nil {

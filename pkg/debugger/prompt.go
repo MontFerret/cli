@@ -14,6 +14,15 @@ import (
 	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
+type replState int
+
+const (
+	replStateReady replState = iota
+	replStatePaused
+	replStateCompleted
+	replStateTerminated
+)
+
 func Start(ctx context.Context, session Session, src *source.Source) error {
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:          "(fdb) ",
@@ -46,7 +55,11 @@ func Run(ctx context.Context, session Session, src *source.Source, input LineRea
 	}
 
 	renderer.Event(event)
+	state := nextReplState(replStateReady, event)
+
 	fmt.Fprintln(out, `Type "help" for available commands.`)
+
+	var repeatCommand Command
 
 	for {
 		line, readErr := input.Readline()
@@ -72,10 +85,24 @@ func Run(ctx context.Context, session Session, src *source.Source, input LineRea
 		}
 
 		if command.Name == CommandEmpty {
+			if repeatCommand.Name == CommandEmpty {
+				continue
+			}
+
+			command = repeatCommand
+		} else if isRepeatableCommand(command.Name) {
+			repeatCommand = command
+		} else {
+			repeatCommand = Command{}
+		}
+
+		if message := unavailableCommandMessage(state, command.Name); message != "" {
+			fmt.Fprintln(out, message)
 			continue
 		}
 
-		quit := executeCommand(ctx, session, src.Name(), renderer, command)
+		quit, event := executeCommand(ctx, session, src.Name(), renderer, command)
+		state = nextReplState(state, event)
 
 		if quit {
 			fmt.Fprintln(out, "Debug session terminated.")
@@ -84,7 +111,7 @@ func Run(ctx context.Context, session Session, src *source.Source, input LineRea
 	}
 }
 
-func executeCommand(ctx context.Context, session Session, mainFile string, renderer *Renderer, command Command) bool {
+func executeCommand(ctx context.Context, session Session, mainFile string, renderer *Renderer, command Command) (bool, *ferret.DebugEvent) {
 	switch command.Name {
 	case CommandHelp:
 		renderer.Help()
@@ -116,16 +143,16 @@ func executeCommand(ctx context.Context, session Session, mainFile string, rende
 		renderer.Breakpoints(session.Breakpoints())
 	case CommandContinue:
 		event, err := session.Continue(ctx)
-		renderResume(event, err, renderer)
+		return false, renderResume(event, err, renderer)
 	case CommandStep:
 		event, err := session.Step(ctx)
-		renderResume(event, err, renderer)
+		return false, renderResume(event, err, renderer)
 	case CommandNext:
 		event, err := session.Next(ctx)
-		renderResume(event, err, renderer)
+		return false, renderResume(event, err, renderer)
 	case CommandOut:
 		event, err := session.Out(ctx)
-		renderResume(event, err, renderer)
+		return false, renderResume(event, err, renderer)
 	case CommandPause:
 		if err := session.Pause(); err != nil {
 			renderer.Error("Pause error", err)
@@ -157,17 +184,59 @@ func executeCommand(ctx context.Context, session Session, mainFile string, rende
 			renderer.Evaluation(value)
 		}
 	case CommandQuit:
-		return true
+		return true, nil
 	}
 
-	return false
+	return false, nil
 }
 
-func renderResume(event *ferret.DebugEvent, err error, renderer *Renderer) {
+func renderResume(event *ferret.DebugEvent, err error, renderer *Renderer) *ferret.DebugEvent {
 	if err != nil {
 		renderer.Error("Debugger error", err)
-		return
+		return nil
 	}
 
 	renderer.Event(event)
+	return event
+}
+
+func nextReplState(current replState, event *ferret.DebugEvent) replState {
+	if event == nil {
+		return current
+	}
+
+	switch event.Reason {
+	case ferret.DebugReasonCompleted:
+		return replStateCompleted
+	case ferret.DebugReasonTerminated:
+		return replStateTerminated
+	default:
+		return replStatePaused
+	}
+}
+
+func isRepeatableCommand(name CommandName) bool {
+	switch name {
+	case CommandContinue, CommandStep, CommandNext, CommandOut:
+		return true
+	default:
+		return false
+	}
+}
+
+func unavailableCommandMessage(state replState, name CommandName) string {
+	switch name {
+	case CommandContinue, CommandStep, CommandNext, CommandOut, CommandPause, CommandWhere, CommandLocals, CommandPrint:
+	default:
+		return ""
+	}
+
+	switch state {
+	case replStateCompleted:
+		return "Program has completed. Start a new debug session to continue debugging."
+	case replStateTerminated:
+		return "Program has terminated. Start a new debug session to continue debugging."
+	default:
+		return ""
+	}
 }
