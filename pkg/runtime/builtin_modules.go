@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/MontFerret/contrib/modules/csv"
+	"github.com/MontFerret/contrib/modules/db/sqlite"
+	"github.com/MontFerret/contrib/modules/security/jwt"
 	"github.com/MontFerret/contrib/modules/toml"
 	"github.com/MontFerret/contrib/modules/web/article"
 	"github.com/MontFerret/contrib/modules/web/robots"
@@ -50,6 +52,8 @@ func newWebModules(opts Options) ([]module.Module, error) {
 		sitemap.New(),
 		article.New(),
 		robots.New(),
+		jwt.New(),
+		sqlite.New(),
 	}, nil
 }
 
