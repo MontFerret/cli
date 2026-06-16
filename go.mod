@@ -1,6 +1,6 @@
 module github.com/MontFerret/cli/v2
 
-go 1.26.1
+go 1.25
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
