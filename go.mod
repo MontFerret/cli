@@ -4,16 +4,17 @@ go 1.26.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.4
-	github.com/MontFerret/contrib/modules/db/sqlite v1.0.0-rc.2
-	github.com/MontFerret/contrib/modules/security/jwt v1.0.0-rc.2
-	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.4
-	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.5
-	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.8
-	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.4
-	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.4
-	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.4
-	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.4
+	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.6
+	github.com/MontFerret/contrib/modules/db/sqlite v1.0.0-rc.4
+	github.com/MontFerret/contrib/modules/net/rest v1.0.0-rc.2
+	github.com/MontFerret/contrib/modules/security/jwt v1.0.0-rc.4
+	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.6
+	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.7
+	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.10
+	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.6
+	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.6
+	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.6
+	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.6
 	github.com/MontFerret/ferret/v2 v2.0.0-alpha.25
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
@@ -31,6 +32,7 @@ require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/JohannesKaufmann/dom v0.3.1 // indirect
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2 // indirect
+	github.com/MontFerret/contrib/pkg/common v0.1.1 // indirect
 	github.com/MontFerret/cssx v0.2.0 // indirect
 	github.com/PuerkitoBio/goquery v1.12.0 // indirect
 	github.com/andybalholm/cascadia v1.3.4 // indirect
