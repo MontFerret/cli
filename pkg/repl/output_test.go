@@ -112,7 +112,7 @@ func TestWriteResult_CloseError(t *testing.T) {
 		closeErr := errors.New("close error")
 		src := &errorCloseReader{Reader: strings.NewReader("data"), closeErr: closeErr}
 
-		err := writeResult(writerFunc(func(p []byte) (int, error) {
+		err := writeResult(writerFunc(func(_ []byte) (int, error) {
 			return 0, mainErr
 		}), src)
 
@@ -147,7 +147,7 @@ func TestWriteResult_CloseError(t *testing.T) {
 }
 
 func TestWriteAll_ZeroWrite(t *testing.T) {
-	err := writeAll(writerFunc(func(p []byte) (int, error) {
+	err := writeAll(writerFunc(func(_ []byte) (int, error) {
 		return 0, nil
 	}), []byte("data"))
 
