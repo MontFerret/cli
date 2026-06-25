@@ -3,7 +3,6 @@ package repl
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -99,7 +98,7 @@ func Start(ctx context.Context, opts runtime.Options, params map[string]interfac
 			continue
 		}
 
-		_, err = io.Copy(os.Stdout, out)
+		err = writeResult(os.Stdout, out)
 
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
