@@ -1,3 +1,5 @@
+.PHONY: build install-tools install compile test fmt lint release
+
 VERSION ?= $(shell sh scripts/versions.sh cli)
 FERRET_VERSION = $(shell sh scripts/versions.sh ferret)
 DIR_BIN = ./bin
@@ -29,11 +31,11 @@ fmt:
 
 lint:
 	staticcheck ./... && \
-	revive -config revive.toml -formatter stylish -exclude ./vendor/... ./...
-
-
-vet:
+	revive -config revive.toml -formatter stylish -exclude ./vendor/... ./... && \
 	go vet ./...
 
 release:
-	./scripts/release.sh $(TAG)
+	@./scripts/release.sh $(word 2,$(MAKECMDGOALS))
+
+%:
+	@:

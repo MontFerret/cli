@@ -10,7 +10,7 @@ fi
 VERSION="$1"
 
 if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-  echo "Error: version must start with 'v' followed by semver (e.g. v2.0.0)"
+  echo "Error: version must start with 'v' followed by semver (e.g. v2.0.0). Got $VERSION."
   exit 1
 fi
 

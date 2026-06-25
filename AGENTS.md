@@ -505,7 +505,6 @@ When uncertain:
 
 - Broad validation: `go test ./...`
 - Repo test target: `make test`
-- Vet: `make vet`
 - Lint: `make lint`
 - Format: `make fmt`
 - Build the CLI binary: `make compile`
