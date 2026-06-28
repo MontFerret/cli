@@ -20,8 +20,8 @@ github.com/MontFerret/contrib/modules/toml v1.0.0-rc.6 h1:XDMiuX6zDigvFxpfqqsJkI
 github.com/MontFerret/contrib/modules/toml v1.0.0-rc.6/go.mod h1:DhKnW7MPZNUKRI8HLYn7oyR8fIxWxZkb+DiIcbe69WI=
 github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.7 h1:Kb7d4kaYb09XQ3tnucrSCAKdRiK7wl44i+DJ7s5J7qI=
 github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.7/go.mod h1:bmtwL4l2kv6tWMPqDNaZyQ61aePlnl2DMpASUxEzOts=
-github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.10 h1:2ucNg6fAbg8dclJzlUyKcC3Dx1my59lv+vgnB9t7V9Q=
-github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.10/go.mod h1:QWaiNrJyZA4ftj021u5GuJ1ArSKGSnXBMdMiJ7YkLO0=
+github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.11 h1:MgcOy0IDiLZImFmL3DxivqRekk9vdXrFrt8IkCbEyNs=
+github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.11/go.mod h1:QWaiNrJyZA4ftj021u5GuJ1ArSKGSnXBMdMiJ7YkLO0=
 github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.6 h1:ilzerXcr2+BPoSxlC/DKvEvMMmV5vM79p5UUubxQaOc=
 github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.6/go.mod h1:Vns8AVGMYQuY77rdEbVGA5GQUL8M5yZnUN17iYvlndI=
 github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.6 h1:OkiQwPv5XCY4N4byj8RXI1bbV/QBmExZLSAmw9g8sfo=
