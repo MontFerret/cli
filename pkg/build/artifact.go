@@ -29,7 +29,7 @@ func WriteArtifact(c *compiler.Compiler, src *source.Source, outputPath string) 
 		return err
 	}
 
-	data, err := artifact.Marshal(program, artifact.Options{})
+	data, err := artifact.Marshal(program)
 
 	if err != nil {
 		return fmt.Errorf("serialize %s: %w", src.Name(), err)
