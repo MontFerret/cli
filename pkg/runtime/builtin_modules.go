@@ -4,7 +4,10 @@ import (
 	"fmt"
 
 	"github.com/MontFerret/contrib/modules/csv"
+	"github.com/MontFerret/contrib/modules/db/postgres"
 	"github.com/MontFerret/contrib/modules/db/sqlite"
+	"github.com/MontFerret/contrib/modules/document/pdf"
+	"github.com/MontFerret/contrib/modules/document/xlsx"
 	"github.com/MontFerret/contrib/modules/net/rest"
 	"github.com/MontFerret/contrib/modules/security/jwt"
 	"github.com/MontFerret/contrib/modules/toml"
@@ -29,6 +32,7 @@ func newModules(opts Options) ([]module.Module, error) {
 		dbMods,
 		securityMods,
 		networkMods,
+		documentMods,
 	)
 }
 
@@ -79,6 +83,7 @@ func dataMods(_ Options) ([]module.Module, error) {
 
 func dbMods(_ Options) ([]module.Module, error) {
 	return []module.Module{
+		postgres.New(),
 		sqlite.New(),
 	}, nil
 }
@@ -92,5 +97,12 @@ func securityMods(_ Options) ([]module.Module, error) {
 func networkMods(_ Options) ([]module.Module, error) {
 	return []module.Module{
 		rest.New(),
+	}, nil
+}
+
+func documentMods(_ Options) ([]module.Module, error) {
+	return []module.Module{
+		pdf.New(),
+		xlsx.New(),
 	}, nil
 }
