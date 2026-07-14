@@ -40,8 +40,8 @@ github.com/MontFerret/contrib/pkg/common v0.1.1 h1:qA2URATIO+EVLH3BNFKYupLx97fto
 github.com/MontFerret/contrib/pkg/common v0.1.1/go.mod h1:wiMLQnE46YGci3qMzA3ExArKomQDXR5DvNSE7HnP0ik=
 github.com/MontFerret/cssx v0.2.0 h1:De0C6Irbg+qgFPXgWmPpVnwD4RRYUBQSbIYFTUVCNWU=
 github.com/MontFerret/cssx v0.2.0/go.mod h1:fmGtRUNVaeJYpiPSDlNIbbYzb3+K8NxmNmJOYqlHATU=
-github.com/MontFerret/ferret/v2 v2.0.0-alpha.30 h1:zMTPJoEbv1H91Fe7g+pmU0chiKhMKnVcxJSCF3mk5xs=
-github.com/MontFerret/ferret/v2 v2.0.0-alpha.30/go.mod h1:jkZZNJrQKhQ8K9v3lzkMKR5NnCyOUKRRKCTAwCOBq8A=
+github.com/MontFerret/ferret/v2 v2.0.0-alpha.31 h1:+AxBKQup/KjwvY2uPMQOLXZmlNDFSHReAziD5Sz3DU4=
+github.com/MontFerret/ferret/v2 v2.0.0-alpha.31/go.mod h1:jkZZNJrQKhQ8K9v3lzkMKR5NnCyOUKRRKCTAwCOBq8A=
 github.com/PuerkitoBio/goquery v1.12.0 h1:pAcL4g3WRXekcB9AU/y1mbKez2dbY2AajVhtkO8RIBo=
 github.com/PuerkitoBio/goquery v1.12.0/go.mod h1:802ej+gV2y7bbIhOIoPY5sT183ZW0YFofScC4q/hIpQ=
 github.com/andybalholm/cascadia v1.3.4 h1:vM2lgh0Vru9Vwyfm4cQqWP2HHMW0u0+2PAW7Q38Qufg=
