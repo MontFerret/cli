@@ -8,7 +8,6 @@ const (
 	LoggerFile   = "log-file"
 
 	ExecRuntime             = "runtime"
-	ExecRuntimeFSRoot       = "runtime-fs-root"
 	ExecKeepCookies         = "browser-cookies"
 	ExecWithBrowser         = "browser-open"
 	ExecBrowserAddress      = "browser-address"
@@ -16,6 +15,8 @@ const (
 	ExecProxy               = "proxy"
 	ExecUserAgent           = "user-agent"
 
+	PolicyFSRoot                    = "policy-fs-root"
+	PolicyFSReadOnly                = "policy-fs-read-only"
 	PolicyHTTPAllowedSchemes        = "policy-http-allowed-schemes"
 	PolicyHTTPAllowedMethods        = "policy-http-allowed-methods"
 	PolicyHTTPAllowedHosts          = "policy-http-allowed-hosts"
@@ -46,13 +47,14 @@ var Flags = []string{
 	LoggerOutput,
 	LoggerFile,
 	ExecRuntime,
-	ExecRuntimeFSRoot,
 	ExecKeepCookies,
 	ExecBrowserAddress,
 	ExecWithBrowser,
 	ExecWithBrowserHeadless,
 	ExecProxy,
 	ExecUserAgent,
+	PolicyFSRoot,
+	PolicyFSReadOnly,
 	PolicyHTTPAllowedSchemes,
 	PolicyHTTPAllowedMethods,
 	PolicyHTTPAllowedHosts,

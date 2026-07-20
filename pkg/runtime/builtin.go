@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	"github.com/MontFerret/ferret/v2"
@@ -32,6 +33,19 @@ func NewBuiltin(opts Options) (Runtime, error) {
 }
 
 func newBuiltin(opts Options) (*Builtin, error) {
+	fsRoot := ""
+	if opts.FSPolicy != nil {
+		fsRoot = opts.FSPolicy.Root
+	}
+
+	if fsRoot == "" {
+		var err error
+		fsRoot, err = os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("resolve filesystem root: %w", err)
+		}
+	}
+
 	mods, err := newModules(opts)
 
 	if err != nil {
@@ -46,6 +60,11 @@ func newBuiltin(opts Options) (*Builtin, error) {
 
 	engineOpts := []ferret.Option{
 		ferret.WithModules(mods...),
+		ferret.WithFSRoot(fsRoot),
+	}
+
+	if opts.FSPolicy != nil && opts.FSPolicy.ReadOnly {
+		engineOpts = append(engineOpts, ferret.WithFSReadOnly())
 	}
 
 	if log.Output() != nil {

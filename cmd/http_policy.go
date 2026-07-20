@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/MontFerret/cli/v2/pkg/config"
-	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
 	ferrethttp "github.com/MontFerret/ferret/v2/pkg/net/http"
 )
 
@@ -41,19 +40,6 @@ func addHTTPPolicyFlags(cmd *cobra.Command) {
 	flags.Int64(config.PolicyHTTPMaxResponseHeaderSize, defaultHTTPPolicyMaxHeaderSize, "Maximum outbound HTTP response header size in bytes")
 	flags.Bool(config.PolicyHTTPFollowRedirects, true, "Follow outbound HTTP redirects")
 	flags.Int(config.PolicyHTTPMaxRedirects, defaultHTTPPolicyMaxRedirects, "Maximum number of outbound HTTP redirects")
-}
-
-func runtimeOptionsFromCommand(cmd *cobra.Command, store *config.Store) (cliruntime.Options, error) {
-	opts := store.GetRuntimeOptions()
-
-	policy, err := httpPolicyOptionsFromCommand(cmd)
-	if err != nil {
-		return cliruntime.Options{}, err
-	}
-
-	opts.HTTPPolicy = policy
-
-	return opts, nil
 }
 
 func httpPolicyOptionsFromCommand(cmd *cobra.Command) ([]ferrethttp.PolicyOption, error) {

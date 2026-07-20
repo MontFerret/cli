@@ -159,6 +159,24 @@ quit            Exit
 
 The debugger currently supports local source scripts with the builtin runtime. Compiled artifacts, remote debugging, DAP, conditional breakpoints, hit-count breakpoints, and logpoints are not supported yet.
 
+## Filesystem policy
+
+Ferret's builtin runtime exposes filesystem functions through a writable sandbox rooted at the CLI's current working directory. Select a narrower relative or absolute root, and optionally make it read-only:
+
+```bash
+ferret run \
+  --policy-fs-root=./fixtures \
+  --policy-fs-read-only \
+  script.fql
+```
+
+Filesystem policy options are available on `run`, `repl`, and `debug` and apply only to the builtin runtime. Supplying one with a remote runtime is a configuration error.
+
+| Flag and config key | Environment variable | Default | Behavior |
+| --- | --- | --- | --- |
+| `policy-fs-root` | `FERRET_POLICY_FS_ROOT` | Current working directory | Filesystem sandbox root |
+| `policy-fs-read-only` | `FERRET_POLICY_FS_READ_ONLY` | `false` | Reject writes, directory changes, and removals |
+
 ## HTTP policy
 
 Ferret's builtin runtime blocks localhost, loopback, private-network, and link-local HTTP access by default. Grant only the access a script needs; for example, a script that intentionally calls a local development service requires an explicit opt-in:
@@ -216,6 +234,8 @@ Examples:
 ```bash
 ferret config set runtime builtin
 ferret config set browser-address http://127.0.0.1:9222
+ferret config set policy-fs-root ./fixtures
+ferret config set policy-fs-read-only true
 ferret config set policy-http-allow-localhost true
 ferret config get browser-address
 ferret config list
