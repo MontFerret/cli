@@ -1,10 +1,13 @@
 package runtime
 
 import (
+	"fmt"
+
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	"github.com/MontFerret/contrib/modules/web/html/drivers"
 	"github.com/MontFerret/contrib/modules/web/html/drivers/cdp"
 	"github.com/MontFerret/contrib/modules/web/html/drivers/memory"
+	ferrethttp "github.com/MontFerret/ferret/v2/pkg/net/http"
 )
 
 type Options struct {
@@ -17,8 +20,17 @@ type Options struct {
 	BrowserAddress      string
 	WithBrowser         bool
 	WithHeadlessBrowser bool
-	FileSystemRoot      string
 	Logger              logger.Options
+	// FSPolicy configures filesystem access for the builtin runtime only.
+	FSPolicy *FileSystemPolicy
+	// HTTPPolicy configures outbound HTTP for the builtin runtime only.
+	HTTPPolicy []ferrethttp.PolicyOption
+}
+
+// FileSystemPolicy configures the sandboxed filesystem used by the builtin runtime.
+type FileSystemPolicy struct {
+	Root     string
+	ReadOnly bool
 }
 
 func NewDefaultOptions() Options {
@@ -39,7 +51,25 @@ func NewDefaultOptions() Options {
 func ValidateOptions(opts Options) error {
 	opts = NormalizeOptions(opts)
 
-	return opts.Logger.Validate()
+	if err := opts.Logger.Validate(); err != nil {
+		return err
+	}
+
+	if len(opts.HTTPPolicy) > 0 {
+		if !IsBuiltinType(opts.Type) {
+			return ErrHTTPPolicyRequiresBuiltinRuntime
+		}
+
+		if _, err := ferrethttp.NewPolicy(opts.HTTPPolicy...); err != nil {
+			return fmt.Errorf("HTTP policy: %w", err)
+		}
+	}
+
+	if opts.FSPolicy != nil && !IsBuiltinType(opts.Type) {
+		return ErrFSPolicyRequiresBuiltinRuntime
+	}
+
+	return nil
 }
 
 func NormalizeOptions(opts Options) Options {

@@ -30,7 +30,10 @@ func ReplCommand(store *config.Store) *cobra.Command {
 			}
 
 			store := config.From(cmd.Context())
-			rtOpts := store.GetRuntimeOptions()
+			rtOpts, err := runtimeOptionsFromCommand(cmd, store)
+			if err != nil {
+				return err
+			}
 
 			cleanup, err := browser.EnsureBrowser(cmd.Context(), rtOpts, store.GetBrowserOptions())
 

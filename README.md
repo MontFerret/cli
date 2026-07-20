@@ -159,6 +159,60 @@ quit            Exit
 
 The debugger currently supports local source scripts with the builtin runtime. Compiled artifacts, remote debugging, DAP, conditional breakpoints, hit-count breakpoints, and logpoints are not supported yet.
 
+## Filesystem policy
+
+Ferret's builtin runtime exposes filesystem functions through a writable sandbox rooted at the CLI's current working directory. Select a narrower relative or absolute root, and optionally make it read-only:
+
+```bash
+ferret run \
+  --policy-fs-root=./fixtures \
+  --policy-fs-read-only \
+  script.fql
+```
+
+Filesystem policy options are available on `run`, `repl`, and `debug` and apply only to the builtin runtime. Supplying one with a remote runtime is a configuration error.
+
+| Flag and config key | Environment variable | Default | Behavior |
+| --- | --- | --- | --- |
+| `policy-fs-root` | `FERRET_POLICY_FS_ROOT` | Current working directory | Filesystem sandbox root |
+| `policy-fs-read-only` | `FERRET_POLICY_FS_READ_ONLY` | `false` | Reject writes, directory changes, and removals |
+
+## HTTP policy
+
+Ferret's builtin runtime blocks localhost, loopback, private-network, and link-local HTTP access by default. Grant only the access a script needs; for example, a script that intentionally calls a local development service requires an explicit opt-in:
+
+```bash
+ferret run \
+  --policy-http-allow-localhost \
+  --policy-http-default-headers='{"X-Trace":"local"}' \
+  script.fql
+```
+
+HTTP policy options are available on `run`, `repl`, and `debug` and apply only to the builtin runtime. Supplying one with a remote runtime is a configuration error. They configure Ferret HTTP integrations such as `IO::NET::HTTP` and `NET::REST`; the existing `--proxy` and `--user-agent` options continue to configure HTML/browser drivers.
+
+List values accept repeated flags or comma-separated values. Default headers use a JSON object with string values. Only values explicitly supplied through a flag, environment variable, or config file override Ferret's secure defaults. Numeric zero retains the Ferret default; use the dedicated `no-timeout` or `unlimited-*` option to disable a limit.
+
+| Flag and config key | Environment variable | Default | Behavior |
+| --- | --- | --- | --- |
+| `policy-http-allowed-schemes` | `FERRET_POLICY_HTTP_ALLOWED_SCHEMES` | `http,https` | Allowed URL schemes |
+| `policy-http-allowed-methods` | `FERRET_POLICY_HTTP_ALLOWED_METHODS` | `GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS` | Allowed HTTP methods |
+| `policy-http-allowed-hosts` | `FERRET_POLICY_HTTP_ALLOWED_HOSTS` | unrestricted | Exact allowed hosts or `host:port` values |
+| `policy-http-blocked-hosts` | `FERRET_POLICY_HTTP_BLOCKED_HOSTS` | none | Exact blocked hosts or `host:port` values |
+| `policy-http-allow-localhost` | `FERRET_POLICY_HTTP_ALLOW_LOCALHOST` | `false` | Allow localhost and loopback addresses |
+| `policy-http-allow-private-networks` | `FERRET_POLICY_HTTP_ALLOW_PRIVATE_NETWORKS` | `false` | Allow private-network addresses |
+| `policy-http-allow-link-local` | `FERRET_POLICY_HTTP_ALLOW_LINK_LOCAL` | `false` | Allow link-local addresses |
+| `policy-http-default-headers` | `FERRET_POLICY_HTTP_DEFAULT_HEADERS` | none | Default request headers as a JSON string map |
+| `policy-http-blocked-request-headers` | `FERRET_POLICY_HTTP_BLOCKED_REQUEST_HEADERS` | none | Block requests containing these header names |
+| `policy-http-timeout` | `FERRET_POLICY_HTTP_TIMEOUT` | `30s` | Overall HTTP timeout |
+| `policy-http-no-timeout` | `FERRET_POLICY_HTTP_NO_TIMEOUT` | `false` | Explicitly disable the overall timeout |
+| `policy-http-max-request-size` | `FERRET_POLICY_HTTP_MAX_REQUEST_SIZE` | `16777216` | Maximum request-body size in bytes |
+| `policy-http-unlimited-request-size` | `FERRET_POLICY_HTTP_UNLIMITED_REQUEST_SIZE` | `false` | Explicitly disable the request-body limit |
+| `policy-http-max-response-size` | `FERRET_POLICY_HTTP_MAX_RESPONSE_SIZE` | `16777216` | Maximum response-body size in bytes |
+| `policy-http-unlimited-response-size` | `FERRET_POLICY_HTTP_UNLIMITED_RESPONSE_SIZE` | `false` | Explicitly disable the response-body limit |
+| `policy-http-max-response-header-size` | `FERRET_POLICY_HTTP_MAX_RESPONSE_HEADER_SIZE` | `1048576` | Maximum response-header size in bytes |
+| `policy-http-follow-redirects` | `FERRET_POLICY_HTTP_FOLLOW_REDIRECTS` | `true` | Follow HTTP redirects |
+| `policy-http-max-redirects` | `FERRET_POLICY_HTTP_MAX_REDIRECTS` | `10` | Maximum redirects to follow |
+
 ## Configuration
 
 Configuration values can come from command-line flags, environment variables, or the config file.
@@ -180,6 +234,9 @@ Examples:
 ```bash
 ferret config set runtime builtin
 ferret config set browser-address http://127.0.0.1:9222
+ferret config set policy-fs-root ./fixtures
+ferret config set policy-fs-read-only true
+ferret config set policy-http-allow-localhost true
 ferret config get browser-address
 ferret config list
 ```

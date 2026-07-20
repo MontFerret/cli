@@ -18,6 +18,7 @@ import (
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
 	"github.com/MontFerret/ferret/v2/pkg/compiler"
+	ferrethttp "github.com/MontFerret/ferret/v2/pkg/net/http"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
@@ -90,6 +91,26 @@ func TestExecuteRun_ArtifactStdinRemoteRuntimeRejected(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
+}
+
+func TestExecuteRun_HTTPPolicyRemoteRuntimeRejectedBeforeBrowserStartup(t *testing.T) {
+	opts := cliruntime.NewDefaultOptions()
+	opts.Type = "https://worker.example"
+	opts.WithBrowser = true
+	opts.BrowserAddress = "://invalid"
+	opts.HTTPPolicy = []ferrethttp.PolicyOption{ferrethttp.WithAllowLocalhost(true)}
+
+	err := executeRun(
+		newTestCommand(),
+		opts,
+		browser.Options{},
+		nil,
+		"RETURN 1",
+		nil,
+	)
+	if !errors.Is(err, cliruntime.ErrHTTPPolicyRequiresBuiltinRuntime) {
+		t.Fatalf("expected builtin runtime policy error, got %v", err)
+	}
 }
 
 func TestRunCommand_RejectsMultiplePositionalArgs(t *testing.T) {
