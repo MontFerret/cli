@@ -16,6 +16,7 @@ func addRuntimeFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolP(config.ExecWithBrowser, "B", false, "Open browser for script execution")
 	cmd.Flags().BoolP(config.ExecWithBrowserHeadless, "b", false, "Open browser for script execution in headless mode")
 	cmd.Flags().BoolP(config.ExecKeepCookies, "c", false, "Keep cookies between queries")
+	addHTTPPolicyFlags(cmd)
 }
 
 func addParamFlags(cmd *cobra.Command) {

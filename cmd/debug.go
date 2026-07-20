@@ -39,7 +39,12 @@ artifacts, stdin, inline evaluation, remote runtimes, or conditional breakpoints
 			}
 
 			store := config.From(cmd.Context())
-			return executeDebug(cmd, store.GetRuntimeOptions(), store.GetBrowserOptions(), params, args)
+			rtOpts, err := runtimeOptionsFromCommand(cmd, store)
+			if err != nil {
+				return err
+			}
+
+			return executeDebug(cmd, rtOpts, store.GetBrowserOptions(), params, args)
 		},
 	}
 

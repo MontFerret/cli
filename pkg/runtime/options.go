@@ -1,10 +1,13 @@
 package runtime
 
 import (
+	"fmt"
+
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	"github.com/MontFerret/contrib/modules/web/html/drivers"
 	"github.com/MontFerret/contrib/modules/web/html/drivers/cdp"
 	"github.com/MontFerret/contrib/modules/web/html/drivers/memory"
+	ferrethttp "github.com/MontFerret/ferret/v2/pkg/net/http"
 )
 
 type Options struct {
@@ -19,6 +22,8 @@ type Options struct {
 	WithHeadlessBrowser bool
 	FileSystemRoot      string
 	Logger              logger.Options
+	// HTTPPolicy configures outbound HTTP for the builtin runtime only.
+	HTTPPolicy []ferrethttp.PolicyOption
 }
 
 func NewDefaultOptions() Options {
@@ -39,7 +44,23 @@ func NewDefaultOptions() Options {
 func ValidateOptions(opts Options) error {
 	opts = NormalizeOptions(opts)
 
-	return opts.Logger.Validate()
+	if err := opts.Logger.Validate(); err != nil {
+		return err
+	}
+
+	if len(opts.HTTPPolicy) == 0 {
+		return nil
+	}
+
+	if !IsBuiltinType(opts.Type) {
+		return ErrHTTPPolicyRequiresBuiltinRuntime
+	}
+
+	if _, err := ferrethttp.NewPolicy(opts.HTTPPolicy...); err != nil {
+		return fmt.Errorf("HTTP policy: %w", err)
+	}
+
+	return nil
 }
 
 func NormalizeOptions(opts Options) Options {

@@ -46,7 +46,12 @@ func RunCommand(store *config.Store) *cobra.Command {
 			}
 
 			store := config.From(cmd.Context())
-			return executeRun(cmd, store.GetRuntimeOptions(), store.GetBrowserOptions(), params, eval, args)
+			rtOpts, err := runtimeOptionsFromCommand(cmd, store)
+			if err != nil {
+				return err
+			}
+
+			return executeRun(cmd, rtOpts, store.GetBrowserOptions(), params, eval, args)
 		},
 	}
 

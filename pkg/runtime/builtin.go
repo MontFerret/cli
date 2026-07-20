@@ -10,6 +10,8 @@ import (
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	"github.com/MontFerret/ferret/v2"
 	"github.com/MontFerret/ferret/v2/pkg/logging"
+	ferretnet "github.com/MontFerret/ferret/v2/pkg/net"
+	ferrethttp "github.com/MontFerret/ferret/v2/pkg/net/http"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
@@ -19,9 +21,10 @@ const DefaultRuntime = "builtin"
 const DefaultBrowser = "http://127.0.0.1:9222"
 
 type Builtin struct {
-	opts   Options
-	engine *ferret.Engine
-	logger *logger.Logger
+	opts    Options
+	engine  *ferret.Engine
+	logger  *logger.Logger
+	network ferretnet.Network
 }
 
 func NewBuiltin(opts Options) (Runtime, error) {
@@ -53,17 +56,44 @@ func newBuiltin(opts Options) (*Builtin, error) {
 		)
 	}
 
+	var network ferretnet.Network
+
+	if len(opts.HTTPPolicy) > 0 {
+		client, err := ferrethttp.New(opts.HTTPPolicy...)
+		if err != nil {
+			_ = log.Close()
+			return nil, fmt.Errorf("initialize HTTP policy: %w", err)
+		}
+
+		network, err = ferretnet.New(ferretnet.WithHTTPClient(client))
+		if err != nil {
+			if closer, ok := client.(ferrethttp.IdleConnectionCloser); ok {
+				closer.CloseIdleConnections()
+			}
+
+			_ = log.Close()
+			return nil, fmt.Errorf("initialize network: %w", err)
+		}
+
+		engineOpts = append(engineOpts, ferret.WithNetwork(network))
+	}
+
 	engine, err := ferret.New(engineOpts...)
 
 	if err != nil {
+		if network != nil {
+			ferretnet.CloseIdleNetworkConnections(network)
+		}
+
 		_ = log.Close()
 		return nil, fmt.Errorf("initialize engine: %w", err)
 	}
 
 	return &Builtin{
-		opts:   opts,
-		engine: engine,
-		logger: log,
+		opts:    opts,
+		engine:  engine,
+		logger:  log,
+		network: network,
 	}, nil
 }
 
@@ -120,6 +150,10 @@ func (rt *Builtin) Close() error {
 
 	if rt.engine != nil {
 		err = errors.Join(err, rt.engine.Close())
+	}
+
+	if rt.network != nil {
+		ferretnet.CloseIdleNetworkConnections(rt.network)
 	}
 
 	if rt.logger != nil {
