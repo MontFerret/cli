@@ -3,6 +3,8 @@ package runtime
 import (
 	"fmt"
 
+	"github.com/MontFerret/contrib/modules/ai/llm"
+	"github.com/MontFerret/contrib/modules/archive"
 	"github.com/MontFerret/contrib/modules/csv"
 	"github.com/MontFerret/contrib/modules/db/postgres"
 	"github.com/MontFerret/contrib/modules/db/sqlite"
@@ -10,6 +12,7 @@ import (
 	"github.com/MontFerret/contrib/modules/document/xlsx"
 	"github.com/MontFerret/contrib/modules/net/rest"
 	"github.com/MontFerret/contrib/modules/security/jwt"
+	"github.com/MontFerret/contrib/modules/security/oauth2"
 	"github.com/MontFerret/contrib/modules/toml"
 	"github.com/MontFerret/contrib/modules/web/article"
 	"github.com/MontFerret/contrib/modules/web/html"
@@ -33,6 +36,8 @@ func newModules(opts Options) ([]module.Module, error) {
 		securityMods,
 		networkMods,
 		documentMods,
+		aiMods,
+		archiveMods,
 	)
 }
 
@@ -91,6 +96,7 @@ func dbMods(_ Options) ([]module.Module, error) {
 func securityMods(_ Options) ([]module.Module, error) {
 	return []module.Module{
 		jwt.New(),
+		oauth2.New(),
 	}, nil
 }
 
@@ -104,5 +110,17 @@ func documentMods(_ Options) ([]module.Module, error) {
 	return []module.Module{
 		pdf.New(),
 		xlsx.New(),
+	}, nil
+}
+
+func aiMods(_ Options) ([]module.Module, error) {
+	return []module.Module{
+		llm.New(),
+	}, nil
+}
+
+func archiveMods(_ Options) ([]module.Module, error) {
+	return []module.Module{
+		archive.New(),
 	}, nil
 }
