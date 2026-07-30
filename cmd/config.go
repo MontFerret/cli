@@ -33,11 +33,11 @@ func ConfigCommand(store *config.Store) *cobra.Command {
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			val, err := store.Get(args[0])
 
 			if err == nil {
-				fmt.Println(val)
+				fmt.Fprintln(cmd.OutOrStdout(), val)
 
 				return nil
 			}
@@ -53,12 +53,34 @@ func ConfigCommand(store *config.Store) *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "set",
 		Short: "Set a Ferret config value by key",
-		Args:  cobra.MinimumNArgs(2),
+		Args:  cobra.ExactArgs(2),
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+			if err := validatePolicyConfigSet(store, args[0], args[1]); err != nil {
+				return err
+			}
+
 			err := store.Set(args[0], args[1])
+
+			if err == config.ErrInvalidFlag {
+				return fmt.Errorf("%s\n%s", err, config.FlagsStr)
+			}
+
+			return err
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "unset",
+		Short: "Remove a persisted Ferret config value by key",
+		Args:  cobra.ExactArgs(1),
+		PreRun: func(cmd *cobra.Command, _ []string) {
+			store.BindFlags(cmd)
+		},
+		RunE: func(_ *cobra.Command, args []string) error {
+			err := store.Unset(args[0])
 
 			if err == config.ErrInvalidFlag {
 				return fmt.Errorf("%s\n%s", err, config.FlagsStr)
@@ -76,9 +98,9 @@ func ConfigCommand(store *config.Store) *cobra.Command {
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
 		},
-		Run: func(_ *cobra.Command, _ []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			for _, kv := range store.List() {
-				fmt.Printf("%s: %v\n", kv.Key, kv.Value)
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: %v\n", kv.Key, kv.Value)
 			}
 		},
 	})

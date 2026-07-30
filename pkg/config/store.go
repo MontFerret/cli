@@ -175,6 +175,50 @@ func (s *Store) Set(key, val string) error {
 	return s.v.WriteConfig()
 }
 
+// Unset removes a persisted configuration value without affecting flags or
+// environment variables. Calling Unset for a supported key that is not present
+// in the config file is a no-op.
+func (s *Store) Unset(key string) error {
+	if !isSupportedFlag(key) {
+		return ErrInvalidFlag
+	}
+
+	configFile := s.v.ConfigFileUsed()
+	persisted := viper.New()
+	persisted.SetConfigFile(configFile)
+
+	if err := persisted.ReadInConfig(); err != nil {
+		return err
+	}
+
+	if !persisted.IsSet(key) {
+		s.v.Set(key, nil)
+
+		return s.v.ReadInConfig()
+	}
+
+	settings := persisted.AllSettings()
+	delete(settings, key)
+
+	next := viper.New()
+	next.SetConfigFile(configFile)
+	next.SetConfigType("yaml")
+
+	if err := next.MergeConfigMap(settings); err != nil {
+		return err
+	}
+
+	if err := next.WriteConfig(); err != nil {
+		return err
+	}
+
+	// Clear a value previously installed through Set, then reload only the
+	// file-backed layer so existing flag and environment bindings remain intact.
+	s.v.Set(key, nil)
+
+	return s.v.ReadInConfig()
+}
+
 func (s *Store) List() []KV {
 	list := make([]KV, 0, len(Flags))
 
