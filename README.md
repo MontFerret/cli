@@ -237,9 +237,16 @@ ferret config set browser-address http://127.0.0.1:9222
 ferret config set policy-fs-root ./fixtures
 ferret config set policy-fs-read-only true
 ferret config set policy-http-allow-localhost true
+ferret config set policy-http-allowed-hosts api.example.com,cdn.example.com
+ferret config set policy-http-default-headers '{"X-Trace":"local"}'
 ferret config get browser-address
 ferret config list
+ferret config unset policy-http-allowed-hosts
 ```
+
+`config set` validates the complete persisted filesystem and HTTP policy before writing it. Invalid policy values and conflicting controls, such as setting both `policy-http-timeout` and `policy-http-no-timeout=true`, leave the existing config unchanged. List values use comma-separated strings, and default headers use a JSON object with string values.
+
+`config unset` removes only the value stored in the config file and restores the implicit default for that key. Command-line flags and environment variables remain unaffected.
 
 ## Development
 
