@@ -32,8 +32,8 @@ github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.9 h1:Yp6AOXfFp9MEa3ZE
 github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.9/go.mod h1:bdwI0loJLIQ+sZqFd/uMP8rFnZzZB1iGorUNSj20jEo=
 github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.9 h1:2w6cfktl0pDSLV8R/SXNCmcGtSb/6pxxK1kMdWTT1Jc=
 github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.9/go.mod h1:ndwWcTXY6EeXUdebY3kQlvw9KxrWo52iRHBaIQLu0d0=
-github.com/MontFerret/contrib/modules/xml v1.0.0-rc.9 h1:9PSVbuxBdIewnzHnBKKGIM1Nj7dokyrOAInosPg9wnk=
-github.com/MontFerret/contrib/modules/xml v1.0.0-rc.9/go.mod h1:xCz0GbqzO5y5qhFjGON6XWPgIeKIC7b3zLcKV2ZVzNk=
+github.com/MontFerret/contrib/modules/xml v1.0.0-rc.11 h1:ZHbG1S5aVkmgcC1yp/oq0qJN35+c/SLw8YNAQPBFZ24=
+github.com/MontFerret/contrib/modules/xml v1.0.0-rc.11/go.mod h1:FgDjAOWJagm31PcEOz/+xC9IXmR8LQtVq28VtrO8hEA=
 github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.9 h1:etq4j6NjlqHM8BoT/ZbPog4MANUlzHXdCfIsnZF2ljw=
 github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.9/go.mod h1:Ai81FLDLLYPONClq49QgxuBOrBzys04E8Ew57BEs52I=
 github.com/MontFerret/contrib/pkg/common v0.1.1 h1:qA2URATIO+EVLH3BNFKYupLx97ftotyGWnKtJJhtR0Y=
