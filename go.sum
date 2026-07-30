@@ -10,8 +10,8 @@ github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAw
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/MontFerret/contrib/modules/csv v1.0.0-rc.11 h1:wARTrf0W16EL7RJf+HBmVtLxbg1zvHxSNdlxKLAzDEc=
 github.com/MontFerret/contrib/modules/csv v1.0.0-rc.11/go.mod h1:AX0PNqOQk2kd5wIrqEQi31cXeBr4L3FNTUjOc/CJJdA=
-github.com/MontFerret/contrib/modules/db/postgres v1.0.0-rc.4 h1:OXFISgaApQ3+ZSRPMN21CYePGNVHK2MKyEoUFeQMkow=
-github.com/MontFerret/contrib/modules/db/postgres v1.0.0-rc.4/go.mod h1:ti250IRQqEZGDZaiJGYkobFq9jb/rfjoZTl7Fa684TM=
+github.com/MontFerret/contrib/modules/db/postgres v1.0.0-rc.6 h1:tThv4DLucifAq/n8lZud+LkAZeJbay/LZzd6O6g3Elc=
+github.com/MontFerret/contrib/modules/db/postgres v1.0.0-rc.6/go.mod h1:G5qPG1Et97/5a1Bo7pDZ945XHZlzg8QB+BUZ7Vf3JF4=
 github.com/MontFerret/contrib/modules/db/sqlite v1.0.0-rc.7 h1:5t860dJEuiSOuwqZ39gxcpAvobWb9mSocfeUYCMerNA=
 github.com/MontFerret/contrib/modules/db/sqlite v1.0.0-rc.7/go.mod h1:elLRWO1/E52LPDs4EtpQeQJ1L5jjMdM6y0XzSH7cP4c=
 github.com/MontFerret/contrib/modules/document/pdf v1.0.0-rc.3 h1:GXi/8x24P74rAnaowxxm6buGTw50jIKk1nDfv1H5+xM=
