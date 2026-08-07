@@ -94,14 +94,19 @@ func printFunctions(p *bytecode.Program) {
 
 		names := make([]string, 0, len(p.Functions.Host))
 
-		for name := range p.Functions.Host {
-			names = append(names, name)
+		for _, fn := range p.Functions.Host {
+			names = append(names, fn.Name)
 		}
 
 		sort.Strings(names)
 
 		for _, name := range names {
-			fmt.Printf("  %s(params=%d)\n", name, p.Functions.Host[name])
+			for _, fn := range p.Functions.Host {
+				if fn.Name == name {
+					fmt.Printf("  %s(args=%d)\n", name, fn.ArgCount)
+					break
+				}
+			}
 		}
 	}
 

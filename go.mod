@@ -4,24 +4,24 @@ go 1.26.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.2
-	github.com/MontFerret/contrib/modules/archive v1.0.0-rc.1
-	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.14
-	github.com/MontFerret/contrib/modules/db/postgres v1.0.0-rc.7
-	github.com/MontFerret/contrib/modules/db/sqlite v1.0.0-rc.10
-	github.com/MontFerret/contrib/modules/document/pdf v1.0.0-rc.6
-	github.com/MontFerret/contrib/modules/document/xlsx v1.0.0-rc.6
-	github.com/MontFerret/contrib/modules/net/rest v1.0.0-rc.9
-	github.com/MontFerret/contrib/modules/security/jwt v1.0.0-rc.10
-	github.com/MontFerret/contrib/modules/security/oauth2 v1.0.0-rc.1
-	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.12
-	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.13
-	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.19
-	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.12
-	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.12
-	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.12
-	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.12
-	github.com/MontFerret/ferret/v2 v2.0.0-alpha.41
+	github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.3
+	github.com/MontFerret/contrib/modules/archive v1.0.0-rc.2
+	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.15
+	github.com/MontFerret/contrib/modules/db/postgres v1.0.0-rc.8
+	github.com/MontFerret/contrib/modules/db/sqlite v1.0.0-rc.11
+	github.com/MontFerret/contrib/modules/document/pdf v1.0.0-rc.7
+	github.com/MontFerret/contrib/modules/document/xlsx v1.0.0-rc.7
+	github.com/MontFerret/contrib/modules/net/rest v1.0.0-rc.10
+	github.com/MontFerret/contrib/modules/security/jwt v1.0.0-rc.11
+	github.com/MontFerret/contrib/modules/security/oauth2 v1.0.0-rc.2
+	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.13
+	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.14
+	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.20
+	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.13
+	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.13
+	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.13
+	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.13
+	github.com/MontFerret/ferret/v2 v2.0.0-alpha.44
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
 	github.com/go-waitfor/waitfor-http v1.1.0
@@ -43,7 +43,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.12.0 // indirect
 	github.com/andybalholm/cascadia v1.3.4 // indirect
 	github.com/antchfx/htmlquery v1.3.6 // indirect
-	github.com/antchfx/xpath v1.3.6 // indirect
+	github.com/antchfx/xpath v1.3.8 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
@@ -55,7 +55,7 @@ require (
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
@@ -70,19 +70,19 @@ require (
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/openai/openai-go/v3 v3.41.1 // indirect
+	github.com/openai/openai-go/v3 v3.50.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/richardlehane/mscfb v1.0.7 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
-	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
 	github.com/sethgrid/pester v1.2.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/tidwall/gjson v1.18.0 // indirect
-	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/gjson v1.19.0 // indirect
+	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
@@ -102,8 +102,8 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
-	modernc.org/libc v1.74.4 // indirect
+	modernc.org/libc v1.75.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
-	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.55.0 // indirect
+	modernc.org/memory v1.12.0 // indirect
+	modernc.org/sqlite v1.56.0 // indirect
 )
