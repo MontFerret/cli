@@ -101,10 +101,45 @@ ferret inspect script.fql   # Print compiled program details
 ferret debug script.fql     # Start the interactive debugger
 ferret browser open         # Start a managed browser
 ferret config list          # Show configuration
+ferret module search sqlite # Search the Ferret module registry
 ferret version              # Show version information
 ```
 
 Run `ferret [command] --help` for command-specific options.
+
+## Module lifecycle
+
+Ferret CLI handles module discovery, project scaffolding, and preparation of
+registry publication records. Go remains responsible for adding, removing,
+and updating module dependencies through commands such as `go get`,
+`go get -u`, and `go mod tidy`.
+
+Search the public registry or inspect one registered module:
+
+```bash
+ferret module search sqlite
+ferret module info montferret/sqlite
+```
+
+Create a new module project. The Go import path is required because it cannot
+be inferred safely from the Ferret distribution name:
+
+```bash
+ferret module create acme/sqlite \
+  --go-module github.com/acme/ferret-sqlite \
+  --namespace DB::SQLITE
+```
+
+The scaffold contains schema-valid TODO metadata. Replace it before preparing
+a release, commit the module files, and create the release tag. From the module
+root, print the validated Barn registration records and pull-request guidance:
+
+```bash
+ferret module publish
+```
+
+For non-standard release tags, pass `--tag`. Publication preparation does not
+upload packages, authenticate with a provider, or open a pull request.
 
 ## Browser usage
 

@@ -13,6 +13,8 @@ import (
 	"github.com/MontFerret/cli/v2/cmd"
 	"github.com/MontFerret/cli/v2/pkg/config"
 	"github.com/MontFerret/cli/v2/pkg/logger"
+	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
+	"github.com/MontFerret/cli/v2/pkg/registryclient"
 )
 
 const (
@@ -49,6 +51,16 @@ func main() {
 	rootCmd.PersistentFlags().String(config.LoggerOutput, logger.OutputStderr, fmt.Sprintf("Set the query execution log output (%s)", logger.OutputsFmt()))
 	rootCmd.PersistentFlags().String(config.LoggerFile, "ferret.log", "Set the query execution log file path when --log-output=file")
 
+	registryClient, err := registryclient.New(registryclient.DefaultBaseURL, nil)
+	if err != nil {
+		exit(err)
+	}
+	moduleService := modulelifecycle.NewService(
+		registryClient,
+		modulelifecycle.NewScaffolder(nil),
+		modulelifecycle.NewPublisher(nil),
+	)
+
 	rootCmd.AddCommand(
 		cmd.VersionCommand(store),
 		cmd.ConfigCommand(store),
@@ -61,6 +73,7 @@ func main() {
 		cmd.InspectCommand(store),
 		cmd.BrowserCommand(store),
 		cmd.SelfUpdateCommand(store),
+		cmd.ModuleCommand(store, moduleService),
 	)
 
 	c := make(chan os.Signal, 1)

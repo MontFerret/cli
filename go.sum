@@ -48,6 +48,8 @@ github.com/MontFerret/cssx v0.2.0 h1:De0C6Irbg+qgFPXgWmPpVnwD4RRYUBQSbIYFTUVCNWU
 github.com/MontFerret/cssx v0.2.0/go.mod h1:fmGtRUNVaeJYpiPSDlNIbbYzb3+K8NxmNmJOYqlHATU=
 github.com/MontFerret/ferret/v2 v2.0.0-alpha.44 h1:iuizFAAo2rQ26HWisB0qtsP5rxJ45bHH6qBr14TyUUU=
 github.com/MontFerret/ferret/v2 v2.0.0-alpha.44/go.mod h1:IjoBKZuRggOvP+beDB4FPosw2NAq/EYabdaHpUVtfmY=
+github.com/MontFerret/specs v1.1.0 h1:pTljD5Ny+HV80YR1k5pfDPHq2lVpAd3WXrjmWA3RPfA=
+github.com/MontFerret/specs v1.1.0/go.mod h1:GNhrtvQHBotGlNbRrHSAVVHGBmjLSi8UdtrQctA7N40=
 github.com/PuerkitoBio/goquery v1.12.0 h1:pAcL4g3WRXekcB9AU/y1mbKez2dbY2AajVhtkO8RIBo=
 github.com/PuerkitoBio/goquery v1.12.0/go.mod h1:802ej+gV2y7bbIhOIoPY5sT183ZW0YFofScC4q/hIpQ=
 github.com/andybalholm/cascadia v1.3.4 h1:vM2lgh0Vru9Vwyfm4cQqWP2HHMW0u0+2PAW7Q38Qufg=
@@ -86,6 +88,8 @@ github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHk
 github.com/frankban/quicktest v1.14.6/go.mod h1:4ptaffx2x8+WTWXmUCuVU6aPUX1/Mz7zb5vbUoiM6w0=
 github.com/fsnotify/fsnotify v1.10.1 h1:b0/UzAf9yR5rhf3RPm9gf3ehBPpf0oZKIjtpKrx59Ho=
 github.com/fsnotify/fsnotify v1.10.1/go.mod h1:TLheqan6HD6GBK6PrDWyDPBaEV8LspOxvPSjC+bVfgo=
+github.com/github/go-spdx/v2 v2.7.0 h1:GzfXx4wFdlilARxmFRXW/mgUy3A4vSqZocCMFV6XFdQ=
+github.com/github/go-spdx/v2 v2.7.0/go.mod h1:Ftc45YYG1WzpzwEPKRVm9Jv8vDqOrN4gWoCkK+bHer0=
 github.com/go-viper/mapstructure/v2 v2.5.0 h1:vM5IJoUAy3d7zRSVtIwQgBj7BiWtMPfmPEgAXnvj1Ro=
 github.com/go-viper/mapstructure/v2 v2.5.0/go.mod h1:oJDH3BJKyqBA2TXFhDsKDGDTlndYOZ6rGS0BRZIxGhM=
 github.com/go-waitfor/waitfor v1.1.0 h1:UAoEJQJlT7m3/JiyAl/rMUbO4QrjvnsPXYqI8XGRBv4=

@@ -22,9 +22,11 @@ require (
 	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.13
 	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.13
 	github.com/MontFerret/ferret/v2 v2.0.0-alpha.44
+	github.com/MontFerret/specs v1.1.0
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
 	github.com/go-waitfor/waitfor-http v1.1.0
+	github.com/goccy/go-yaml v1.19.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/pkg/errors v0.9.1
@@ -32,6 +34,8 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
+	golang.org/x/mod v0.38.0
+	golang.org/x/sync v0.22.0
 )
 
 require (
@@ -50,10 +54,10 @@ require (
 	github.com/corpix/uarand v0.2.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
+	github.com/github/go-spdx/v2 v2.7.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
-	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -98,7 +102,6 @@ require (
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/exp v0.0.0-20260727155853-b88d891fe743 // indirect
 	golang.org/x/net v0.57.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
