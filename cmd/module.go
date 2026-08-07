@@ -16,11 +16,11 @@ const (
 	moduleTagFlag       = "tag"
 )
 
-// ModuleCommand creates the module discovery, scaffolding, and publication command group.
-func ModuleCommand(store *config.Store, service moduleService) *cobra.Command {
+// ModCommand creates the module discovery, scaffolding, and publication command group.
+func ModCommand(store *config.Store, service moduleService) *cobra.Command {
 	command := &cobra.Command{
-		Use:   "module",
-		Short: "Discover, create, and publish Ferret modules",
+		Use:   "mod",
+		Short: "Discover, initialize, and publish Ferret modules",
 		Args:  cobra.MaximumNArgs(0),
 		PersistentPreRun: func(command *cobra.Command, _ []string) {
 			store.BindFlags(command)
@@ -37,7 +37,7 @@ func ModuleCommand(store *config.Store, service moduleService) *cobra.Command {
 	command.AddCommand(
 		moduleSearchCommand(service),
 		moduleInfoCommand(service),
-		moduleCreateCommand(service),
+		moduleInitCommand(service),
 		modulePublishCommand(service),
 	)
 
@@ -83,10 +83,10 @@ func moduleInfoCommand(service moduleService) *cobra.Command {
 	}
 }
 
-func moduleCreateCommand(service moduleService) *cobra.Command {
+func moduleInitCommand(service moduleService) *cobra.Command {
 	command := &cobra.Command{
-		Use:   "create <name>",
-		Short: "Scaffold a new Ferret module project",
+		Use:   "init <name>",
+		Short: "Initialize a new Ferret module project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			goModule, err := command.Flags().GetString(moduleGoModuleFlag)
@@ -115,7 +115,7 @@ func moduleCreateCommand(service moduleService) *cobra.Command {
 				return err
 			}
 
-			renderModuleCreate(command.OutOrStdout(), result)
+			renderModuleInit(command.OutOrStdout(), result)
 
 			return nil
 		},

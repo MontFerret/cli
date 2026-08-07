@@ -73,7 +73,7 @@ func main() {
 		cmd.InspectCommand(store),
 		cmd.BrowserCommand(store),
 		cmd.SelfUpdateCommand(store),
-		cmd.ModuleCommand(store, moduleService),
+		cmd.ModCommand(store, moduleService),
 	)
 
 	c := make(chan os.Signal, 1)

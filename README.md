@@ -101,7 +101,7 @@ ferret inspect script.fql   # Print compiled program details
 ferret debug script.fql     # Start the interactive debugger
 ferret browser open         # Start a managed browser
 ferret config list          # Show configuration
-ferret module search sqlite # Search the Ferret module registry
+ferret mod search sqlite    # Search the Ferret module registry
 ferret version              # Show version information
 ```
 
@@ -117,15 +117,15 @@ and updating module dependencies through commands such as `go get`,
 Search the public registry or inspect one registered module:
 
 ```bash
-ferret module search sqlite
-ferret module info montferret/sqlite
+ferret mod search sqlite
+ferret mod info montferret/sqlite
 ```
 
-Create a new module project. The Go import path is required because it cannot
+Initialize a new module project. The Go import path is required because it cannot
 be inferred safely from the Ferret distribution name:
 
 ```bash
-ferret module create acme/sqlite \
+ferret mod init acme/sqlite \
   --go-module github.com/acme/ferret-sqlite \
   --namespace DB::SQLITE
 ```
@@ -135,7 +135,7 @@ a release, commit the module files, and create the release tag. From the module
 root, print the validated Barn registration records and pull-request guidance:
 
 ```bash
-ferret module publish
+ferret mod publish
 ```
 
 For non-standard release tags, pass `--tag`. Publication preparation does not

@@ -32,32 +32,40 @@ func renderModuleSearch(output io.Writer, results []modulelifecycle.SearchResult
 func renderModuleInfo(output io.Writer, info *modulelifecycle.ModuleInfo) {
 	fmt.Fprintf(output, "Name: %s\n", info.Name)
 	fmt.Fprintf(output, "Description: %s\n", info.Description)
+
 	if info.License != "" {
 		fmt.Fprintf(output, "License: %s\n", info.License)
 	}
+
 	if info.Latest == "" {
 		fmt.Fprintln(output, "Latest stable: (none)")
 	} else {
 		fmt.Fprintf(output, "Latest stable: %s\n", info.Latest)
 	}
+
 	fmt.Fprintf(output, "Newest available: %s\n", info.Newest)
 	fmt.Fprintf(output, "Selected version: %s\n", info.SelectedVersion)
 	fmt.Fprintf(output, "Versions: %s\n", strings.Join(info.Versions, ", "))
 	fmt.Fprintf(output, "Namespace: %s\n", info.Namespace)
+
 	if info.Ferret != "" {
 		fmt.Fprintf(output, "Ferret: %s\n", info.Ferret)
 	}
+
 	fmt.Fprintf(output, "Repository: %s\n", info.Repository)
+
 	if info.SourcePath != "" {
 		fmt.Fprintf(output, "Source path: %s\n", info.SourcePath)
 	}
+
 	fmt.Fprintf(output, "Commit: %s\n", info.Commit)
+
 	if info.Documentation != "" {
 		fmt.Fprintf(output, "Documentation: %s\n", info.Documentation)
 	}
 }
 
-func renderModuleCreate(output io.Writer, result *modulelifecycle.CreateResult) {
+func renderModuleInit(output io.Writer, result *modulelifecycle.CreateResult) {
 	fmt.Fprintf(output, "Created Ferret module in %s\n", result.Directory)
 	fmt.Fprintf(output, "Runtime namespace: %s\n", result.Namespace)
 	fmt.Fprintln(output, "Next steps:")
