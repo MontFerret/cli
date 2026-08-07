@@ -4,6 +4,7 @@ go 1.26.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/MontFerret/barn v1.0.1
 	github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.3
 	github.com/MontFerret/contrib/modules/archive v1.0.0-rc.2
 	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.15

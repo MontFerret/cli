@@ -8,6 +8,9 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 
+	barnpublish "github.com/MontFerret/barn/pkg/publish"
+	registryspec "github.com/MontFerret/specs/pkg/registry"
+
 	"github.com/MontFerret/cli/v2/pkg/config"
 	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
 )
@@ -76,17 +79,44 @@ func TestModCommandInitRequiresAndPassesFlags(t *testing.T) {
 }
 
 func TestModCommandPublishRendersRecords(t *testing.T) {
-	service := &fakeModuleService{publication: &modulelifecycle.Publication{
-		Repository: "https://example.com/acme/widget", Version: "1.2.3", Tag: "release-1.2.3", Commit: "abc",
-		ModuleManifestPath: "registry/modules/acme/widget/manifest.json", ModuleManifestJSON: []byte("{}\n"),
-		VersionRecordPath: "registry/modules/acme/widget/versions/v1.2.3.json", VersionRecordJSON: []byte("{}\n"),
+	service := &fakeModuleService{publication: &barnpublish.Result{
+		Kind: barnpublish.NewModule,
+		Module: &registryspec.ModuleManifest{
+			Source: registryspec.Source{Repository: "https://example.com/acme/widget", Path: "modules/widget"},
+		},
+		Version: &registryspec.VersionRecord{Version: "1.2.3", Tag: "release-1.2.3", Commit: "abc"},
+		Files: []barnpublish.File{
+			{Path: "registry/modules/acme/widget/manifest.json", Content: []byte("{}\n")},
+			{Path: "registry/modules/acme/widget/versions/v1.2.3.json", Content: []byte("{}\n")},
+		},
 	}}
 	output, err := executeModCommand(t, service, "publish", "--tag", "release-1.2.3")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if service.publishOptions.Tag != "release-1.2.3" || !strings.Contains(output, "Manifest: valid") || !strings.Contains(output, service.publication.VersionRecordPath) {
+	if service.publishOptions.Tag != "release-1.2.3" || !strings.Contains(output, "Manifest: valid") || !strings.Contains(output, service.publication.Files[1].Path) || !strings.Contains(output, "Add both records") {
 		t.Fatalf("unexpected publication output:\n%s", output)
+	}
+}
+
+func TestModCommandPublishRendersOnlyNewVersionFile(t *testing.T) {
+	service := &fakeModuleService{publication: &barnpublish.Result{
+		Kind: barnpublish.NewVersion,
+		Module: &registryspec.ModuleManifest{
+			Source: registryspec.Source{Repository: "https://example.com/acme/widget"},
+		},
+		Version: &registryspec.VersionRecord{Version: "1.2.4", Tag: "v1.2.4", Commit: "def"},
+		Files: []barnpublish.File{{
+			Path: "registry/modules/acme/widget/versions/v1.2.4.json", Content: []byte("{\"version\":\"1.2.4\"}\n"),
+		}},
+	}}
+
+	output, err := executeModCommand(t, service, "publish")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if service.publishOptions.Tag != "" || strings.Contains(output, "manifest.json") || !strings.Contains(output, service.publication.Files[0].Path) || !strings.Contains(output, "without modifying published records") {
+		t.Fatalf("unexpected new-version output:\n%s", output)
 	}
 }
 

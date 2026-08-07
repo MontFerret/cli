@@ -8,6 +8,8 @@ github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2 h1:XFJZFWESIWlUEHHjzBuv8R
 github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2/go.mod h1:BHWO8lJzttJLqwuV8Rb1B3OG2OSzLbssZDI1FRg2eAA=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
+github.com/MontFerret/barn v1.0.1 h1:3gXHJqHf3Sc6tk4IwUvhLz2flDq01qO1RIZ+nhevsQs=
+github.com/MontFerret/barn v1.0.1/go.mod h1:mx09fQEy3+BZZOpIVCsmXG8y6V/s85BywJQP3xX4pJw=
 github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.3 h1:9HIwVqIwhk/8ergf9Y6GX0hWJxUGvdacf9BXQrA4NUE=
 github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.3/go.mod h1:i2NDjugVn3UGbCB+4/1ObX6bWHg1ve1hBhfx0/7CexM=
 github.com/MontFerret/contrib/modules/archive v1.0.0-rc.2 h1:I0Lhek6ms9XfYzSa8rJD3KvOQ3HUKU98Vcu7OXeJFLQ=

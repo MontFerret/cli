@@ -1,13 +1,23 @@
 package module
 
-import "context"
+import (
+	"context"
+
+	barnpublish "github.com/MontFerret/barn/pkg/publish"
+	barnregistry "github.com/MontFerret/barn/pkg/registry"
+)
 
 type (
 	// Registry provides the public registry operations used by the module service.
 	Registry interface {
-		Catalog(context.Context) (*RegistryCatalog, error)
-		Module(context.Context, string) (*RegistryModule, error)
-		Version(context.Context, string) (*RegistryVersion, error)
+		Search(context.Context, barnregistry.SearchOptions) ([]barnregistry.ModuleSummary, error)
+		Module(context.Context, string) (*barnregistry.Module, error)
+		Version(context.Context, string, string) (*barnregistry.Version, error)
+	}
+
+	// PublicationPreparer prepares Barn source records for a tagged module release.
+	PublicationPreparer interface {
+		Prepare(context.Context, PublishOptions) (*barnpublish.Result, error)
 	}
 
 	// SearchResult is one row in module discovery output.
@@ -21,7 +31,6 @@ type (
 	ModuleInfo struct {
 		Name            string
 		Description     string
-		License         string
 		Latest          string
 		Newest          string
 		SelectedVersion string
@@ -54,20 +63,6 @@ type (
 		Tag       string
 	}
 
-	// Publication contains validated Barn source records and their target paths.
-	Publication struct {
-		Name               string
-		Repository         string
-		SourcePath         string
-		Version            string
-		Tag                string
-		Commit             string
-		ModuleManifestPath string
-		ModuleManifestJSON []byte
-		VersionRecordPath  string
-		VersionRecordJSON  []byte
-	}
-
 	// ScaffoldEnvironment pins toolchain and Ferret versions in generated projects.
 	ScaffoldEnvironment struct {
 		GoVersion     string
@@ -76,9 +71,4 @@ type (
 
 	// EnvironmentProvider resolves scaffold dependency versions lazily.
 	EnvironmentProvider func() (ScaffoldEnvironment, error)
-
-	// GitRunner runs read-only Git commands in a repository.
-	GitRunner interface {
-		Run(context.Context, string, ...string) (string, error)
-	}
 )

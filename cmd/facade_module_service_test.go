@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 
+	barnpublish "github.com/MontFerret/barn/pkg/publish"
+
 	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
 )
 
@@ -20,6 +22,6 @@ func (f *facadeModuleService) Create(context.Context, modulelifecycle.CreateOpti
 	return nil, nil
 }
 
-func (f *facadeModuleService) Publish(context.Context, modulelifecycle.PublishOptions) (*modulelifecycle.Publication, error) {
+func (f *facadeModuleService) Publish(context.Context, modulelifecycle.PublishOptions) (*barnpublish.Result, error) {
 	return nil, nil
 }

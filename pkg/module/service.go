@@ -5,63 +5,54 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
-	"sync"
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/MontFerret/cli/v2/pkg/registryclient"
+	barnpublish "github.com/MontFerret/barn/pkg/publish"
+	barnregistry "github.com/MontFerret/barn/pkg/registry"
 )
 
 // Service coordinates registry discovery, scaffolding, and publication preparation.
 type Service struct {
 	registry   Registry
 	scaffolder *Scaffolder
-	publisher  *Publisher
+	publisher  PublicationPreparer
 }
 
 // NewService constructs a module lifecycle service.
-func NewService(registry Registry, scaffolder *Scaffolder, publisher *Publisher) *Service {
+func NewService(registry Registry, scaffolder *Scaffolder, publisher PublicationPreparer) *Service {
 	return &Service{registry: registry, scaffolder: scaffolder, publisher: publisher}
 }
 
-// Search returns modules whose identity or description contains query.
+// Search returns modules whose canonical identity or description contains query.
 func (s *Service) Search(ctx context.Context, query string) ([]SearchResult, error) {
-	catalog, err := s.registry.Catalog(ctx)
+	summaries, err := s.registry.Search(ctx, barnregistry.SearchOptions{Query: query})
 	if err != nil {
 		return nil, err
 	}
 
-	var resultsMu sync.Mutex
-	query = strings.ToLower(strings.TrimSpace(query))
-	results := make([]SearchResult, 0, len(catalog.Modules))
+	results := make([]SearchResult, len(summaries))
 	group, groupContext := errgroup.WithContext(ctx)
 	group.SetLimit(6)
 
-	for _, reference := range catalog.Modules {
-		ref := reference
+	for index, summary := range summaries {
+		index, summary := index, summary
 		group.Go(func() error {
-			item, err := s.registry.Module(groupContext, ref.Href)
+			item, err := s.registry.Module(groupContext, summary.ID)
 			if err != nil {
-				return fmt.Errorf("load registry module %q: %w", ref.ID, err)
+				return fmt.Errorf("load registry module %q: %w", summary.ID, err)
 			}
 
-			if item.ID != ref.ID {
-				return fmt.Errorf("%w: catalog module %q resolved to %q", registryclient.ErrMalformed, ref.ID, item.ID)
+			if len(item.Versions) == 0 {
+				return fmt.Errorf("%w: module %q has no versions", barnregistry.ErrMalformedArtifact, item.ID)
 			}
 
-			if query != "" && !strings.Contains(strings.ToLower(item.ID), query) && !strings.Contains(strings.ToLower(item.Description), query) {
-				return nil
-			}
-
-			version := item.Latest
+			version := summary.Latest
 			if version == "" {
 				version = item.Versions[0].Version
 			}
 
-			resultsMu.Lock()
-			results = append(results, SearchResult{Name: item.ID, Version: version, Description: item.Description})
-			resultsMu.Unlock()
+			results[index] = SearchResult{Name: item.ID, Version: version, Description: item.Description}
 
 			return nil
 		})
@@ -78,51 +69,23 @@ func (s *Service) Search(ctx context.Context, query string) ([]SearchResult, err
 
 // Info returns detailed metadata for one registry module.
 func (s *Service) Info(ctx context.Context, name string) (*ModuleInfo, error) {
-	catalog, err := s.registry.Catalog(ctx)
+	item, err := s.registry.Module(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 
-	var href string
-	for _, reference := range catalog.Modules {
-		if reference.ID == name {
-			href = reference.Href
-
-			break
-		}
+	if len(item.Versions) == 0 {
+		return nil, fmt.Errorf("%w: module %q has no versions", barnregistry.ErrMalformedArtifact, name)
 	}
 
-	if href == "" {
-		return nil, fmt.Errorf("%w: %s", registryclient.ErrNotFound, name)
-	}
-
-	item, err := s.registry.Module(ctx, href)
-	if err != nil {
-		return nil, err
-	}
-
-	if item.ID != name {
-		return nil, fmt.Errorf("%w: catalog module %q resolved to %q", registryclient.ErrMalformed, name, item.ID)
-	}
-
-	selected := item.Versions[0]
+	selected := item.Versions[0].Version
 	if item.Latest != "" {
-		for _, version := range item.Versions {
-			if version.Version == item.Latest {
-				selected = version
-
-				break
-			}
-		}
+		selected = item.Latest
 	}
 
-	version, err := s.registry.Version(ctx, selected.Href)
+	version, err := s.registry.Version(ctx, name, selected)
 	if err != nil {
 		return nil, err
-	}
-
-	if version.ID != name || version.Version != selected.Version {
-		return nil, fmt.Errorf("%w: selected version metadata does not match %s@%s", registryclient.ErrMalformed, name, selected.Version)
 	}
 
 	versions := make([]string, len(item.Versions))
@@ -133,17 +96,16 @@ func (s *Service) Info(ctx context.Context, name string) (*ModuleInfo, error) {
 	return &ModuleInfo{
 		Name:            item.ID,
 		Description:     item.Description,
-		License:         item.License,
 		Latest:          item.Latest,
 		Newest:          item.Versions[0].Version,
-		SelectedVersion: selected.Version,
+		SelectedVersion: selected,
 		Versions:        versions,
 		Namespace:       version.Namespace,
 		Ferret:          version.Ferret,
 		Repository:      version.Source.Repository,
 		SourcePath:      version.Source.Path,
 		Commit:          version.Source.Commit,
-		Documentation:   version.Documentation,
+		Documentation:   version.Content["documentation"],
 	}, nil
 }
 
@@ -157,7 +119,7 @@ func (s *Service) Create(ctx context.Context, options CreateOptions) (*CreateRes
 }
 
 // Publish prepares validated Barn registration records from a local release.
-func (s *Service) Publish(ctx context.Context, options PublishOptions) (*Publication, error) {
+func (s *Service) Publish(ctx context.Context, options PublishOptions) (*barnpublish.Result, error) {
 	if s.publisher == nil {
 		return nil, errors.New("module publisher is not configured")
 	}

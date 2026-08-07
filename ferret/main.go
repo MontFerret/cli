@@ -10,11 +10,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
+	barnregistry "github.com/MontFerret/barn/pkg/registry"
+
 	"github.com/MontFerret/cli/v2/cmd"
 	"github.com/MontFerret/cli/v2/pkg/config"
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
-	"github.com/MontFerret/cli/v2/pkg/registryclient"
 )
 
 const (
@@ -51,14 +52,14 @@ func main() {
 	rootCmd.PersistentFlags().String(config.LoggerOutput, logger.OutputStderr, fmt.Sprintf("Set the query execution log output (%s)", logger.OutputsFmt()))
 	rootCmd.PersistentFlags().String(config.LoggerFile, "ferret.log", "Set the query execution log file path when --log-output=file")
 
-	registryClient, err := registryclient.New(registryclient.DefaultBaseURL, nil)
+	registryClient, err := barnregistry.NewClient()
 	if err != nil {
 		exit(err)
 	}
 	moduleService := modulelifecycle.NewService(
 		registryClient,
 		modulelifecycle.NewScaffolder(nil),
-		modulelifecycle.NewPublisher(nil),
+		modulelifecycle.NewPublisher(registryClient),
 	)
 
 	rootCmd.AddCommand(

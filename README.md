@@ -114,7 +114,8 @@ registry publication records. Go remains responsible for adding, removing,
 and updating module dependencies through commands such as `go get`,
 `go get -u`, and `go mod tidy`.
 
-Search the public registry or inspect one registered module:
+Search the public registry by canonical module ID or description, or inspect
+one registered module:
 
 ```bash
 ferret mod search sqlite
@@ -131,14 +132,20 @@ ferret mod init acme/sqlite \
 ```
 
 The scaffold contains schema-valid TODO metadata. Replace it before preparing
-a release, commit the module files, and create the release tag. From the module
-root, print the validated Barn registration records and pull-request guidance:
+a release, commit the module files, and push the release tag. The manifest must
+identify a public repository that supports anonymous HTTPS Git access. From the
+module root, print the validated Barn registration records and pull-request
+guidance:
 
 ```bash
 ferret mod publish
 ```
 
-For non-standard release tags, pass `--tag`. Publication preparation does not
+By default, the tag is `v<version>` for a standalone module or
+`<repository.directory>/v<version>` for a monorepo module. For non-standard
+release tags, pass `--tag`. Publication preparation consults the public
+registry, inspects the pushed tag through anonymous HTTPS Git, and returns only
+the records needed for a new module or version. It does not write records,
 upload packages, authenticate with a provider, or open a pull request.
 
 ## Browser usage

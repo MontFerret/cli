@@ -6,6 +6,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	barnpublish "github.com/MontFerret/barn/pkg/publish"
+
 	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
 )
 
@@ -32,10 +34,6 @@ func renderModuleSearch(output io.Writer, results []modulelifecycle.SearchResult
 func renderModuleInfo(output io.Writer, info *modulelifecycle.ModuleInfo) {
 	fmt.Fprintf(output, "Name: %s\n", info.Name)
 	fmt.Fprintf(output, "Description: %s\n", info.Description)
-
-	if info.License != "" {
-		fmt.Fprintf(output, "License: %s\n", info.License)
-	}
 
 	if info.Latest == "" {
 		fmt.Fprintln(output, "Latest stable: (none)")
@@ -74,17 +72,24 @@ func renderModuleInit(output io.Writer, result *modulelifecycle.CreateResult) {
 	fmt.Fprintln(output, "  3. Run go mod tidy when you are ready to resolve dependencies.")
 }
 
-func renderModulePublication(output io.Writer, publication *modulelifecycle.Publication) {
+func renderModulePublication(output io.Writer, publication *barnpublish.Result) {
 	fmt.Fprintln(output, "Manifest: valid")
-	fmt.Fprintf(output, "Repository: %s\n", publication.Repository)
-	if publication.SourcePath != "" {
-		fmt.Fprintf(output, "Source path: %s\n", publication.SourcePath)
+	fmt.Fprintf(output, "Repository: %s\n", publication.Module.Source.Repository)
+	if publication.Module.Source.Path != "" {
+		fmt.Fprintf(output, "Source path: %s\n", publication.Module.Source.Path)
 	}
-	fmt.Fprintf(output, "Version: %s\n", publication.Version)
-	fmt.Fprintf(output, "Tag: %s\n", publication.Tag)
-	fmt.Fprintf(output, "Commit: %s\n\n", publication.Commit)
-	fmt.Fprintf(output, "%s\n%s\n", publication.ModuleManifestPath, publication.ModuleManifestJSON)
-	fmt.Fprintf(output, "%s\n%s\n", publication.VersionRecordPath, publication.VersionRecordJSON)
-	fmt.Fprintln(output, "For a first registration, add both records to a Barn pull request.")
-	fmt.Fprintln(output, "For an existing module, add only the new version record and do not modify published records.")
+	fmt.Fprintf(output, "Version: %s\n", publication.Version.Version)
+	fmt.Fprintf(output, "Tag: %s\n", publication.Version.Tag)
+	fmt.Fprintf(output, "Commit: %s\n\n", publication.Version.Commit)
+
+	for _, file := range publication.Files {
+		fmt.Fprintf(output, "%s\n%s\n", file.Path, file.Content)
+	}
+
+	switch publication.Kind {
+	case barnpublish.NewModule:
+		fmt.Fprintln(output, "Add both records to a Barn pull request.")
+	case barnpublish.NewVersion:
+		fmt.Fprintln(output, "Add the new version record to a Barn pull request without modifying published records.")
+	}
 }
