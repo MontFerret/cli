@@ -5,40 +5,43 @@ import (
 
 	barnpublish "github.com/MontFerret/barn/pkg/publish"
 
-	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
+	"github.com/MontFerret/cli/v2/pkg/module/discovery"
+	"github.com/MontFerret/cli/v2/pkg/module/install"
+	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
+	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
 type fakeModuleService struct {
-	searchResults  []modulelifecycle.SearchResult
-	info           *modulelifecycle.ModuleInfo
-	install        *modulelifecycle.InstallResult
-	create         *modulelifecycle.CreateResult
+	searchResults  []discovery.SearchResult
+	info           *discovery.ModuleInfo
+	install        *install.Result
+	create         *scaffold.Result
 	publication    *barnpublish.Result
-	createOptions  modulelifecycle.CreateOptions
-	installOptions modulelifecycle.InstallOptions
-	publishOptions modulelifecycle.PublishOptions
+	createOptions  scaffold.Options
+	installOptions install.Options
+	publishOptions modulepublish.Options
 	err            error
 }
 
-func (f *fakeModuleService) Search(context.Context, string) ([]modulelifecycle.SearchResult, error) {
+func (f *fakeModuleService) Search(context.Context, string) ([]discovery.SearchResult, error) {
 	return f.searchResults, f.err
 }
 
-func (f *fakeModuleService) Info(context.Context, string) (*modulelifecycle.ModuleInfo, error) {
+func (f *fakeModuleService) Info(context.Context, string) (*discovery.ModuleInfo, error) {
 	return f.info, f.err
 }
 
-func (f *fakeModuleService) Install(_ context.Context, options modulelifecycle.InstallOptions) (*modulelifecycle.InstallResult, error) {
+func (f *fakeModuleService) Install(_ context.Context, options install.Options) (*install.Result, error) {
 	f.installOptions = options
 	return f.install, f.err
 }
 
-func (f *fakeModuleService) Create(_ context.Context, options modulelifecycle.CreateOptions) (*modulelifecycle.CreateResult, error) {
+func (f *fakeModuleService) Create(_ context.Context, options scaffold.Options) (*scaffold.Result, error) {
 	f.createOptions = options
 	return f.create, f.err
 }
 
-func (f *fakeModuleService) Publish(_ context.Context, options modulelifecycle.PublishOptions) (*barnpublish.Result, error) {
+func (f *fakeModuleService) Publish(_ context.Context, options modulepublish.Options) (*barnpublish.Result, error) {
 	f.publishOptions = options
 	return f.publication, f.err
 }

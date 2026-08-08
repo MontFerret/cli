@@ -6,7 +6,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/MontFerret/cli/v2/pkg/config"
-	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
+	"github.com/MontFerret/cli/v2/pkg/module/install"
+	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
+	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
 const (
@@ -57,7 +59,7 @@ func moduleInstallCommand(service Service) *cobra.Command {
 		RunE: func(command *cobra.Command, args []string) error {
 			fmt.Fprintf(command.OutOrStdout(), "Resolving %s...\n", args[0])
 
-			result, err := service.Install(command.Context(), modulelifecycle.InstallOptions{
+			result, err := service.Install(command.Context(), install.Options{
 				Reference: args[0],
 				Directory: ".",
 			})
@@ -136,7 +138,7 @@ func moduleInitCommand(service Service) *cobra.Command {
 				return err
 			}
 
-			result, err := service.Create(command.Context(), modulelifecycle.CreateOptions{
+			result, err := service.Create(command.Context(), scaffold.Options{
 				Name: args[0], GoModule: goModule, Directory: directory, Namespace: namespace,
 			})
 			if err != nil {
@@ -167,7 +169,7 @@ func modulePublishCommand(service Service) *cobra.Command {
 				return err
 			}
 
-			publication, err := service.Publish(command.Context(), modulelifecycle.PublishOptions{Directory: ".", Tag: tag})
+			publication, err := service.Publish(command.Context(), modulepublish.Options{Directory: ".", Tag: tag})
 			if err != nil {
 				return err
 			}

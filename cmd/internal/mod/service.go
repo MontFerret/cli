@@ -5,14 +5,17 @@ import (
 
 	barnpublish "github.com/MontFerret/barn/pkg/publish"
 
-	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
+	"github.com/MontFerret/cli/v2/pkg/module/discovery"
+	"github.com/MontFerret/cli/v2/pkg/module/install"
+	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
+	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
 // Service isolates the module command group from lifecycle implementation details.
 type Service interface {
-	Search(context.Context, string) ([]modulelifecycle.SearchResult, error)
-	Info(context.Context, string) (*modulelifecycle.ModuleInfo, error)
-	Install(context.Context, modulelifecycle.InstallOptions) (*modulelifecycle.InstallResult, error)
-	Create(context.Context, modulelifecycle.CreateOptions) (*modulelifecycle.CreateResult, error)
-	Publish(context.Context, modulelifecycle.PublishOptions) (*barnpublish.Result, error)
+	Search(context.Context, string) ([]discovery.SearchResult, error)
+	Info(context.Context, string) (*discovery.ModuleInfo, error)
+	Install(context.Context, install.Options) (*install.Result, error)
+	Create(context.Context, scaffold.Options) (*scaffold.Result, error)
+	Publish(context.Context, modulepublish.Options) (*barnpublish.Result, error)
 }

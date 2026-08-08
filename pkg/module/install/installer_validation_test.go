@@ -1,4 +1,4 @@
-package module
+package install
 
 import (
 	"context"
@@ -26,7 +26,7 @@ func TestInstallerRejectsGoOriginCommitMismatch(t *testing.T) {
 	release := installTestVersion("acme/archive", version, ">=2.0.0-alpha.43 <3.0.0", packagePath)
 	release.Source.Commit = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
-	err := NewInstaller(nil, runner).validateResolvedModule(context.Background(), &projectInfo{
+	err := New(nil, runner).validateResolvedModule(context.Background(), &projectInfo{
 		Root: "/tmp", FerretVersion: "v2.0.0-alpha.44",
 	}, modFile, release)
 	if err == nil || !strings.Contains(err.Error(), "does not match Go module origin") {

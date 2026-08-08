@@ -1,4 +1,4 @@
-package module
+package scaffold
 
 import (
 	"context"
@@ -17,17 +17,17 @@ type Scaffolder struct {
 	environment EnvironmentProvider
 }
 
-// NewScaffolder constructs a project scaffolder.
-func NewScaffolder(environment EnvironmentProvider) *Scaffolder {
+// New constructs a project scaffolder.
+func New(environment EnvironmentProvider) *Scaffolder {
 	if environment == nil {
-		environment = CurrentScaffoldEnvironment
+		environment = CurrentEnvironment
 	}
 
 	return &Scaffolder{environment: environment}
 }
 
 // Create generates and validates a module project before installing it at the destination.
-func (s *Scaffolder) Create(ctx context.Context, options CreateOptions) (*CreateResult, error) {
+func (s *Scaffolder) Create(ctx context.Context, options Options) (*Result, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -64,6 +64,7 @@ func (s *Scaffolder) Create(ctx context.Context, options CreateOptions) (*Create
 		License:       "LicenseRef-TODO",
 		Documentation: "https://example.invalid/TODO",
 	}
+
 	if err := modulemanifest.Validate(&manifest); err != nil {
 		return nil, fmt.Errorf("invalid module scaffold metadata: %w", err)
 	}
@@ -94,6 +95,7 @@ func (s *Scaffolder) Create(ctx context.Context, options CreateOptions) (*Create
 	}
 
 	parent := filepath.Dir(destination)
+
 	if err := os.MkdirAll(parent, 0o755); err != nil {
 		return nil, fmt.Errorf("create destination parent %q: %w", parent, err)
 	}
@@ -114,7 +116,7 @@ func (s *Scaffolder) Create(ctx context.Context, options CreateOptions) (*Create
 		return nil, err
 	}
 
-	if _, err := ValidateManifest(filepath.Join(staging, modulemanifest.ManifestFilename)); err != nil {
+	if _, err := modulemanifest.LoadFile(filepath.Join(staging, modulemanifest.ManifestFilename)); err != nil {
 		return nil, fmt.Errorf("validate generated module manifest: %w", err)
 	}
 
@@ -128,5 +130,5 @@ func (s *Scaffolder) Create(ctx context.Context, options CreateOptions) (*Create
 		return nil, fmt.Errorf("install scaffold at %q: %w", destination, err)
 	}
 
-	return &CreateResult{Directory: destination, Namespace: namespace}, nil
+	return &Result{Directory: destination, Namespace: namespace}, nil
 }

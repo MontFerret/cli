@@ -5,27 +5,30 @@ import (
 
 	barnpublish "github.com/MontFerret/barn/pkg/publish"
 
-	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
+	"github.com/MontFerret/cli/v2/pkg/module/discovery"
+	"github.com/MontFerret/cli/v2/pkg/module/install"
+	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
+	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
 type facadeModuleService struct{}
 
-func (f *facadeModuleService) Search(context.Context, string) ([]modulelifecycle.SearchResult, error) {
+func (f *facadeModuleService) Search(context.Context, string) ([]discovery.SearchResult, error) {
 	return nil, nil
 }
 
-func (f *facadeModuleService) Info(context.Context, string) (*modulelifecycle.ModuleInfo, error) {
+func (f *facadeModuleService) Info(context.Context, string) (*discovery.ModuleInfo, error) {
 	return nil, nil
 }
 
-func (f *facadeModuleService) Install(context.Context, modulelifecycle.InstallOptions) (*modulelifecycle.InstallResult, error) {
+func (f *facadeModuleService) Install(context.Context, install.Options) (*install.Result, error) {
 	return nil, nil
 }
 
-func (f *facadeModuleService) Create(context.Context, modulelifecycle.CreateOptions) (*modulelifecycle.CreateResult, error) {
+func (f *facadeModuleService) Create(context.Context, scaffold.Options) (*scaffold.Result, error) {
 	return nil, nil
 }
 
-func (f *facadeModuleService) Publish(context.Context, modulelifecycle.PublishOptions) (*barnpublish.Result, error) {
+func (f *facadeModuleService) Publish(context.Context, modulepublish.Options) (*barnpublish.Result, error) {
 	return nil, nil
 }

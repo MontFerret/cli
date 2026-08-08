@@ -8,10 +8,12 @@ import (
 
 	barnpublish "github.com/MontFerret/barn/pkg/publish"
 
-	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
+	"github.com/MontFerret/cli/v2/pkg/module/discovery"
+	"github.com/MontFerret/cli/v2/pkg/module/install"
+	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
-func renderModuleSearch(output io.Writer, results []modulelifecycle.SearchResult) error {
+func renderModuleSearch(output io.Writer, results []discovery.SearchResult) error {
 	if len(results) == 0 {
 		_, err := fmt.Fprintln(output, "No modules found.")
 		return err
@@ -31,7 +33,7 @@ func renderModuleSearch(output io.Writer, results []modulelifecycle.SearchResult
 	return table.Flush()
 }
 
-func renderModuleInfo(output io.Writer, info *modulelifecycle.ModuleInfo) {
+func renderModuleInfo(output io.Writer, info *discovery.ModuleInfo) {
 	fmt.Fprintf(output, "Name: %s\n", info.Name)
 	fmt.Fprintf(output, "Description: %s\n", info.Description)
 
@@ -63,7 +65,7 @@ func renderModuleInfo(output io.Writer, info *modulelifecycle.ModuleInfo) {
 	}
 }
 
-func renderModuleInstall(output io.Writer, result *modulelifecycle.InstallResult) {
+func renderModuleInstall(output io.Writer, result *install.Result) {
 	fmt.Fprintf(output, "Resolved %s@%s\n", result.ID, result.Version)
 	fmt.Fprintf(output, "Compatible with project Ferret %s (%s)\n", result.ProjectFerret, result.FerretConstraint)
 	fmt.Fprintf(output, "Package: %s\n", result.PackagePath)
@@ -84,7 +86,7 @@ func renderModuleInstall(output io.Writer, result *modulelifecycle.InstallResult
 	fmt.Fprintln(output, "Validated owning package build")
 }
 
-func renderModuleInit(output io.Writer, result *modulelifecycle.CreateResult) {
+func renderModuleInit(output io.Writer, result *scaffold.Result) {
 	fmt.Fprintf(output, "Created Ferret module in %s\n", result.Directory)
 	fmt.Fprintf(output, "Runtime namespace: %s\n", result.Namespace)
 	fmt.Fprintln(output, "Next steps:")

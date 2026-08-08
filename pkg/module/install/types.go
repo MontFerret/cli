@@ -1,6 +1,7 @@
-package module
+package install
 
 import (
+	"context"
 	"go/ast"
 	"go/token"
 	"io/fs"
@@ -11,6 +12,36 @@ import (
 const ferretCoreModulePath = "github.com/MontFerret/ferret/v2"
 
 type (
+	// Registry provides the registry operations used to resolve module releases.
+	Registry interface {
+		Module(context.Context, string) (*barnregistry.Module, error)
+		Version(context.Context, string, string) (*barnregistry.Version, error)
+	}
+
+	// Runner executes Go toolchain commands in a project directory.
+	Runner interface {
+		Run(context.Context, string, ...string) ([]byte, error)
+	}
+
+	// Options controls installation into an existing Go application.
+	Options struct {
+		Reference string
+		Directory string
+	}
+
+	// Result describes a resolved and validated project installation.
+	Result struct {
+		ID                  string
+		Version             string
+		PackagePath         string
+		FerretConstraint    string
+		ProjectFerret       string
+		EditedFile          string
+		Changed             bool
+		SourceChanged       bool
+		DependenciesChanged bool
+	}
+
 	projectInfo struct {
 		Root          string
 		ModulePath    string

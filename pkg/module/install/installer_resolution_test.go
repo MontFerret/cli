@@ -1,4 +1,4 @@
-package module
+package install
 
 import (
 	"context"
@@ -28,7 +28,7 @@ func TestInstallerSelectsNewestCompatibleRelease(t *testing.T) {
 			"acme/archive@1.0.0":      installTestVersion("acme/archive", "1.0.0", ">=2.0.0-alpha.1 <3.0.0", "example.com/archive"),
 		},
 	}
-	installer := NewInstaller(registry, nil)
+	installer := New(registry, nil)
 	projectVersion := semver.MustParse("2.0.0-alpha.44")
 
 	release, err := installer.resolveRelease(context.Background(), "acme/archive", "", projectVersion)
@@ -53,7 +53,7 @@ func TestInstallerRejectsExplicitIncompatibleRelease(t *testing.T) {
 		},
 	}
 
-	_, err := NewInstaller(registry, nil).resolveRelease(context.Background(), "acme/archive", "1.0.0", semver.MustParse("2.0.0"))
+	_, err := New(registry, nil).resolveRelease(context.Background(), "acme/archive", "1.0.0", semver.MustParse("2.0.0"))
 	if err == nil || !strings.Contains(err.Error(), "requires Ferret >=2.1.0 <3.0.0") || !strings.Contains(err.Error(), "project selects Ferret 2.0.0") {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestInstallerRejectsMissingOrMalformedCompatibility(t *testing.T) {
 			},
 		}
 
-		_, err := NewInstaller(registry, nil).resolveRelease(context.Background(), "acme/archive", "1.0.0", semver.MustParse("2.0.0"))
+		_, err := New(registry, nil).resolveRelease(context.Background(), "acme/archive", "1.0.0", semver.MustParse("2.0.0"))
 		if err == nil || !strings.Contains(err.Error(), "unusable compatibility metadata") {
 			t.Fatalf("constraint %q produced unexpected error: %v", constraint, err)
 		}

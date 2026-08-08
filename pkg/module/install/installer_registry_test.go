@@ -1,4 +1,4 @@
-package module
+package install
 
 import (
 	"context"
@@ -90,7 +90,7 @@ func TestInstallerResolvesPublishedArtifactThroughBarnClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	release, err := NewInstaller(client, nil).resolveRelease(
+	release, err := New(client, nil).resolveRelease(
 		context.Background(),
 		moduleID,
 		"",

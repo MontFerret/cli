@@ -1,4 +1,4 @@
-package module
+package install
 
 import (
 	"bytes"
@@ -17,11 +17,11 @@ import (
 // Installer resolves registry releases and installs them into existing Go applications.
 type Installer struct {
 	registry Registry
-	runner   GoRunner
+	runner   Runner
 }
 
-// NewInstaller constructs a project-local module installer.
-func NewInstaller(registry Registry, runner GoRunner) *Installer {
+// New constructs a project-local module installer.
+func New(registry Registry, runner Runner) *Installer {
 	if runner == nil {
 		runner = execGoRunner{}
 	}
@@ -30,7 +30,7 @@ func NewInstaller(registry Registry, runner GoRunner) *Installer {
 }
 
 // Install resolves, validates, stages, and commits one module installation.
-func (installer *Installer) Install(ctx context.Context, options InstallOptions) (*InstallResult, error) {
+func (installer *Installer) Install(ctx context.Context, options Options) (*Result, error) {
 	if installer.registry == nil {
 		return nil, fmt.Errorf("module registry is not configured")
 	}
@@ -65,7 +65,7 @@ func (installer *Installer) Install(ctx context.Context, options InstallOptions)
 		return nil, err
 	}
 
-	result := &InstallResult{
+	result := &Result{
 		ID:               id,
 		Version:          release.Version.Version,
 		PackagePath:      release.Version.Package.Path,
@@ -78,6 +78,7 @@ func (installer *Installer) Install(ctx context.Context, options InstallOptions)
 	if err != nil {
 		return nil, err
 	}
+
 	if rewrite.Registered && exactDependency {
 		if _, statErr := os.Stat(project.GoSumPath); statErr == nil {
 			return result, nil
@@ -90,10 +91,12 @@ func (installer *Installer) Install(ctx context.Context, options InstallOptions)
 	if err != nil {
 		return nil, err
 	}
+
 	goSumSnapshot, err := snapshotFile(project.GoSumPath)
 	if err != nil {
 		return nil, err
 	}
+
 	sourceSnapshot, err := snapshotFile(target.Filename)
 	if err != nil {
 		return nil, err
@@ -103,6 +106,7 @@ func (installer *Installer) Install(ctx context.Context, options InstallOptions)
 	if err != nil {
 		return nil, fmt.Errorf("create module installation staging directory: %w", err)
 	}
+
 	defer os.RemoveAll(tempDir)
 
 	tempMod := filepath.Join(tempDir, "project.mod")
@@ -114,11 +118,13 @@ func (installer *Installer) Install(ctx context.Context, options InstallOptions)
 	if err := os.WriteFile(tempMod, goModSnapshot.Data, goModSnapshot.Mode.Perm()); err != nil {
 		return nil, fmt.Errorf("stage go.mod: %w", err)
 	}
+
 	if goSumSnapshot.Exists {
 		if err := os.WriteFile(tempSum, goSumSnapshot.Data, goSumSnapshot.Mode.Perm()); err != nil {
 			return nil, fmt.Errorf("stage go.sum: %w", err)
 		}
 	}
+
 	if err := os.WriteFile(tempSource, rewrite.Source, sourceSnapshot.Mode.Perm()); err != nil {
 		return nil, fmt.Errorf("stage composition source: %w", err)
 	}
@@ -127,11 +133,13 @@ func (installer *Installer) Install(ctx context.Context, options InstallOptions)
 	if err != nil {
 		return nil, fmt.Errorf("encode Go source overlay: %w", err)
 	}
+
 	if err := os.WriteFile(overlayPath, overlay, 0o600); err != nil {
 		return nil, fmt.Errorf("stage Go source overlay: %w", err)
 	}
 
 	query := release.Version.Package.Path + "@v" + release.Version.Version
+
 	if _, err := installer.runner.Run(ctx, project.Root, "get", "-modfile="+tempMod, query); err != nil {
 		return nil, fmt.Errorf("resolve %s through the Go module toolchain: %w", query, err)
 	}
@@ -144,6 +152,7 @@ func (installer *Installer) Install(ctx context.Context, options InstallOptions)
 	if err != nil {
 		return nil, err
 	}
+
 	if _, err := installer.runner.Run(
 		ctx,
 		project.Root,
@@ -161,6 +170,7 @@ func (installer *Installer) Install(ctx context.Context, options InstallOptions)
 	if err != nil {
 		return nil, fmt.Errorf("read staged go.mod: %w", err)
 	}
+
 	updatedSum, sumExists, err := readOptionalInstallFile(tempSum)
 	if err != nil {
 		return nil, err
@@ -170,6 +180,7 @@ func (installer *Installer) Install(ctx context.Context, options InstallOptions)
 		{Before: sourceSnapshot, After: rewrite.Source, Mode: sourceSnapshot.Mode},
 		{Before: goModSnapshot, After: updatedMod, Mode: goModSnapshot.Mode},
 	}
+
 	if goSumSnapshot.Exists || sumExists {
 		changes = append(changes, fileChange{Before: goSumSnapshot, After: updatedSum, Mode: installFileMode(goSumSnapshot)})
 	}
@@ -190,6 +201,7 @@ func (installer *Installer) resolveRelease(ctx context.Context, id, requestedVer
 	if err != nil {
 		return nil, fmt.Errorf("load registry module %q: %w", id, err)
 	}
+
 	if len(item.Versions) == 0 {
 		return nil, fmt.Errorf("%w: module %q has no versions", barnregistry.ErrMalformedArtifact, id)
 	}
@@ -204,12 +216,14 @@ func (installer *Installer) resolveRelease(ctx context.Context, id, requestedVer
 		if err != nil {
 			return nil, fmt.Errorf("load registry module %s@%s: %w", id, version, err)
 		}
+
 		loaded[version] = record
 
 		return record, nil
 	}
 
 	var selected *barnregistry.Version
+
 	if requestedVersion != "" {
 		selected, err = load(requestedVersion)
 		if err != nil {
@@ -220,6 +234,7 @@ func (installer *Installer) resolveRelease(ctx context.Context, id, requestedVer
 		if err != nil {
 			return nil, fmt.Errorf("module %s@%s has unusable compatibility metadata: %w", id, selected.Version, err)
 		}
+
 		if !compatible {
 			return nil, fmt.Errorf(
 				"module %s@%s requires Ferret %s; project selects Ferret %s",
@@ -240,6 +255,7 @@ func (installer *Installer) resolveRelease(ctx context.Context, id, requestedVer
 			if compatibilityErr != nil {
 				return nil, fmt.Errorf("module %s@%s has unusable compatibility metadata: %w", id, record.Version, compatibilityErr)
 			}
+
 			if compatible {
 				selected = record
 				break
@@ -257,9 +273,11 @@ func (installer *Installer) resolveRelease(ctx context.Context, id, requestedVer
 		if loadErr != nil {
 			return nil, loadErr
 		}
+
 		if record.Package.Path == "" {
 			return nil, fmt.Errorf("module %s@%s does not declare package.path", id, record.Version)
 		}
+
 		historicalPackages[record.Package.Path] = struct{}{}
 	}
 
@@ -290,10 +308,12 @@ func (installer *Installer) validateResolvedModule(ctx context.Context, project 
 	if err := json.Unmarshal(moduleOutput, &selected); err != nil {
 		return fmt.Errorf("decode resolved module %s: %w", release.Package.Path, err)
 	}
+
 	wantedVersion := "v" + release.Version
 	if selected.Path != release.Package.Path || selected.Version != wantedVersion {
 		return fmt.Errorf("go resolved %s@%s instead of registry release %s@%s", selected.Path, selected.Version, release.Package.Path, wantedVersion)
 	}
+
 	if selected.Replace != nil {
 		return fmt.Errorf("project replaces registry package %s; remove the replace directive before installing %s@%s", release.Package.Path, release.ID, release.Version)
 	}
@@ -307,6 +327,7 @@ func (installer *Installer) validateResolvedModule(ctx context.Context, project 
 	if err := json.Unmarshal(ferretOutput, &ferretModule); err != nil {
 		return fmt.Errorf("decode resolved Ferret dependency: %w", err)
 	}
+
 	if ferretModule.Version != project.FerretVersion {
 		return fmt.Errorf(
 			"installing %s@%s would change project Ferret from %s to %s",
@@ -326,12 +347,15 @@ func (installer *Installer) validateResolvedModule(ctx context.Context, project 
 	if err := json.Unmarshal(downloadOutput, &download); err != nil {
 		return fmt.Errorf("decode downloaded module metadata: %w", err)
 	}
+
 	if download.Error != "" {
 		return fmt.Errorf("download %s@%s: %s", release.Package.Path, wantedVersion, download.Error)
 	}
+
 	if download.Path != release.Package.Path || download.Version != wantedVersion {
 		return fmt.Errorf("go downloaded %s@%s instead of %s@%s", download.Path, download.Version, release.Package.Path, wantedVersion)
 	}
+
 	if download.Origin != nil && download.Origin.Hash != "" && !strings.EqualFold(download.Origin.Hash, release.Source.Commit) {
 		return fmt.Errorf(
 			"registry commit %s for %s@%s does not match Go module origin %s",

@@ -16,6 +16,10 @@ import (
 	"github.com/MontFerret/cli/v2/pkg/config"
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
+	"github.com/MontFerret/cli/v2/pkg/module/discovery"
+	"github.com/MontFerret/cli/v2/pkg/module/install"
+	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
+	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
 const (
@@ -57,9 +61,10 @@ func main() {
 		exit(err)
 	}
 	moduleService := modulelifecycle.NewService(
-		registryClient,
-		modulelifecycle.NewScaffolder(nil),
-		modulelifecycle.NewPublisher(registryClient),
+		discovery.New(registryClient),
+		install.New(registryClient, nil),
+		scaffold.New(nil),
+		modulepublish.New(registryClient),
 	)
 
 	rootCmd.AddCommand(

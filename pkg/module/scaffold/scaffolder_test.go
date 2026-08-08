@@ -1,4 +1,4 @@
-package module
+package scaffold
 
 import (
 	"context"
@@ -6,16 +6,18 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	modulemanifest "github.com/MontFerret/specs/pkg/module"
 )
 
 func TestScaffolderCreatesValidatedProject(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
 
-	scaffolder := NewScaffolder(func() (ScaffoldEnvironment, error) {
-		return ScaffoldEnvironment{GoVersion: "1.25.0", FerretVersion: "v2.0.0-alpha.44"}, nil
+	scaffolder := New(func() (Environment, error) {
+		return Environment{GoVersion: "1.25.0", FerretVersion: "v2.0.0-alpha.44"}, nil
 	})
-	result, err := scaffolder.Create(context.Background(), CreateOptions{
+	result, err := scaffolder.Create(context.Background(), Options{
 		Name:     "db/sqlite",
 		GoModule: "github.com/acme/ferret-sqlite",
 	})
@@ -32,7 +34,7 @@ func TestScaffolderCreatesValidatedProject(t *testing.T) {
 		}
 	}
 
-	manifest, err := ValidateManifest(filepath.Join(result.Directory, "ferret.yaml"))
+	manifest, err := modulemanifest.LoadFile(filepath.Join(result.Directory, "ferret.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,11 +53,11 @@ func TestScaffolderCreatesValidatedProject(t *testing.T) {
 
 func TestScaffolderHonorsDirectoryAndNamespace(t *testing.T) {
 	destination := filepath.Join(t.TempDir(), "nested", "widget")
-	scaffolder := NewScaffolder(func() (ScaffoldEnvironment, error) {
-		return ScaffoldEnvironment{GoVersion: "1.26.5", FerretVersion: "v2.0.0-alpha.44"}, nil
+	scaffolder := New(func() (Environment, error) {
+		return Environment{GoVersion: "1.26.5", FerretVersion: "v2.0.0-alpha.44"}, nil
 	})
 
-	result, err := scaffolder.Create(context.Background(), CreateOptions{
+	result, err := scaffolder.Create(context.Background(), Options{
 		Name:      "acme/widget",
 		GoModule:  "example.com/acme/widget",
 		Directory: destination,
@@ -70,11 +72,11 @@ func TestScaffolderHonorsDirectoryAndNamespace(t *testing.T) {
 }
 
 func TestScaffolderRejectsInvalidInputsAndExistingDestination(t *testing.T) {
-	scaffolder := NewScaffolder(func() (ScaffoldEnvironment, error) {
-		return ScaffoldEnvironment{GoVersion: "1.25.0", FerretVersion: "v2.0.0-alpha.44"}, nil
+	scaffolder := New(func() (Environment, error) {
+		return Environment{GoVersion: "1.25.0", FerretVersion: "v2.0.0-alpha.44"}, nil
 	})
 
-	for _, options := range []CreateOptions{
+	for _, options := range []Options{
 		{Name: "invalid", GoModule: "example.com/module"},
 		{Name: "acme/widget", GoModule: "not a module path"},
 		{Name: "Acme/widget", GoModule: "example.com/module"},
@@ -89,7 +91,7 @@ func TestScaffolderRejectsInvalidInputsAndExistingDestination(t *testing.T) {
 	if err := os.Mkdir(destination, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_, err := scaffolder.Create(context.Background(), CreateOptions{
+	_, err := scaffolder.Create(context.Background(), Options{
 		Name: "acme/widget", GoModule: "example.com/module", Directory: destination,
 	})
 	if err == nil || !strings.Contains(err.Error(), "already exists") {
@@ -101,7 +103,7 @@ func TestScaffolderRejectsInvalidInputsAndExistingDestination(t *testing.T) {
 		t.Fatal(err)
 	}
 	blockedDestination := filepath.Join(parentFile, "widget")
-	_, err = scaffolder.Create(context.Background(), CreateOptions{
+	_, err = scaffolder.Create(context.Background(), Options{
 		Name: "acme/widget", GoModule: "example.com/module", Directory: blockedDestination,
 	})
 	if err == nil {

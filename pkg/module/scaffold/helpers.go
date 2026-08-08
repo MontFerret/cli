@@ -1,4 +1,4 @@
-package module
+package scaffold
 
 import (
 	"fmt"
@@ -44,6 +44,7 @@ func normalizeIdentifier(value string) string {
 
 	for i, character := range value {
 		valid := unicode.IsLetter(character) || character == '_' || (i > 0 && unicode.IsDigit(character))
+
 		if valid {
 			builder.WriteRune(character)
 		} else if i == 0 && unicode.IsDigit(character) {
@@ -66,7 +67,7 @@ func isGoKeyword(value string) bool {
 	}
 }
 
-func validateScaffoldEnvironment(environment ScaffoldEnvironment) error {
+func validateScaffoldEnvironment(environment Environment) error {
 	if !goVersionPattern.MatchString(environment.GoVersion) {
 		return fmt.Errorf("invalid scaffold Go version %q", environment.GoVersion)
 	}
@@ -78,7 +79,7 @@ func validateScaffoldEnvironment(environment ScaffoldEnvironment) error {
 	return nil
 }
 
-func scaffoldFiles(options CreateOptions, environment ScaffoldEnvironment, packageName string, manifest []byte) []scaffoldFile {
+func scaffoldFiles(options Options, environment Environment, packageName string, manifest []byte) []scaffoldFile {
 	return []scaffoldFile{
 		{path: "ferret.yaml", data: manifest},
 		{path: "go.mod", data: []byte(fmt.Sprintf("module %s\n\ngo %s\n\nrequire github.com/MontFerret/ferret/v2 %s\n", options.GoModule, environment.GoVersion, environment.FerretVersion))},

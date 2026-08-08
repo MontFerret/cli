@@ -1,4 +1,4 @@
-package module
+package install
 
 import (
 	"archive/zip"
@@ -19,9 +19,9 @@ func TestInstallerUpdatesProjectAndIsIdempotent(t *testing.T) {
 	configureInstallerProxy(t, proxy)
 
 	registry := installTestRegistry("acme/archive", "1.0.0", modulePath, ">=2.0.0-alpha.43 <3.0.0")
-	installer := NewInstaller(registry, nil)
+	installer := New(registry, nil)
 
-	result, err := installer.Install(context.Background(), InstallOptions{Reference: "acme/archive", Directory: project})
+	result, err := installer.Install(context.Background(), Options{Reference: "acme/archive", Directory: project})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestInstallerUpdatesProjectAndIsIdempotent(t *testing.T) {
 	beforeSource := source
 	beforeMod := goMod
 	beforeSum := readInstallTestFile(t, filepath.Join(project, "go.sum"))
-	result, err = installer.Install(context.Background(), InstallOptions{Reference: "acme/archive@1.0.0", Directory: project})
+	result, err = installer.Install(context.Background(), Options{Reference: "acme/archive@1.0.0", Directory: project})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func New(required string) module.Module { return required }
 	beforeMod := readInstallTestFile(t, modPath)
 
 	registry := installTestRegistry("acme/configured", "1.0.0", modulePath, ">=2.0.0-alpha.43 <3.0.0")
-	_, err := NewInstaller(registry, nil).Install(context.Background(), InstallOptions{
+	_, err := New(registry, nil).Install(context.Background(), Options{
 		Reference: "acme/configured@1.0.0",
 		Directory: project,
 	})
@@ -104,7 +104,7 @@ func TestInstallerRejectsFerretVersionChange(t *testing.T) {
 	configureInstallerProxy(t, proxy)
 
 	registry := installTestRegistry("acme/future", "1.0.0", modulePath, ">=2.0.0-alpha.43 <3.0.0")
-	_, err := NewInstaller(registry, nil).Install(context.Background(), InstallOptions{
+	_, err := New(registry, nil).Install(context.Background(), Options{
 		Reference: "acme/future",
 		Directory: project,
 	})
@@ -118,7 +118,7 @@ func TestInstallerRequiresProjectFerretDependency(t *testing.T) {
 	writeInstallTestFile(t, filepath.Join(project, "go.mod"), "module example.com/app\n\ngo 1.26.5\n")
 
 	registry := installTestRegistry("acme/archive", "1.0.0", "example.com/ferret/archive", ">=2.0.0 <3.0.0")
-	_, err := NewInstaller(registry, nil).Install(context.Background(), InstallOptions{
+	_, err := New(registry, nil).Install(context.Background(), Options{
 		Reference: "acme/archive",
 		Directory: project,
 	})

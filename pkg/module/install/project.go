@@ -1,4 +1,4 @@
-package module
+package install
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func discoverInstallProject(ctx context.Context, runner GoRunner, directory string) (*projectInfo, error) {
+func discoverInstallProject(ctx context.Context, runner Runner, directory string) (*projectInfo, error) {
 	if strings.TrimSpace(directory) == "" {
 		directory = "."
 	}
@@ -50,6 +50,7 @@ func discoverInstallProject(ctx context.Context, runner GoRunner, directory stri
 	if err := json.NewDecoder(bytes.NewReader(moduleOutput)).Decode(&projectModule); err != nil {
 		return nil, fmt.Errorf("decode project module metadata: %w", err)
 	}
+
 	if projectModule.Path == "" {
 		return nil, fmt.Errorf("project go.mod does not declare a module path")
 	}
@@ -63,9 +64,11 @@ func discoverInstallProject(ctx context.Context, runner GoRunner, directory stri
 	if err := json.Unmarshal(ferretOutput, &ferretModule); err != nil {
 		return nil, fmt.Errorf("decode project Ferret module metadata: %w", err)
 	}
+
 	if ferretModule.Path != ferretCoreModulePath || ferretModule.Version == "" {
 		return nil, fmt.Errorf("project does not select a released %s version", ferretCoreModulePath)
 	}
+
 	if _, err := parseProjectFerretVersion(ferretModule.Version); err != nil {
 		return nil, err
 	}
@@ -79,7 +82,7 @@ func discoverInstallProject(ctx context.Context, runner GoRunner, directory stri
 	}, nil
 }
 
-func discoverComposition(ctx context.Context, runner GoRunner, project *projectInfo) (*composition, error) {
+func discoverComposition(ctx context.Context, runner Runner, project *projectInfo) (*composition, error) {
 	output, err := runner.Run(ctx, project.Root, "list", "-e", "-json", "./...")
 	if err != nil {
 		return nil, fmt.Errorf("enumerate project packages: %w", err)
@@ -91,6 +94,7 @@ func discoverComposition(ctx context.Context, runner GoRunner, project *projectI
 
 	for {
 		var pkg goPackageInfo
+
 		if err := decoder.Decode(&pkg); err != nil {
 			if err == io.EOF {
 				break
@@ -110,9 +114,11 @@ func discoverComposition(ctx context.Context, runner GoRunner, project *projectI
 			if err != nil {
 				return nil, err
 			}
+
 			if hasDotImport && dotImport == "" {
 				dotImport = filename
 			}
+
 			matches = append(matches, candidate...)
 		}
 	}
@@ -128,6 +134,7 @@ func discoverComposition(ctx context.Context, runner GoRunner, project *projectI
 		return matches[0], nil
 	default:
 		locations := make([]string, len(matches))
+
 		for index, match := range matches {
 			position := match.FileSet.Position(match.Call.Pos())
 			locations[index] = fmt.Sprintf("%s:%d", position.Filename, position.Line)
@@ -156,6 +163,7 @@ func inspectCompositionFile(filename, importPath string) ([]*composition, bool, 
 
 	coreAlias := ""
 	dotImport := false
+
 	for _, spec := range file.Imports {
 		path, err := strconv.Unquote(spec.Path.Value)
 		if err != nil || path != ferretCoreModulePath {

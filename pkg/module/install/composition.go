@@ -1,4 +1,4 @@
-package module
+package install
 
 import (
 	"bytes"
@@ -28,6 +28,7 @@ func rewriteComposition(target *composition, id, packagePath string, historicalP
 		if registeredPath == packagePath {
 			continue
 		}
+
 		if _, historical := historicalPackages[registeredPath]; historical {
 			return nil, fmt.Errorf(
 				"module %s is registered from historical package path %s, but the selected release uses %s; migrate the existing registration manually",
@@ -169,6 +170,7 @@ func deterministicModuleAlias(id, packagePath string, file *ast.File, aliases ma
 	if existing := aliases[alias]; existing != "" && existing != packagePath {
 		return "", fmt.Errorf("generated import alias %q for %s collides with existing import %s", alias, id, existing)
 	}
+
 	if object := file.Scope.Lookup(alias); object != nil {
 		return "", fmt.Errorf("generated import alias %q for %s collides with a declaration in the composition file", alias, id)
 	}
@@ -193,6 +195,7 @@ func addModuleImport(file *ast.File, alias, packagePath string) {
 			imports.Lparen = imports.Pos()
 			imports.Rparen = imports.End()
 		}
+
 		file.Imports = append(file.Imports, spec)
 
 		return

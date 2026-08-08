@@ -1,4 +1,4 @@
-package module
+package install
 
 import (
 	"fmt"
@@ -12,9 +12,11 @@ func installPackageTarget(root, directory string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve composition package path: %w", err)
 	}
+
 	if relative == "." {
 		return ".", nil
 	}
+
 	if relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("composition package %s is outside project root %s", directory, root)
 	}

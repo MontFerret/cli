@@ -12,11 +12,13 @@ import (
 	registryspec "github.com/MontFerret/specs/pkg/registry"
 
 	"github.com/MontFerret/cli/v2/pkg/config"
-	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
+	"github.com/MontFerret/cli/v2/pkg/module/discovery"
+	"github.com/MontFerret/cli/v2/pkg/module/install"
+	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
 func TestModCommandSearchRendersTableAndEmptyResult(t *testing.T) {
-	service := &fakeModuleService{searchResults: []modulelifecycle.SearchResult{{
+	service := &fakeModuleService{searchResults: []discovery.SearchResult{{
 		Name: "acme/sqlite", Version: "1.2.3", Description: "SQLite integration",
 	}}}
 
@@ -41,7 +43,7 @@ func TestModCommandSearchRendersTableAndEmptyResult(t *testing.T) {
 }
 
 func TestModCommandInfoRendersOptionalFields(t *testing.T) {
-	service := &fakeModuleService{info: &modulelifecycle.ModuleInfo{
+	service := &fakeModuleService{info: &discovery.ModuleInfo{
 		Name: "acme/sqlite", Description: "SQLite", Newest: "1.0.0-rc.1", SelectedVersion: "1.0.0-rc.1",
 		Versions: []string{"1.0.0-rc.1"}, Namespace: "DB::SQLITE", Repository: "https://example.com/acme/sqlite",
 		Commit: "abc", Documentation: "https://registry.example/docs.md",
@@ -56,7 +58,7 @@ func TestModCommandInfoRendersOptionalFields(t *testing.T) {
 }
 
 func TestModCommandInstallPassesReferenceAndRendersChanges(t *testing.T) {
-	service := &fakeModuleService{install: &modulelifecycle.InstallResult{
+	service := &fakeModuleService{install: &install.Result{
 		ID:                  "montferret/archive",
 		Version:             "1.0.0-rc.3",
 		PackagePath:         "github.com/MontFerret/contrib/modules/archive",
@@ -91,7 +93,7 @@ func TestModCommandInstallPassesReferenceAndRendersChanges(t *testing.T) {
 }
 
 func TestModCommandInstallRendersIdempotentResult(t *testing.T) {
-	service := &fakeModuleService{install: &modulelifecycle.InstallResult{
+	service := &fakeModuleService{install: &install.Result{
 		ID: "montferret/archive", Version: "1.0.0-rc.3", PackagePath: "example.com/archive",
 		FerretConstraint: ">=2.0.0 <3.0.0", ProjectFerret: "v2.1.0",
 	}}
@@ -106,7 +108,7 @@ func TestModCommandInstallRendersIdempotentResult(t *testing.T) {
 }
 
 func TestModCommandInitRequiresAndPassesFlags(t *testing.T) {
-	service := &fakeModuleService{create: &modulelifecycle.CreateResult{Directory: "/tmp/sqlite", Namespace: "DB::SQLITE"}}
+	service := &fakeModuleService{create: &scaffold.Result{Directory: "/tmp/sqlite", Namespace: "DB::SQLITE"}}
 	if _, err := executeModCommand(t, service, "init", "db/sqlite"); err == nil || !strings.Contains(err.Error(), "--go-module is required") {
 		t.Fatalf("unexpected missing flag error: %v", err)
 	}

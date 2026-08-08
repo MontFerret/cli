@@ -1,4 +1,4 @@
-package module
+package install
 
 import (
 	"bytes"
@@ -73,6 +73,7 @@ func commitInstallChanges(changes []fileChange) error {
 			}
 
 			rollbackErr := rollbackInstallFiles(committed)
+
 			return errors.Join(fmt.Errorf("replace %s: %w", item.change.Before.Path, err), rollbackErr)
 		}
 
@@ -88,6 +89,7 @@ func changedInstallFiles(changes []fileChange) []fileChange {
 		if change.Before.Exists && bytes.Equal(change.Before.Data, change.After) {
 			continue
 		}
+
 		result = append(result, change)
 	}
 
@@ -124,14 +126,17 @@ func prepareInstallFile(destination string, data []byte, mode fs.FileMode) (stri
 		cleanup()
 		return "", fmt.Errorf("set temporary mode for %s: %w", destination, err)
 	}
+
 	if _, err := temp.Write(data); err != nil {
 		cleanup()
 		return "", fmt.Errorf("write temporary file for %s: %w", destination, err)
 	}
+
 	if err := temp.Sync(); err != nil {
 		cleanup()
 		return "", fmt.Errorf("sync temporary file for %s: %w", destination, err)
 	}
+
 	if err := temp.Close(); err != nil {
 		_ = os.Remove(tempName)
 		return "", fmt.Errorf("close temporary file for %s: %w", destination, err)
@@ -142,20 +147,24 @@ func prepareInstallFile(destination string, data []byte, mode fs.FileMode) (stri
 
 func rollbackInstallFiles(snapshots []fileSnapshot) error {
 	var rollbackErr error
+
 	for index := len(snapshots) - 1; index >= 0; index-- {
 		snapshot := snapshots[index]
 		if !snapshot.Exists {
 			if err := os.Remove(snapshot.Path); err != nil && !errors.Is(err, os.ErrNotExist) {
 				rollbackErr = errors.Join(rollbackErr, fmt.Errorf("remove %s during rollback: %w", snapshot.Path, err))
 			}
+
 			continue
 		}
 
 		temp, err := prepareInstallFile(snapshot.Path, snapshot.Data, snapshot.Mode)
 		if err != nil {
 			rollbackErr = errors.Join(rollbackErr, err)
+
 			continue
 		}
+
 		if err := renameInstallFile(temp, snapshot.Path); err != nil {
 			_ = os.Remove(temp)
 			rollbackErr = errors.Join(rollbackErr, fmt.Errorf("restore %s: %w", snapshot.Path, err))

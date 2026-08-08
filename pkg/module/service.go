@@ -3,128 +3,59 @@ package module
 import (
 	"context"
 	"errors"
-	"fmt"
-	"sort"
-
-	"golang.org/x/sync/errgroup"
 
 	barnpublish "github.com/MontFerret/barn/pkg/publish"
-	barnregistry "github.com/MontFerret/barn/pkg/registry"
+
+	"github.com/MontFerret/cli/v2/pkg/module/discovery"
+	"github.com/MontFerret/cli/v2/pkg/module/install"
+	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
+	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
-// Service coordinates registry discovery, application installation, scaffolding, and publication preparation.
+// Service coordinates module discovery, installation, scaffolding, and publication.
 type Service struct {
-	registry   Registry
-	scaffolder *Scaffolder
-	publisher  PublicationPreparer
-	installer  *Installer
+	discovery  Discovery
+	installer  Installer
+	scaffolder Scaffolder
+	publisher  Publisher
 }
 
-// NewService constructs a module lifecycle service.
-func NewService(registry Registry, scaffolder *Scaffolder, publisher PublicationPreparer) *Service {
+// NewService constructs a module lifecycle service from its workflow components.
+func NewService(discovery Discovery, installer Installer, scaffolder Scaffolder, publisher Publisher) *Service {
 	return &Service{
-		registry: registry, scaffolder: scaffolder, publisher: publisher,
-		installer: NewInstaller(registry, nil),
+		discovery: discovery, installer: installer, scaffolder: scaffolder, publisher: publisher,
 	}
 }
 
-// Search returns modules whose canonical identity or description contains query.
-func (s *Service) Search(ctx context.Context, query string) ([]SearchResult, error) {
-	summaries, err := s.registry.Search(ctx, barnregistry.SearchOptions{Query: query})
-	if err != nil {
-		return nil, err
+// Search returns registered modules matching query.
+func (s *Service) Search(ctx context.Context, query string) ([]discovery.SearchResult, error) {
+	if s.discovery == nil {
+		return nil, errors.New("module discovery is not configured")
 	}
 
-	results := make([]SearchResult, len(summaries))
-	group, groupContext := errgroup.WithContext(ctx)
-	group.SetLimit(6)
-
-	for index, summary := range summaries {
-		index, summary := index, summary
-		group.Go(func() error {
-			item, err := s.registry.Module(groupContext, summary.ID)
-			if err != nil {
-				return fmt.Errorf("load registry module %q: %w", summary.ID, err)
-			}
-
-			if len(item.Versions) == 0 {
-				return fmt.Errorf("%w: module %q has no versions", barnregistry.ErrMalformedArtifact, item.ID)
-			}
-
-			version := summary.Latest
-			if version == "" {
-				version = item.Versions[0].Version
-			}
-
-			results[index] = SearchResult{Name: item.ID, Version: version, Description: item.Description}
-
-			return nil
-		})
-	}
-
-	if err := group.Wait(); err != nil {
-		return nil, err
-	}
-
-	sort.Slice(results, func(i, j int) bool { return results[i].Name < results[j].Name })
-
-	return results, nil
+	return s.discovery.Search(ctx, query)
 }
 
-// Info returns detailed metadata for one registry module.
-func (s *Service) Info(ctx context.Context, name string) (*ModuleInfo, error) {
-	item, err := s.registry.Module(ctx, name)
-	if err != nil {
-		return nil, err
+// Info returns detailed metadata for one registered module.
+func (s *Service) Info(ctx context.Context, name string) (*discovery.ModuleInfo, error) {
+	if s.discovery == nil {
+		return nil, errors.New("module discovery is not configured")
 	}
 
-	if len(item.Versions) == 0 {
-		return nil, fmt.Errorf("%w: module %q has no versions", barnregistry.ErrMalformedArtifact, name)
-	}
-
-	selected := item.Versions[0].Version
-	if item.Latest != "" {
-		selected = item.Latest
-	}
-
-	version, err := s.registry.Version(ctx, name, selected)
-	if err != nil {
-		return nil, err
-	}
-
-	versions := make([]string, len(item.Versions))
-	for i, available := range item.Versions {
-		versions[i] = available.Version
-	}
-
-	return &ModuleInfo{
-		Name:            item.ID,
-		Description:     item.Description,
-		Latest:          item.Latest,
-		Newest:          item.Versions[0].Version,
-		SelectedVersion: selected,
-		Versions:        versions,
-		Namespace:       version.Namespace,
-		Ferret:          version.Ferret,
-		Repository:      version.Source.Repository,
-		SourcePath:      version.Source.Path,
-		Commit:          version.Source.Commit,
-		Documentation:   version.Content["documentation"],
-	}, nil
+	return s.discovery.Info(ctx, name)
 }
 
 // Install adds a registered module to an existing Go application.
-func (s *Service) Install(ctx context.Context, options InstallOptions) (*InstallResult, error) {
-	installer := s.installer
-	if installer == nil {
-		installer = NewInstaller(s.registry, nil)
+func (s *Service) Install(ctx context.Context, options install.Options) (*install.Result, error) {
+	if s.installer == nil {
+		return nil, errors.New("module installer is not configured")
 	}
 
-	return installer.Install(ctx, options)
+	return s.installer.Install(ctx, options)
 }
 
 // Create scaffolds a new module project.
-func (s *Service) Create(ctx context.Context, options CreateOptions) (*CreateResult, error) {
+func (s *Service) Create(ctx context.Context, options scaffold.Options) (*scaffold.Result, error) {
 	if s.scaffolder == nil {
 		return nil, errors.New("module scaffolder is not configured")
 	}
@@ -133,7 +64,7 @@ func (s *Service) Create(ctx context.Context, options CreateOptions) (*CreateRes
 }
 
 // Publish prepares validated Barn registration records from a local release.
-func (s *Service) Publish(ctx context.Context, options PublishOptions) (*barnpublish.Result, error) {
+func (s *Service) Publish(ctx context.Context, options modulepublish.Options) (*barnpublish.Result, error) {
 	if s.publisher == nil {
 		return nil, errors.New("module publisher is not configured")
 	}

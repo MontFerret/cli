@@ -1,4 +1,4 @@
-package module
+package publish
 
 import (
 	"context"
@@ -16,13 +16,13 @@ type Publisher struct {
 	prepare  func(context.Context, barnpublish.Request) (*barnpublish.Result, error)
 }
 
-// NewPublisher constructs a publication preparer.
-func NewPublisher(registry *barnregistry.Client) *Publisher {
+// New constructs a publication preparer.
+func New(registry *barnregistry.Client) *Publisher {
 	return &Publisher{registry: registry, prepare: barnpublish.Prepare}
 }
 
 // Prepare derives the CLI's optional default tag and delegates validation to Barn.
-func (p *Publisher) Prepare(ctx context.Context, options PublishOptions) (*barnpublish.Result, error) {
+func (p *Publisher) Prepare(ctx context.Context, options Options) (*barnpublish.Result, error) {
 	directory := options.Directory
 	if directory == "" {
 		directory = "."
@@ -30,7 +30,7 @@ func (p *Publisher) Prepare(ctx context.Context, options PublishOptions) (*barnp
 
 	tag := options.Tag
 	if tag == "" {
-		manifest, err := ValidateManifest(filepath.Join(directory, modulemanifest.ManifestFilename))
+		manifest, err := modulemanifest.LoadFile(filepath.Join(directory, modulemanifest.ManifestFilename))
 		if err != nil {
 			return nil, err
 		}

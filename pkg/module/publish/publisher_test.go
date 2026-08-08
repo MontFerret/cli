@@ -1,4 +1,4 @@
-package module
+package publish
 
 import (
 	"context"
@@ -28,7 +28,7 @@ func TestPublisherDerivesDefaultTag(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			publisher := NewPublisher(client)
+			publisher := New(client)
 			var captured barnpublish.Request
 			wantResult := &barnpublish.Result{Kind: barnpublish.NewModule}
 			publisher.prepare = func(_ context.Context, request barnpublish.Request) (*barnpublish.Result, error) {
@@ -37,7 +37,7 @@ func TestPublisherDerivesDefaultTag(t *testing.T) {
 				return wantResult, nil
 			}
 
-			result, err := publisher.Prepare(context.Background(), PublishOptions{Directory: directory})
+			result, err := publisher.Prepare(context.Background(), Options{Directory: directory})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -53,7 +53,7 @@ func TestPublisherPreservesExplicitTagAndErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	publisher := NewPublisher(client)
+	publisher := New(client)
 	want := errors.New("publication failed")
 	var captured barnpublish.Request
 	publisher.prepare = func(_ context.Context, request barnpublish.Request) (*barnpublish.Result, error) {
@@ -62,7 +62,7 @@ func TestPublisherPreservesExplicitTagAndErrors(t *testing.T) {
 		return nil, want
 	}
 
-	_, err = publisher.Prepare(context.Background(), PublishOptions{Directory: "missing", Tag: "release/widget-1.2.3"})
+	_, err = publisher.Prepare(context.Background(), Options{Directory: "missing", Tag: "release/widget-1.2.3"})
 	if !errors.Is(err, want) {
 		t.Fatalf("expected delegated error, got %v", err)
 	}
@@ -73,7 +73,7 @@ func TestPublisherPreservesExplicitTagAndErrors(t *testing.T) {
 
 func TestPublisherValidatesManifestBeforeDerivingTag(t *testing.T) {
 	directory := t.TempDir()
-	publisher := NewPublisher(nil)
+	publisher := New(nil)
 	called := false
 	publisher.prepare = func(context.Context, barnpublish.Request) (*barnpublish.Result, error) {
 		called = true
@@ -81,7 +81,7 @@ func TestPublisherValidatesManifestBeforeDerivingTag(t *testing.T) {
 		return nil, nil
 	}
 
-	if _, err := publisher.Prepare(context.Background(), PublishOptions{Directory: directory}); err == nil {
+	if _, err := publisher.Prepare(context.Background(), Options{Directory: directory}); err == nil {
 		t.Fatal("expected missing manifest to fail")
 	}
 	if called {
