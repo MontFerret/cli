@@ -101,10 +101,88 @@ ferret inspect script.fql   # Print compiled program details
 ferret debug script.fql     # Start the interactive debugger
 ferret browser open         # Start a managed browser
 ferret config list          # Show configuration
+ferret mod search sqlite    # Search the Ferret module registry
+ferret mod install montferret/archive # Install a module into a Go application
 ferret version              # Show version information
 ```
 
 Run `ferret [command] --help` for command-specific options.
+
+## Module lifecycle
+
+Ferret CLI handles module discovery, installation into Go applications, project
+scaffolding, and preparation of registry publication records. Installation uses
+the Go module toolchain and the package path published by the Ferret registry.
+
+Search the public registry by canonical module ID or description, or inspect
+one registered module:
+
+```bash
+ferret mod search sqlite
+ferret mod info montferret/sqlite
+```
+
+Install a compatible registered release into an existing Go application:
+
+```bash
+ferret mod install montferret/archive
+ferret mod install montferret/archive@1.0.0-rc.3
+ferret mod install --yes montferret/archive # Approve safe missing prerequisites automatically
+```
+
+If the application is missing `github.com/MontFerret/ferret/v2` or an active
+`ferret.New(...)` composition, an interactive install shows the complete setup
+before changing the project. It can add the exact Ferret version embedded in the
+CLI and create an exported `NewFerret(options ...ferret.Option)` helper in
+`ferret.go` when the destination package is unambiguous. Empty modules derive the
+package name from the module path; projects with one package use that package.
+Projects with multiple packages must add a composition manually.
+
+Use `-y` or `--yes` to approve safe missing prerequisites in automation.
+Non-interactive installs without that flag fail with equivalent manual steps
+instead of reading stdin. The application must already have a `go.mod`.
+
+The installer updates `go.mod`, `go.sum`, and the composition, then builds only
+its owning package before committing all changes. It does not modify the Ferret
+CLI runtime or create Ferret-specific project state. Installed modules are Go
+code compiled into the application and execute with the application's process
+permissions.
+
+Initialize a new module project with the guided flow. It explains each value,
+offers editable defaults, and shows the resolved configuration before creating
+files:
+
+```bash
+ferret mod init
+```
+
+You can also provide any known values up front; the wizard asks only for what is
+missing. For non-interactive use, provide the module name and Go import path.
+The directory and namespace retain their module-name defaults:
+
+```bash
+ferret mod init acme/sqlite \
+  --go-module github.com/acme/ferret-sqlite \
+  --dir sqlite \
+  --namespace DB::SQLITE
+```
+
+The scaffold contains schema-valid TODO metadata. Replace it before preparing
+a release, commit the module files, and push the release tag. The manifest must
+identify a public repository that supports anonymous HTTPS Git access. From the
+module root, print the validated Barn registration records and pull-request
+guidance:
+
+```bash
+ferret mod publish
+```
+
+By default, the tag is `v<version>` for a standalone module or
+`<repository.directory>/v<version>` for a monorepo module. For non-standard
+release tags, pass `--tag`. Publication preparation consults the public
+registry, inspects the pushed tag through anonymous HTTPS Git, and returns only
+the records needed for a new module or version. It does not write records,
+upload packages, authenticate with a provider, or open a pull request.
 
 ## Browser usage
 

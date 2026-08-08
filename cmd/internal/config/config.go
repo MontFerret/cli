@@ -1,0 +1,108 @@
+package config
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+
+	cliconfig "github.com/MontFerret/cli/v2/pkg/config"
+)
+
+func New(store *cliconfig.Store) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "config",
+		Short: "Manage Ferret configs",
+		Args:  cobra.MaximumNArgs(0),
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			store.BindFlags(cmd)
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+
+			return fmt.Errorf("unknown command %q", args[0])
+		},
+	}
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "get",
+		Short: "Get a Ferret config value by key",
+		Args:  cobra.MinimumNArgs(1),
+		PreRun: func(cmd *cobra.Command, _ []string) {
+			store.BindFlags(cmd)
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			val, err := store.Get(args[0])
+
+			if err == nil {
+				fmt.Fprintln(cmd.OutOrStdout(), val)
+
+				return nil
+			}
+
+			if err == cliconfig.ErrInvalidFlag {
+				return fmt.Errorf("%s\n%s", err, cliconfig.FlagsStr)
+			}
+
+			return err
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "set",
+		Short: "Set a Ferret config value by key",
+		Args:  cobra.ExactArgs(2),
+		PreRun: func(cmd *cobra.Command, _ []string) {
+			store.BindFlags(cmd)
+		},
+		RunE: func(_ *cobra.Command, args []string) error {
+			if err := validatePolicyConfigSet(store, args[0], args[1]); err != nil {
+				return err
+			}
+
+			err := store.Set(args[0], args[1])
+
+			if err == cliconfig.ErrInvalidFlag {
+				return fmt.Errorf("%s\n%s", err, cliconfig.FlagsStr)
+			}
+
+			return err
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "unset",
+		Short: "Remove a persisted Ferret config value by key",
+		Args:  cobra.ExactArgs(1),
+		PreRun: func(cmd *cobra.Command, _ []string) {
+			store.BindFlags(cmd)
+		},
+		RunE: func(_ *cobra.Command, args []string) error {
+			err := store.Unset(args[0])
+
+			if err == cliconfig.ErrInvalidFlag {
+				return fmt.Errorf("%s\n%s", err, cliconfig.FlagsStr)
+			}
+
+			return err
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "Get a list of Ferret config values",
+		Args:    cobra.MaximumNArgs(0),
+		PreRun: func(cmd *cobra.Command, _ []string) {
+			store.BindFlags(cmd)
+		},
+		Run: func(cmd *cobra.Command, _ []string) {
+			for _, kv := range store.List() {
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: %v\n", kv.Key, kv.Value)
+			}
+		},
+	})
+
+	return cmd
+}

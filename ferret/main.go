@@ -10,9 +10,16 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
+	barnregistry "github.com/MontFerret/barn/pkg/registry"
+
 	"github.com/MontFerret/cli/v2/cmd"
 	"github.com/MontFerret/cli/v2/pkg/config"
 	"github.com/MontFerret/cli/v2/pkg/logger"
+	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
+	"github.com/MontFerret/cli/v2/pkg/module/discovery"
+	"github.com/MontFerret/cli/v2/pkg/module/install"
+	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
+	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
 const (
@@ -49,6 +56,17 @@ func main() {
 	rootCmd.PersistentFlags().String(config.LoggerOutput, logger.OutputStderr, fmt.Sprintf("Set the query execution log output (%s)", logger.OutputsFmt()))
 	rootCmd.PersistentFlags().String(config.LoggerFile, "ferret.log", "Set the query execution log file path when --log-output=file")
 
+	registryClient, err := barnregistry.NewClient()
+	if err != nil {
+		exit(err)
+	}
+	moduleService := modulelifecycle.NewService(
+		discovery.New(registryClient),
+		install.New(registryClient, nil),
+		scaffold.New(nil),
+		modulepublish.New(registryClient),
+	)
+
 	rootCmd.AddCommand(
 		cmd.VersionCommand(store),
 		cmd.ConfigCommand(store),
@@ -61,6 +79,7 @@ func main() {
 		cmd.InspectCommand(store),
 		cmd.BrowserCommand(store),
 		cmd.SelfUpdateCommand(store),
+		cmd.ModCommand(store, moduleService),
 	)
 
 	c := make(chan os.Signal, 1)
