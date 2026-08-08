@@ -7,6 +7,10 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+
+	gomodule "golang.org/x/mod/module"
+
+	modulemanifest "github.com/MontFerret/specs/pkg/module"
 )
 
 var goVersionPattern = regexp.MustCompile(`^[1-9][0-9]*\.[0-9]+(?:\.[0-9]+)?$`)
@@ -77,6 +81,51 @@ func validateScaffoldEnvironment(environment Environment) error {
 	}
 
 	return nil
+}
+
+func validateAndResolveOptions(options Options) (Options, error) {
+	if options.Name == "" {
+		return Options{}, fmt.Errorf("module name is required")
+	}
+
+	if options.GoModule == "" {
+		return Options{}, fmt.Errorf("--go-module is required")
+	}
+
+	if err := gomodule.CheckPath(options.GoModule); err != nil {
+		return Options{}, fmt.Errorf("invalid Go module path %q: %w", options.GoModule, err)
+	}
+
+	leaf, err := moduleLeaf(options.Name)
+	if err != nil {
+		return Options{}, err
+	}
+
+	if options.Directory == "" {
+		options.Directory = leaf
+	}
+
+	if options.Namespace == "" {
+		options.Namespace = namespaceIdentifier(leaf)
+	}
+
+	if err := modulemanifest.Validate(newManifest(options)); err != nil {
+		return Options{}, fmt.Errorf("invalid module scaffold metadata: %w", err)
+	}
+
+	return options, nil
+}
+
+func newManifest(options Options) *modulemanifest.Manifest {
+	return &modulemanifest.Manifest{
+		Schema:        modulemanifest.SchemaV1,
+		Name:          options.Name,
+		Namespace:     options.Namespace,
+		Version:       "0.1.0",
+		Description:   fmt.Sprintf("TODO: describe the %s Ferret module.", options.Name),
+		License:       "LicenseRef-TODO",
+		Documentation: "https://example.invalid/TODO",
+	}
 }
 
 func scaffoldFiles(options Options, environment Environment, packageName string, manifest []byte) []scaffoldFile {

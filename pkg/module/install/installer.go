@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -16,8 +15,9 @@ import (
 
 // Installer resolves registry releases and installs them into existing Go applications.
 type Installer struct {
-	registry Registry
-	runner   Runner
+	registry      Registry
+	runner        Runner
+	ferretVersion ferretVersionProvider
 }
 
 // New constructs a project-local module installer.
@@ -26,7 +26,7 @@ func New(registry Registry, runner Runner) *Installer {
 		runner = execGoRunner{}
 	}
 
-	return &Installer{registry: registry, runner: runner}
+	return &Installer{registry: registry, runner: runner, ferretVersion: currentFerretVersion}
 }
 
 // Install resolves, validates, stages, and commits one module installation.
@@ -43,6 +43,15 @@ func (installer *Installer) Install(ctx context.Context, options Options) (*Resu
 	project, err := discoverInstallProject(ctx, installer.runner, options.Directory)
 	if err != nil {
 		return nil, err
+	}
+
+	stage, ferretDependencyAdded, err := installer.prepareProjectFerret(ctx, project, options.InstallMissingDependencies)
+	if err != nil {
+		return nil, err
+	}
+
+	if stage != nil {
+		defer os.RemoveAll(stage.directory)
 	}
 
 	projectVersion, err := parseProjectFerretVersion(project.FerretVersion)
@@ -66,85 +75,50 @@ func (installer *Installer) Install(ctx context.Context, options Options) (*Resu
 	}
 
 	result := &Result{
-		ID:               id,
-		Version:          release.Version.Version,
-		PackagePath:      release.Version.Package.Path,
-		FerretConstraint: release.Version.Ferret,
-		ProjectFerret:    project.FerretVersion,
-		EditedFile:       relativeInstallPath(project.Root, target.Filename),
+		ID:                    id,
+		Version:               release.Version.Version,
+		PackagePath:           release.Version.Package.Path,
+		FerretConstraint:      release.Version.Ferret,
+		ProjectFerret:         project.FerretVersion,
+		EditedFile:            relativeInstallPath(project.Root, target.Filename),
+		FerretDependencyAdded: ferretDependencyAdded,
 	}
 
-	exactDependency, err := installer.hasExactDependency(ctx, project.Root, release.Version.Package.Path, release.Version.Version)
-	if err != nil {
-		return nil, err
-	}
+	if !ferretDependencyAdded {
+		exactDependency, err := installer.hasExactDependency(ctx, project.Root, release.Version.Package.Path, release.Version.Version)
+		if err != nil {
+			return nil, err
+		}
 
-	if rewrite.Registered && exactDependency {
-		if _, statErr := os.Stat(project.GoSumPath); statErr == nil {
-			return result, nil
-		} else if !os.IsNotExist(statErr) {
-			return nil, fmt.Errorf("stat project go.sum: %w", statErr)
+		if rewrite.Registered && exactDependency {
+			if _, statErr := os.Stat(project.GoSumPath); statErr == nil {
+				return result, nil
+			} else if !os.IsNotExist(statErr) {
+				return nil, fmt.Errorf("stat project go.sum: %w", statErr)
+			}
 		}
 	}
 
-	goModSnapshot, err := snapshotFile(project.GoModPath)
-	if err != nil {
-		return nil, err
-	}
-
-	goSumSnapshot, err := snapshotFile(project.GoSumPath)
-	if err != nil {
-		return nil, err
-	}
-
-	sourceSnapshot, err := snapshotFile(target.Filename)
-	if err != nil {
-		return nil, err
-	}
-
-	tempDir, err := os.MkdirTemp("", "ferret-mod-install-*")
-	if err != nil {
-		return nil, fmt.Errorf("create module installation staging directory: %w", err)
-	}
-
-	defer os.RemoveAll(tempDir)
-
-	tempMod := filepath.Join(tempDir, "project.mod")
-	tempSum := filepath.Join(tempDir, "project.sum")
-	tempSource := filepath.Join(tempDir, filepath.Base(target.Filename))
-	overlayPath := filepath.Join(tempDir, "overlay.json")
-	buildOutput := filepath.Join(tempDir, "package-build")
-
-	if err := os.WriteFile(tempMod, goModSnapshot.Data, goModSnapshot.Mode.Perm()); err != nil {
-		return nil, fmt.Errorf("stage go.mod: %w", err)
-	}
-
-	if goSumSnapshot.Exists {
-		if err := os.WriteFile(tempSum, goSumSnapshot.Data, goSumSnapshot.Mode.Perm()); err != nil {
-			return nil, fmt.Errorf("stage go.sum: %w", err)
+	if stage == nil {
+		stage, err = newInstallStage(project)
+		if err != nil {
+			return nil, err
 		}
+		defer os.RemoveAll(stage.directory)
 	}
 
-	if err := os.WriteFile(tempSource, rewrite.Source, sourceSnapshot.Mode.Perm()); err != nil {
-		return nil, fmt.Errorf("stage composition source: %w", err)
-	}
-
-	overlay, err := json.Marshal(overlayDocument{Replace: map[string]string{target.Filename: tempSource}})
+	sourceSnapshot, err := stageInstallComposition(stage, target, rewrite.Source)
 	if err != nil {
-		return nil, fmt.Errorf("encode Go source overlay: %w", err)
-	}
-
-	if err := os.WriteFile(overlayPath, overlay, 0o600); err != nil {
-		return nil, fmt.Errorf("stage Go source overlay: %w", err)
+		return nil, err
 	}
 
 	query := release.Version.Package.Path + "@v" + release.Version.Version
 
-	if _, err := installer.runner.Run(ctx, project.Root, "get", "-modfile="+tempMod, query); err != nil {
+	if _, err := installer.runner.Run(ctx, project.Root, "get", "-modfile="+stage.modPath, query); err != nil {
 		return nil, fmt.Errorf("resolve %s through the Go module toolchain: %w", query, err)
 	}
 
-	if err := installer.validateResolvedModule(ctx, project, tempMod, release.Version); err != nil {
+	if err := installer.validateResolvedModule(ctx, project, stage.modPath, release.Version); err != nil {
 		return nil, err
 	}
 
@@ -158,31 +132,31 @@ func (installer *Installer) Install(ctx context.Context, options Options) (*Resu
 		project.Root,
 		"build",
 		"-mod=mod",
-		"-modfile="+tempMod,
-		"-overlay="+overlayPath,
-		"-o="+buildOutput,
+		"-modfile="+stage.modPath,
+		"-overlay="+stage.overlayPath,
+		"-o="+stage.buildOutput,
 		packageTarget,
 	); err != nil {
 		return nil, fmt.Errorf("build package %s with %s: %w", target.Package, query, err)
 	}
 
-	updatedMod, err := os.ReadFile(tempMod)
+	updatedMod, err := os.ReadFile(stage.modPath)
 	if err != nil {
 		return nil, fmt.Errorf("read staged go.mod: %w", err)
 	}
 
-	updatedSum, sumExists, err := readOptionalInstallFile(tempSum)
+	updatedSum, sumExists, err := readOptionalInstallFile(stage.sumPath)
 	if err != nil {
 		return nil, err
 	}
 
 	changes := []fileChange{
 		{Before: sourceSnapshot, After: rewrite.Source, Mode: sourceSnapshot.Mode},
-		{Before: goModSnapshot, After: updatedMod, Mode: goModSnapshot.Mode},
+		{Before: stage.goModSnapshot, After: updatedMod, Mode: stage.goModSnapshot.Mode},
 	}
 
-	if goSumSnapshot.Exists || sumExists {
-		changes = append(changes, fileChange{Before: goSumSnapshot, After: updatedSum, Mode: installFileMode(goSumSnapshot)})
+	if stage.goSumSnapshot.Exists || sumExists {
+		changes = append(changes, fileChange{Before: stage.goSumSnapshot, After: updatedSum, Mode: installFileMode(stage.goSumSnapshot)})
 	}
 
 	if err := commitInstallChanges(changes); err != nil {
@@ -190,10 +164,77 @@ func (installer *Installer) Install(ctx context.Context, options Options) (*Resu
 	}
 
 	result.SourceChanged = !bytes.Equal(sourceSnapshot.Data, rewrite.Source)
-	result.DependenciesChanged = !bytes.Equal(goModSnapshot.Data, updatedMod) || goSumSnapshot.Exists != sumExists || !bytes.Equal(goSumSnapshot.Data, updatedSum)
+	result.DependenciesChanged = !bytes.Equal(stage.goModSnapshot.Data, updatedMod) || stage.goSumSnapshot.Exists != sumExists || !bytes.Equal(stage.goSumSnapshot.Data, updatedSum)
 	result.Changed = result.SourceChanged || result.DependenciesChanged
 
 	return result, nil
+}
+
+func (installer *Installer) prepareProjectFerret(ctx context.Context, project *projectInfo, installMissing bool) (*installStage, bool, error) {
+	if project.FerretVersion != "" {
+		return nil, false, nil
+	}
+
+	if installer.ferretVersion == nil {
+		return nil, false, fmt.Errorf("ferret dependency version provider is not configured")
+	}
+
+	version, err := installer.ferretVersion()
+	if err != nil {
+		return nil, false, fmt.Errorf("resolve Ferret dependency version: %w", err)
+	}
+
+	if _, err := parseProjectFerretVersion(version); err != nil {
+		return nil, false, fmt.Errorf("resolve Ferret dependency version: %w", err)
+	}
+
+	if !installMissing {
+		return nil, false, &MissingDependencyError{Path: ferretCoreModulePath, Version: version}
+	}
+
+	stage, err := newInstallStage(project)
+	if err != nil {
+		return nil, false, err
+	}
+
+	query := ferretCoreModulePath + "@" + version
+	if _, err := installer.runner.Run(ctx, project.Root, "get", "-modfile="+stage.modPath, query); err != nil {
+		os.RemoveAll(stage.directory)
+		return nil, false, fmt.Errorf("resolve %s through the Go module toolchain: %w", query, err)
+	}
+
+	selected, err := installer.selectedFerretVersion(ctx, project.Root, stage.modPath)
+	if err != nil {
+		os.RemoveAll(stage.directory)
+		return nil, false, err
+	}
+
+	if selected != version {
+		os.RemoveAll(stage.directory)
+		return nil, false, fmt.Errorf("go selected %s@%s instead of approved dependency %s@%s", ferretCoreModulePath, selected, ferretCoreModulePath, version)
+	}
+
+	project.FerretVersion = selected
+
+	return stage, true, nil
+}
+
+func (installer *Installer) selectedFerretVersion(ctx context.Context, directory, modFile string) (string, error) {
+	output, err := installer.runner.Run(ctx, directory, "list", "-mod=mod", "-modfile="+modFile, "-m", "-json", ferretCoreModulePath)
+	if err != nil {
+		return "", fmt.Errorf("inspect resolved Ferret dependency: %w", err)
+	}
+
+	var selected goModuleInfo
+	if err := json.Unmarshal(output, &selected); err != nil {
+		return "", fmt.Errorf("decode resolved Ferret dependency: %w", err)
+	}
+
+	if selected.Path != ferretCoreModulePath || selected.Version == "" {
+		return "", fmt.Errorf("go did not select a released %s version", ferretCoreModulePath)
+	}
+
+	return selected.Version, nil
 }
 
 func (installer *Installer) resolveRelease(ctx context.Context, id, requestedVersion string, projectVersion *semver.Version) (*installRelease, error) {

@@ -8,7 +8,6 @@ import (
 	"github.com/MontFerret/cli/v2/pkg/config"
 	"github.com/MontFerret/cli/v2/pkg/module/install"
 	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
-	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
 const (
@@ -16,10 +15,15 @@ const (
 	moduleDirFlag       = "dir"
 	moduleNamespaceFlag = "namespace"
 	moduleTagFlag       = "tag"
+	moduleYesFlag       = "yes"
 )
 
 // New creates the module discovery, scaffolding, and publication command group.
 func New(store *config.Store, service Service) *cobra.Command {
+	return newCommand(store, service, defaultTerminal, newReadlinePrompt)
+}
+
+func newCommand(store *config.Store, service Service, terminal terminalDetector, prompts promptFactory) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "mod",
 		Short: "Discover, install, initialize, and publish Ferret modules",
@@ -39,31 +43,47 @@ func New(store *config.Store, service Service) *cobra.Command {
 	command.AddCommand(
 		moduleSearchCommand(service),
 		moduleInfoCommand(service),
-		moduleInstallCommand(service),
-		moduleInitCommand(service),
+		moduleInstallCommand(service, terminal, prompts),
+		moduleInitCommand(service, terminal, prompts),
 		modulePublishCommand(service),
 	)
 
 	return command
 }
 
-func moduleInstallCommand(service Service) *cobra.Command {
-	return &cobra.Command{
+func moduleInstallCommand(service Service, terminal terminalDetector, prompts promptFactory) *cobra.Command {
+	command := &cobra.Command{
 		Use:   "install <module>[@version]",
 		Short: "Install a registered module into the current Go application",
 		Long: "Install a registered module into the current Go application.\n\n" +
 			"The command updates go.mod, go.sum, and one unambiguous ferret.New(...) " +
 			"composition. Module code is compiled into the application and executes " +
-			"with the application's process permissions. It does not modify the Ferret CLI runtime.",
+			"with the application's process permissions. It does not modify the Ferret CLI runtime. " +
+			"When Ferret v2 is missing, interactive use asks before adding the version embedded in this CLI; " +
+			"use --yes for non-interactive approval.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
+			yes, err := command.Flags().GetBool(moduleYesFlag)
+			if err != nil {
+				return err
+			}
+
 			fmt.Fprintf(command.OutOrStdout(), "Resolving %s...\n", args[0])
 
-			result, err := service.Install(command.Context(), install.Options{
-				Reference: args[0],
-				Directory: ".",
-			})
-			if err != nil {
+			result, proceed, err := installWithApproval(
+				command.Context(),
+				service,
+				install.Options{
+					Reference:                  args[0],
+					Directory:                  ".",
+					InstallMissingDependencies: yes,
+				},
+				terminal,
+				prompts,
+				command.InOrStdin(),
+				command.ErrOrStderr(),
+			)
+			if err != nil || !proceed {
 				return err
 			}
 
@@ -72,6 +92,10 @@ func moduleInstallCommand(service Service) *cobra.Command {
 			return nil
 		},
 	}
+
+	command.Flags().BoolP(moduleYesFlag, "y", false, "Install missing Ferret dependencies without prompting")
+
+	return command
 }
 
 func moduleSearchCommand(service Service) *cobra.Command {
@@ -113,34 +137,33 @@ func moduleInfoCommand(service Service) *cobra.Command {
 	}
 }
 
-func moduleInitCommand(service Service) *cobra.Command {
+func moduleInitCommand(service Service, terminal terminalDetector, prompts promptFactory) *cobra.Command {
 	command := &cobra.Command{
-		Use:   "init <name>",
+		Use:   "init [name]",
 		Short: "Initialize a new Ferret module project",
-		Args:  cobra.ExactArgs(1),
+		Long: "Initialize a new Ferret module project.\n\n" +
+			"When run interactively, omitted values are explained and prompted with editable defaults. " +
+			"For non-interactive use, provide the module name and --go-module.",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			goModule, err := command.Flags().GetString(moduleGoModuleFlag)
+			input, err := readInitInput(command, args)
 			if err != nil {
 				return err
 			}
 
-			if goModule == "" {
-				return fmt.Errorf("--%s is required", moduleGoModuleFlag)
-			}
-
-			directory, err := command.Flags().GetString(moduleDirFlag)
-			if err != nil {
+			options, proceed, err := resolveInitOptions(
+				command.Context(),
+				input,
+				terminal,
+				prompts,
+				command.InOrStdin(),
+				command.ErrOrStderr(),
+			)
+			if err != nil || !proceed {
 				return err
 			}
 
-			namespace, err := command.Flags().GetString(moduleNamespaceFlag)
-			if err != nil {
-				return err
-			}
-
-			result, err := service.Create(command.Context(), scaffold.Options{
-				Name: args[0], GoModule: goModule, Directory: directory, Namespace: namespace,
-			})
+			result, err := service.Create(command.Context(), options)
 			if err != nil {
 				return err
 			}
@@ -151,7 +174,7 @@ func moduleInitCommand(service Service) *cobra.Command {
 		},
 	}
 
-	command.Flags().String(moduleGoModuleFlag, "", "Go module import path for the generated project")
+	command.Flags().String(moduleGoModuleFlag, "", "Go module import path (prompted when omitted interactively)")
 	command.Flags().String(moduleDirFlag, "", "Destination directory (defaults to the module name leaf)")
 	command.Flags().String(moduleNamespaceFlag, "", "Runtime namespace (defaults to the module name leaf)")
 

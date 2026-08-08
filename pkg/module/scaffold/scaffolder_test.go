@@ -4,11 +4,59 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	modulemanifest "github.com/MontFerret/specs/pkg/module"
 )
+
+func TestDefaultOptions(t *testing.T) {
+	options, err := DefaultOptions("acme/sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := Options{
+		Name:      "acme/sqlite",
+		GoModule:  "github.com/acme/ferret-sqlite",
+		Directory: "sqlite",
+		Namespace: "sqlite",
+	}
+	if !reflect.DeepEqual(options, want) {
+		t.Fatalf("unexpected defaults: %#v", options)
+	}
+
+	for _, name := range []string{"", "invalid", "Acme/sqlite"} {
+		if _, err := DefaultOptions(name); err == nil {
+			t.Fatalf("expected invalid name %q to fail", name)
+		}
+	}
+}
+
+func TestOptionsValidate(t *testing.T) {
+	valid := Options{Name: "acme/sqlite", GoModule: "example.com/acme/sqlite"}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("expected defaults-compatible options to pass: %v", err)
+	}
+
+	for _, test := range []struct {
+		name    string
+		options Options
+	}{
+		{name: "missing name", options: Options{GoModule: "example.com/acme/sqlite"}},
+		{name: "missing Go module", options: Options{Name: "acme/sqlite"}},
+		{name: "invalid Go module", options: Options{Name: "acme/sqlite", GoModule: "not-a-module"}},
+		{name: "invalid module name", options: Options{Name: "Acme/sqlite", GoModule: "example.com/acme/sqlite"}},
+		{name: "invalid namespace", options: Options{Name: "acme/sqlite", GoModule: "example.com/acme/sqlite", Namespace: "INVALID-NAMESPACE"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.options.Validate(); err == nil {
+				t.Fatalf("expected options to fail: %#v", test.options)
+			}
+		})
+	}
+}
 
 func TestScaffolderCreatesValidatedProject(t *testing.T) {
 	root := t.TempDir()

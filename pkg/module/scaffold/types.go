@@ -1,14 +1,6 @@
 package scaffold
 
 type (
-	// Options controls module project scaffolding.
-	Options struct {
-		Name      string
-		GoModule  string
-		Directory string
-		Namespace string
-	}
-
 	// Result describes a completed scaffold.
 	Result struct {
 		Directory string

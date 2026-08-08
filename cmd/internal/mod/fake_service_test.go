@@ -12,15 +12,24 @@ import (
 )
 
 type fakeModuleService struct {
-	searchResults  []discovery.SearchResult
-	info           *discovery.ModuleInfo
-	install        *install.Result
-	create         *scaffold.Result
-	publication    *barnpublish.Result
-	createOptions  scaffold.Options
-	installOptions install.Options
-	publishOptions modulepublish.Options
-	err            error
+	searchResults   []discovery.SearchResult
+	info            *discovery.ModuleInfo
+	install         *install.Result
+	create          *scaffold.Result
+	publication     *barnpublish.Result
+	createOptions   scaffold.Options
+	installOptions  install.Options
+	publishOptions  modulepublish.Options
+	createCalls     int
+	installCalls    int
+	installHistory  []install.Options
+	installSequence []fakeInstallResponse
+	err             error
+}
+
+type fakeInstallResponse struct {
+	result *install.Result
+	err    error
 }
 
 func (f *fakeModuleService) Search(context.Context, string) ([]discovery.SearchResult, error) {
@@ -33,11 +42,19 @@ func (f *fakeModuleService) Info(context.Context, string) (*discovery.ModuleInfo
 
 func (f *fakeModuleService) Install(_ context.Context, options install.Options) (*install.Result, error) {
 	f.installOptions = options
+	f.installHistory = append(f.installHistory, options)
+	call := f.installCalls
+	f.installCalls++
+	if call < len(f.installSequence) {
+		response := f.installSequence[call]
+		return response.result, response.err
+	}
 	return f.install, f.err
 }
 
 func (f *fakeModuleService) Create(_ context.Context, options scaffold.Options) (*scaffold.Result, error) {
 	f.createOptions = options
+	f.createCalls++
 	return f.create, f.err
 }
 

@@ -2,7 +2,9 @@ package mod
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -107,9 +109,147 @@ func TestModCommandInstallRendersIdempotentResult(t *testing.T) {
 	}
 }
 
+func TestModCommandInstallApprovesMissingFerretInteractively(t *testing.T) {
+	missing := &install.MissingDependencyError{
+		Path:    "github.com/MontFerret/ferret/v2",
+		Version: "v2.0.0-alpha.44",
+	}
+	service := &fakeModuleService{installSequence: []fakeInstallResponse{
+		{err: missing},
+		{result: &install.Result{
+			ID:                    "montferret/postgres",
+			Version:               "1.0.0",
+			PackagePath:           "example.com/postgres",
+			FerretConstraint:      ">=2.0.0-alpha.43 <3.0.0",
+			ProjectFerret:         "v2.0.0-alpha.44",
+			EditedFile:            "main.go",
+			Changed:               true,
+			SourceChanged:         true,
+			DependenciesChanged:   true,
+			FerretDependencyAdded: true,
+		}},
+	}}
+
+	stdout, stderr, err := executeInteractiveModCommand(t, service, "\n", "install", "montferret/postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if service.installCalls != 2 || len(service.installHistory) != 2 {
+		t.Fatalf("unexpected install calls: %d %#v", service.installCalls, service.installHistory)
+	}
+	if service.installHistory[0].InstallMissingDependencies || !service.installHistory[1].InstallMissingDependencies {
+		t.Fatalf("unexpected approval sequence: %#v", service.installHistory)
+	}
+	for _, expected := range []string{
+		"Project dependency required",
+		"Dependency: github.com/MontFerret/ferret/v2@v2.0.0-alpha.44",
+		"Install github.com/MontFerret/ferret/v2@v2.0.0-alpha.44? [Y/n]:",
+	} {
+		if !strings.Contains(stderr, expected) {
+			t.Fatalf("expected %q in stderr:\n%s", expected, stderr)
+		}
+	}
+	if !strings.Contains(stdout, "Resolving montferret/postgres...") || !strings.Contains(stdout, "Added github.com/MontFerret/ferret/v2 v2.0.0-alpha.44") {
+		t.Fatalf("unexpected stdout:\n%s", stdout)
+	}
+}
+
+func TestModCommandInstallYesFlagsApproveWithoutPrompt(t *testing.T) {
+	for _, flag := range []string{"-y", "--yes"} {
+		t.Run(flag, func(t *testing.T) {
+			service := &fakeModuleService{install: &install.Result{
+				ID: "montferret/postgres", Version: "1.0.0", PackagePath: "example.com/postgres",
+				FerretConstraint: ">=2.0.0 <3.0.0", ProjectFerret: "v2.0.0",
+			}}
+
+			if _, err := executeModCommand(t, service, "install", "montferret/postgres", flag); err != nil {
+				t.Fatal(err)
+			}
+			if service.installCalls != 1 || !service.installOptions.InstallMissingDependencies {
+				t.Fatalf("unexpected install request: calls=%d options=%#v", service.installCalls, service.installOptions)
+			}
+		})
+	}
+}
+
+func TestModCommandInstallRetriesInvalidDependencyAnswer(t *testing.T) {
+	missing := &install.MissingDependencyError{Path: "github.com/MontFerret/ferret/v2", Version: "v2.0.0"}
+	service := &fakeModuleService{installSequence: []fakeInstallResponse{
+		{err: missing},
+		{result: &install.Result{
+			ID: "montferret/postgres", Version: "1.0.0", PackagePath: "example.com/postgres",
+			FerretConstraint: ">=2.0.0 <3.0.0", ProjectFerret: "v2.0.0",
+		}},
+	}}
+
+	_, stderr, err := executeInteractiveModCommand(t, service, "maybe\nyes\n", "install", "montferret/postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if service.installCalls != 2 || !strings.Contains(stderr, "Please answer yes or no.") {
+		t.Fatalf("unexpected retry: calls=%d stderr=%q", service.installCalls, stderr)
+	}
+}
+
+func TestModCommandInstallCancellationDoesNotRetry(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		input string
+	}{
+		{name: "decline", input: "no\n"},
+		{name: "eof"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			service := &fakeModuleService{installSequence: []fakeInstallResponse{{err: &install.MissingDependencyError{
+				Path: "github.com/MontFerret/ferret/v2", Version: "v2.0.0",
+			}}}}
+
+			stdout, stderr, err := executeInteractiveModCommand(t, service, test.input, "install", "montferret/postgres")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if service.installCalls != 1 || !strings.Contains(stderr, "Module installation canceled.") {
+				t.Fatalf("unexpected cancellation: calls=%d stderr=%q", service.installCalls, stderr)
+			}
+			if stdout != "Resolving montferret/postgres...\n" {
+				t.Fatalf("unexpected stdout: %q", stdout)
+			}
+		})
+	}
+}
+
+func TestModCommandInstallNonTerminalRequiresApproval(t *testing.T) {
+	service := &fakeModuleService{installSequence: []fakeInstallResponse{{err: &install.MissingDependencyError{
+		Path: "github.com/MontFerret/ferret/v2", Version: "v2.0.0-alpha.44",
+	}}}}
+
+	_, err := executeModCommand(t, service, "install", "montferret/postgres")
+	if err == nil || !strings.Contains(err.Error(), "stdin is not a terminal") || !strings.Contains(err.Error(), "--yes") || !strings.Contains(err.Error(), "go get github.com/MontFerret/ferret/v2@v2.0.0-alpha.44") {
+		t.Fatalf("unexpected non-terminal error: %v", err)
+	}
+	if service.installCalls != 1 {
+		t.Fatalf("unexpected install calls: %d", service.installCalls)
+	}
+}
+
+func TestModCommandInstallDoesNotPromptWhenDependenciesExist(t *testing.T) {
+	service := &fakeModuleService{install: &install.Result{
+		ID: "montferret/postgres", Version: "1.0.0", PackagePath: "example.com/postgres",
+		FerretConstraint: ">=2.0.0 <3.0.0", ProjectFerret: "v2.0.0",
+	}}
+
+	stdout, stderr, err := executeInteractiveModCommand(t, service, "", "install", "montferret/postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if service.installCalls != 1 || stderr != "" || !strings.Contains(stdout, "Resolved montferret/postgres@1.0.0") {
+		t.Fatalf("unexpected install behavior: calls=%d stdout=%q stderr=%q", service.installCalls, stdout, stderr)
+	}
+}
+
 func TestModCommandInitRequiresAndPassesFlags(t *testing.T) {
 	service := &fakeModuleService{create: &scaffold.Result{Directory: "/tmp/sqlite", Namespace: "DB::SQLITE"}}
-	if _, err := executeModCommand(t, service, "init", "db/sqlite"); err == nil || !strings.Contains(err.Error(), "--go-module is required") {
+	if _, err := executeModCommand(t, service, "init", "db/sqlite"); err == nil || !strings.Contains(err.Error(), "--go-module") || !strings.Contains(err.Error(), "not a terminal") {
 		t.Fatalf("unexpected missing flag error: %v", err)
 	}
 
@@ -127,6 +267,211 @@ func TestModCommandInitRequiresAndPassesFlags(t *testing.T) {
 	}
 	if !strings.Contains(output, "Created Ferret module") || !strings.Contains(output, "go mod tidy") {
 		t.Fatalf("unexpected output:\n%s", output)
+	}
+}
+
+func TestModCommandInitGuidesFullInteractiveFlow(t *testing.T) {
+	service := &fakeModuleService{create: &scaffold.Result{Directory: "/tmp/sqlite", Namespace: "DB::SQLITE"}}
+	stdout, stderr, err := executeInteractiveModCommand(
+		t,
+		service,
+		"acme/sqlite\n\n\nDB::SQLITE\n\n",
+		"init",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := scaffold.Options{
+		Name:      "acme/sqlite",
+		GoModule:  "github.com/acme/ferret-sqlite",
+		Directory: "sqlite",
+		Namespace: "DB::SQLITE",
+	}
+	if service.createOptions != want || service.createCalls != 1 {
+		t.Fatalf("unexpected create request: options=%#v calls=%d", service.createOptions, service.createCalls)
+	}
+	for _, expected := range []string{
+		"Ferret module name",
+		"Registry identity used for distribution and discovery",
+		"Go module path (--go-module)",
+		"Go module [github.com/acme/ferret-sqlite]",
+		"Destination directory (--dir)",
+		"Directory [sqlite]",
+		"Runtime namespace (--namespace)",
+		"Namespace [sqlite]",
+		"Module configuration:",
+		"Namespace: DB::SQLITE",
+		"Create module? [Y/n]",
+	} {
+		if !strings.Contains(stderr, expected) {
+			t.Fatalf("expected %q in prompt output:\n%s", expected, stderr)
+		}
+	}
+	if strings.Contains(stdout, "Go module path") || !strings.Contains(stdout, "Created Ferret module") {
+		t.Fatalf("unexpected stdout:\n%s", stdout)
+	}
+}
+
+func TestModCommandInitPromptsOnlyForOmittedValues(t *testing.T) {
+	service := &fakeModuleService{create: &scaffold.Result{Directory: "/tmp/custom", Namespace: "DB::SQLITE"}}
+	_, stderr, err := executeInteractiveModCommand(
+		t,
+		service,
+		"\ncustom\n\n",
+		"init",
+		"acme/sqlite",
+		"--namespace",
+		"DB::SQLITE",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if service.createOptions.GoModule != "github.com/acme/ferret-sqlite" || service.createOptions.Directory != "custom" || service.createOptions.Namespace != "DB::SQLITE" {
+		t.Fatalf("unexpected create options: %#v", service.createOptions)
+	}
+	if strings.Contains(stderr, "Ferret module name") || strings.Contains(stderr, "Runtime namespace (--namespace)") {
+		t.Fatalf("explicit values were prompted again:\n%s", stderr)
+	}
+}
+
+func TestModCommandInitRetriesInvalidInteractiveAnswers(t *testing.T) {
+	service := &fakeModuleService{create: &scaffold.Result{Directory: "/tmp/sqlite", Namespace: "sqlite"}}
+	_, stderr, err := executeInteractiveModCommand(
+		t,
+		service,
+		"invalid\nacme/sqlite\nnot-a-module\n\n\n\n\n",
+		"init",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Count(stderr, "Invalid value:") != 2 {
+		t.Fatalf("expected two validation retries:\n%s", stderr)
+	}
+	if service.createCalls != 1 || service.createOptions.GoModule != "github.com/acme/ferret-sqlite" {
+		t.Fatalf("unexpected create request: options=%#v calls=%d", service.createOptions, service.createCalls)
+	}
+}
+
+func TestModCommandInitCancellationDoesNotCreate(t *testing.T) {
+	t.Run("declined", func(t *testing.T) {
+		service := &fakeModuleService{}
+		stdout, stderr, err := executeInteractiveModCommand(t, service, "\n\n\nn\n", "init", "acme/sqlite")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if service.createCalls != 0 || stdout != "" || !strings.Contains(stderr, "Module initialization canceled.") {
+			t.Fatalf("unexpected cancellation: calls=%d stdout=%q stderr=%q", service.createCalls, stdout, stderr)
+		}
+	})
+
+	t.Run("end of input", func(t *testing.T) {
+		service := &fakeModuleService{}
+		stdout, stderr, err := executeInteractiveModCommand(t, service, "", "init")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if service.createCalls != 0 || stdout != "" || !strings.Contains(stderr, "Module initialization canceled.") {
+			t.Fatalf("unexpected cancellation: calls=%d stdout=%q stderr=%q", service.createCalls, stdout, stderr)
+		}
+	})
+}
+
+func TestModCommandInitNonInteractiveUsesSafeDefaults(t *testing.T) {
+	service := &fakeModuleService{create: &scaffold.Result{Directory: "/tmp/sqlite", Namespace: "sqlite"}}
+	_, err := executeModCommand(t, service, "init", "acme/sqlite", "--go-module", "example.com/acme/sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := scaffold.Options{
+		Name:      "acme/sqlite",
+		GoModule:  "example.com/acme/sqlite",
+		Directory: "sqlite",
+		Namespace: "sqlite",
+	}
+	if service.createOptions != want {
+		t.Fatalf("unexpected non-interactive defaults: %#v", service.createOptions)
+	}
+}
+
+func TestModCommandInitNonInteractiveRequiresName(t *testing.T) {
+	service := &fakeModuleService{}
+	_, err := executeModCommand(t, service, "init", "--go-module", "example.com/acme/sqlite")
+	if err == nil || !strings.Contains(err.Error(), "<name>") || !strings.Contains(err.Error(), "not a terminal") {
+		t.Fatalf("unexpected missing name error: %v", err)
+	}
+	if service.createCalls != 0 {
+		t.Fatalf("service called for incomplete input: %d", service.createCalls)
+	}
+}
+
+func TestModCommandInitRejectsInvalidExplicitInputBeforePrompting(t *testing.T) {
+	service := &fakeModuleService{}
+	_, stderr, err := executeInteractiveModCommand(
+		t,
+		service,
+		"",
+		"init",
+		"acme/sqlite",
+		"--go-module",
+		"not-a-module",
+	)
+	if err == nil || !strings.Contains(err.Error(), "invalid Go module path") {
+		t.Fatalf("unexpected explicit input error: %v", err)
+	}
+	if strings.Contains(stderr, "Go module path (--go-module)") || service.createCalls != 0 {
+		t.Fatalf("invalid explicit input prompted or created: calls=%d stderr=%q", service.createCalls, stderr)
+	}
+}
+
+func TestModCommandInitPropagatesContextCancellation(t *testing.T) {
+	service := &fakeModuleService{}
+	command := newCommand(
+		newTestStore(t, t.TempDir()),
+		service,
+		func() bool { return true },
+		newScriptedPrompt,
+	)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	command.SetContext(ctx)
+	command.SetIn(strings.NewReader(""))
+	command.SetOut(new(bytes.Buffer))
+	command.SetErr(new(bytes.Buffer))
+	command.SetArgs([]string{"init"})
+
+	if err := command.Execute(); !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context cancellation, got %v", err)
+	}
+	if service.createCalls != 0 {
+		t.Fatalf("service called after cancellation: %d", service.createCalls)
+	}
+}
+
+func TestModCommandInitFullySpecifiedBypassesInteractivePrompt(t *testing.T) {
+	service := &fakeModuleService{create: &scaffold.Result{Directory: "/tmp/custom", Namespace: "DB::SQLITE"}}
+	_, stderr, err := executeInteractiveModCommand(
+		t,
+		service,
+		"",
+		"init",
+		"acme/sqlite",
+		"--go-module",
+		"example.com/acme/sqlite",
+		"--dir",
+		"custom",
+		"--namespace",
+		"DB::SQLITE",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stderr != "" || service.createCalls != 1 {
+		t.Fatalf("fully specified init prompted unexpectedly: calls=%d stderr=%q", service.createCalls, stderr)
 	}
 }
 
@@ -209,7 +554,15 @@ func TestModCommandPropagatesServiceErrors(t *testing.T) {
 func executeModCommand(t *testing.T, service Service, args ...string) (string, error) {
 	t.Helper()
 
-	command := New(newTestStore(t, t.TempDir()), service)
+	command := newCommand(
+		newTestStore(t, t.TempDir()),
+		service,
+		func() bool { return false },
+		func(io.Reader, io.Writer) (prompt, error) {
+			t.Fatal("non-interactive command attempted to prompt")
+			return nil, nil
+		},
+	)
 	output := new(bytes.Buffer)
 	command.SetOut(output)
 	command.SetErr(output)
@@ -217,6 +570,26 @@ func executeModCommand(t *testing.T, service Service, args ...string) (string, e
 
 	err := command.Execute()
 	return output.String(), err
+}
+
+func executeInteractiveModCommand(t *testing.T, service Service, input string, args ...string) (string, string, error) {
+	t.Helper()
+
+	command := newCommand(
+		newTestStore(t, t.TempDir()),
+		service,
+		func() bool { return true },
+		newScriptedPrompt,
+	)
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+	command.SetIn(strings.NewReader(input))
+	command.SetOut(stdout)
+	command.SetErr(stderr)
+	command.SetArgs(args)
+
+	err := command.Execute()
+	return stdout.String(), stderr.String(), err
 }
 
 func newTestStore(t *testing.T, home string) *config.Store {

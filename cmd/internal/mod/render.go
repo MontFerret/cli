@@ -78,6 +78,11 @@ func renderModuleInstall(output io.Writer, result *install.Result) {
 	if result.DependenciesChanged {
 		fmt.Fprintln(output, "Updated Go module dependencies")
 	}
+
+	if result.FerretDependencyAdded {
+		fmt.Fprintf(output, "Added github.com/MontFerret/ferret/v2 %s\n", result.ProjectFerret)
+	}
+
 	if result.SourceChanged {
 		fmt.Fprintf(output, "Registered module in %s\n", result.EditedFile)
 	} else {

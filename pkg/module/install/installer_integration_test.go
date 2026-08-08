@@ -3,6 +3,7 @@ package install
 import (
 	"archive/zip"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -113,21 +114,107 @@ func TestInstallerRejectsFerretVersionChange(t *testing.T) {
 	}
 }
 
-func TestInstallerRequiresProjectFerretDependency(t *testing.T) {
+func TestInstallerReportsMissingProjectFerretDependency(t *testing.T) {
 	project := t.TempDir()
 	writeInstallTestFile(t, filepath.Join(project, "go.mod"), "module example.com/app\n\ngo 1.26.5\n")
 
 	registry := installTestRegistry("acme/archive", "1.0.0", "example.com/ferret/archive", ">=2.0.0 <3.0.0")
-	_, err := New(registry, nil).Install(context.Background(), Options{
+	installer := New(registry, nil)
+	installer.ferretVersion = func() (string, error) { return "v2.0.0-alpha.44", nil }
+	_, err := installer.Install(context.Background(), Options{
 		Reference: "acme/archive",
 		Directory: project,
 	})
-	if err == nil || !strings.Contains(err.Error(), "project does not select github.com/MontFerret/ferret/v2") {
+	var missing *MissingDependencyError
+	if !errors.As(err, &missing) || missing.Path != ferretCoreModulePath || missing.Version != "v2.0.0-alpha.44" {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
+func TestInstallerAddsApprovedFerretDependencyTransactionally(t *testing.T) {
+	project, proxy := newInstallerTestProjectWithoutFerret(t)
+	modulePath := "example.com/ferret/archive"
+	writeProxyModule(t, proxy, modulePath, "v1.0.0", validInstallModuleSource())
+	configureInstallerProxy(t, proxy)
+
+	installer := New(installTestRegistry("acme/archive", "1.0.0", modulePath, ">=2.0.0-alpha.43 <3.0.0"), nil)
+	installer.ferretVersion = func() (string, error) { return "v2.0.0-alpha.44", nil }
+
+	result, err := installer.Install(context.Background(), Options{
+		Reference:                  "acme/archive",
+		Directory:                  project,
+		InstallMissingDependencies: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Changed || !result.DependenciesChanged || !result.FerretDependencyAdded || result.ProjectFerret != "v2.0.0-alpha.44" {
+		t.Fatalf("unexpected install result: %#v", result)
+	}
+
+	goMod := readInstallTestFile(t, filepath.Join(project, "go.mod"))
+	if !strings.Contains(goMod, "github.com/MontFerret/ferret/v2 v2.0.0-alpha.44") || !strings.Contains(goMod, modulePath+" v1.0.0") {
+		t.Fatalf("dependencies were not committed together:\n%s", goMod)
+	}
+	if source := readInstallTestFile(t, filepath.Join(project, "main.go")); !strings.Contains(source, `"`+modulePath+`"`) {
+		t.Fatalf("module was not registered:\n%s", source)
+	}
+
+	result, err = installer.Install(context.Background(), Options{Reference: "acme/archive", Directory: project})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Changed || result.FerretDependencyAdded {
+		t.Fatalf("expected idempotent install, got %#v", result)
+	}
+}
+
+func TestInstallerApprovedFerretDependencyRollsBackOnBuildFailure(t *testing.T) {
+	project, proxy := newInstallerTestProjectWithoutFerret(t)
+	modulePath := "example.com/ferret/configured"
+	writeProxyModule(t, proxy, modulePath, "v1.0.0", `package configured
+
+import "github.com/MontFerret/ferret/v2/pkg/module"
+
+func New(required string) module.Module { return required }
+`)
+	configureInstallerProxy(t, proxy)
+
+	mainPath := filepath.Join(project, "main.go")
+	modPath := filepath.Join(project, "go.mod")
+	beforeMain := readInstallTestFile(t, mainPath)
+	beforeMod := readInstallTestFile(t, modPath)
+	installer := New(installTestRegistry("acme/configured", "1.0.0", modulePath, ">=2.0.0-alpha.43 <3.0.0"), nil)
+	installer.ferretVersion = func() (string, error) { return "v2.0.0-alpha.44", nil }
+
+	_, err := installer.Install(context.Background(), Options{
+		Reference:                  "acme/configured",
+		Directory:                  project,
+		InstallMissingDependencies: true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "not enough arguments in call") {
+		t.Fatalf("unexpected build error: %v", err)
+	}
+	if got := readInstallTestFile(t, mainPath); got != beforeMain {
+		t.Fatal("failed install changed source")
+	}
+	if got := readInstallTestFile(t, modPath); got != beforeMod {
+		t.Fatal("failed install committed Ferret dependency")
+	}
+	if _, statErr := os.Stat(filepath.Join(project, "go.sum")); !os.IsNotExist(statErr) {
+		t.Fatalf("failed install created go.sum: %v", statErr)
+	}
+}
+
 func newInstallerTestProject(t *testing.T) (string, string) {
+	return newInstallerTestProjectWithFerret(t, true)
+}
+
+func newInstallerTestProjectWithoutFerret(t *testing.T) (string, string) {
+	return newInstallerTestProjectWithFerret(t, false)
+}
+
+func newInstallerTestProjectWithFerret(t *testing.T, includeFerret bool) (string, string) {
 	t.Helper()
 	root := t.TempDir()
 	project := filepath.Join(root, "app")
@@ -153,14 +240,17 @@ func New(options ...Option) (*Engine, error) { return &Engine{}, nil }
 func WithModules(modules ...module.Module) Option { return func() {} }
 `)
 
+	requirement := ""
+	if includeFerret {
+		requirement = "require github.com/MontFerret/ferret/v2 v2.0.0-alpha.44\n\n"
+	}
 	writeInstallTestFile(t, filepath.Join(project, "go.mod"), fmt.Sprintf(`module example.com/app
 
 go 1.26.5
 
-require github.com/MontFerret/ferret/v2 v2.0.0-alpha.44
-
+%s
 replace github.com/MontFerret/ferret/v2 => %s
-`, filepath.ToSlash(core)))
+`, requirement, filepath.ToSlash(core)))
 	writeInstallTestFile(t, filepath.Join(project, "main.go"), `package main
 
 import "github.com/MontFerret/ferret/v2"

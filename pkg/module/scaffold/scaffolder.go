@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/goccy/go-yaml"
-	gomodule "golang.org/x/mod/module"
 
 	modulemanifest "github.com/MontFerret/specs/pkg/module"
 )
@@ -32,16 +31,9 @@ func (s *Scaffolder) Create(ctx context.Context, options Options) (*Result, erro
 		return nil, err
 	}
 
-	if options.Name == "" {
-		return nil, fmt.Errorf("module name is required")
-	}
-
-	if options.GoModule == "" {
-		return nil, fmt.Errorf("--go-module is required")
-	}
-
-	if err := gomodule.CheckPath(options.GoModule); err != nil {
-		return nil, fmt.Errorf("invalid Go module path %q: %w", options.GoModule, err)
+	options, err := validateAndResolveOptions(options)
+	if err != nil {
+		return nil, err
 	}
 
 	leaf, err := moduleLeaf(options.Name)
@@ -50,24 +42,7 @@ func (s *Scaffolder) Create(ctx context.Context, options Options) (*Result, erro
 	}
 
 	packageName := packageIdentifier(leaf)
-	namespace := options.Namespace
-	if namespace == "" {
-		namespace = namespaceIdentifier(leaf)
-	}
-
-	manifest := modulemanifest.Manifest{
-		Schema:        modulemanifest.SchemaV1,
-		Name:          options.Name,
-		Namespace:     namespace,
-		Version:       "0.1.0",
-		Description:   fmt.Sprintf("TODO: describe the %s Ferret module.", options.Name),
-		License:       "LicenseRef-TODO",
-		Documentation: "https://example.invalid/TODO",
-	}
-
-	if err := modulemanifest.Validate(&manifest); err != nil {
-		return nil, fmt.Errorf("invalid module scaffold metadata: %w", err)
-	}
+	manifest := newManifest(options)
 
 	environment, err := s.environment()
 	if err != nil {
@@ -78,12 +53,7 @@ func (s *Scaffolder) Create(ctx context.Context, options Options) (*Result, erro
 		return nil, err
 	}
 
-	destination := options.Directory
-	if destination == "" {
-		destination = leaf
-	}
-
-	destination, err = filepath.Abs(destination)
+	destination, err := filepath.Abs(options.Directory)
 	if err != nil {
 		return nil, fmt.Errorf("resolve scaffold destination: %w", err)
 	}
@@ -107,7 +77,7 @@ func (s *Scaffolder) Create(ctx context.Context, options Options) (*Result, erro
 
 	defer os.RemoveAll(staging)
 
-	manifestData, err := yaml.Marshal(&manifest)
+	manifestData, err := yaml.Marshal(manifest)
 	if err != nil {
 		return nil, fmt.Errorf("encode module manifest: %w", err)
 	}
@@ -130,5 +100,5 @@ func (s *Scaffolder) Create(ctx context.Context, options Options) (*Result, erro
 		return nil, fmt.Errorf("install scaffold at %q: %w", destination, err)
 	}
 
-	return &Result{Directory: destination, Namespace: namespace}, nil
+	return &Result{Directory: destination, Namespace: options.Namespace}, nil
 }

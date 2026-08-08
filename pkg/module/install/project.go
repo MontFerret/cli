@@ -55,21 +55,42 @@ func discoverInstallProject(ctx context.Context, runner Runner, directory string
 		return nil, fmt.Errorf("project go.mod does not declare a module path")
 	}
 
-	ferretOutput, err := runner.Run(ctx, root, "list", "-m", "-json", ferretCoreModulePath)
+	moduleGraphOutput, err := runner.Run(ctx, root, "list", "-m", "-json", "all")
 	if err != nil {
-		return nil, fmt.Errorf("project does not select %s; add Ferret v2 before installing modules: %w", ferretCoreModulePath, err)
+		return nil, fmt.Errorf("inspect project module graph: %w", err)
 	}
 
-	var ferretModule goModuleInfo
-	if err := json.Unmarshal(ferretOutput, &ferretModule); err != nil {
-		return nil, fmt.Errorf("decode project Ferret module metadata: %w", err)
+	var ferretVersion string
+	var ferretSelected bool
+	decoder := json.NewDecoder(bytes.NewReader(moduleGraphOutput))
+	for {
+		var selected goModuleInfo
+		if err := decoder.Decode(&selected); err != nil {
+			if err == io.EOF {
+				break
+			}
+
+			return nil, fmt.Errorf("decode project module graph: %w", err)
+		}
+
+		if selected.Path == ferretCoreModulePath {
+			ferretSelected = true
+			ferretVersion = selected.Version
+			break
+		}
 	}
 
-	if ferretModule.Path != ferretCoreModulePath || ferretModule.Version == "" {
+	if ferretSelected && ferretVersion == "" {
 		return nil, fmt.Errorf("project does not select a released %s version", ferretCoreModulePath)
 	}
 
-	if _, err := parseProjectFerretVersion(ferretModule.Version); err != nil {
+	if ferretVersion != "" {
+		if _, err := parseProjectFerretVersion(ferretVersion); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
@@ -78,7 +99,7 @@ func discoverInstallProject(ctx context.Context, runner Runner, directory string
 		ModulePath:    projectModule.Path,
 		GoModPath:     goModPath,
 		GoSumPath:     filepath.Join(root, "go.sum"),
-		FerretVersion: ferretModule.Version,
+		FerretVersion: ferretVersion,
 	}, nil
 }
 

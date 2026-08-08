@@ -127,21 +127,38 @@ Install a compatible registered release into an existing Go application:
 ```bash
 ferret mod install montferret/archive
 ferret mod install montferret/archive@1.0.0-rc.3
+ferret mod install --yes montferret/archive # Approve missing Ferret dependency automatically
 ```
 
-The application must already select `github.com/MontFerret/ferret/v2` and have
-exactly one active, non-test `ferret.New(...)` composition. The installer updates
-`go.mod`, `go.sum`, and that composition, then builds only its owning package
-before committing the changes. It does not modify the Ferret CLI runtime or
-create Ferret-specific project state. Installed modules are Go code compiled
-into the application and execute with the application's process permissions.
+If the application does not select `github.com/MontFerret/ferret/v2`, an
+interactive install explains the dependency and asks before adding the exact
+Ferret version embedded in the CLI. Use `-y` or `--yes` to approve it in
+automation. Non-interactive installs without that flag fail with the equivalent
+`go get` command instead of reading stdin.
 
-Initialize a new module project. The Go import path is required because it cannot
-be inferred safely from the Ferret distribution name:
+The application must have an existing `go.mod` and exactly one active, non-test
+`ferret.New(...)` composition. The installer updates `go.mod`, `go.sum`, and that
+composition, then builds only its owning package before committing all changes.
+It does not modify the Ferret CLI runtime or create Ferret-specific project
+state. Installed modules are Go code compiled into the application and execute
+with the application's process permissions.
+
+Initialize a new module project with the guided flow. It explains each value,
+offers editable defaults, and shows the resolved configuration before creating
+files:
+
+```bash
+ferret mod init
+```
+
+You can also provide any known values up front; the wizard asks only for what is
+missing. For non-interactive use, provide the module name and Go import path.
+The directory and namespace retain their module-name defaults:
 
 ```bash
 ferret mod init acme/sqlite \
   --go-module github.com/acme/ferret-sqlite \
+  --dir sqlite \
   --namespace DB::SQLITE
 ```
 

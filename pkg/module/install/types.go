@@ -25,22 +25,26 @@ type (
 
 	// Options controls installation into an existing Go application.
 	Options struct {
-		Reference string
-		Directory string
+		Reference                  string
+		Directory                  string
+		InstallMissingDependencies bool
 	}
 
 	// Result describes a resolved and validated project installation.
 	Result struct {
-		ID                  string
-		Version             string
-		PackagePath         string
-		FerretConstraint    string
-		ProjectFerret       string
-		EditedFile          string
-		Changed             bool
-		SourceChanged       bool
-		DependenciesChanged bool
+		ID                    string
+		Version               string
+		PackagePath           string
+		FerretConstraint      string
+		ProjectFerret         string
+		EditedFile            string
+		Changed               bool
+		SourceChanged         bool
+		DependenciesChanged   bool
+		FerretDependencyAdded bool
 	}
+
+	ferretVersionProvider func() (string, error)
 
 	projectInfo struct {
 		Root          string
