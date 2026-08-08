@@ -4,26 +4,26 @@ go 1.26.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/MontFerret/barn v1.2.0
-	github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.3
-	github.com/MontFerret/contrib/modules/archive v1.0.0-rc.2
-	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.15
-	github.com/MontFerret/contrib/modules/db/postgres v1.0.0-rc.8
-	github.com/MontFerret/contrib/modules/db/sqlite v1.0.0-rc.11
-	github.com/MontFerret/contrib/modules/document/pdf v1.0.0-rc.7
-	github.com/MontFerret/contrib/modules/document/xlsx v1.0.0-rc.7
-	github.com/MontFerret/contrib/modules/net/rest v1.0.0-rc.10
-	github.com/MontFerret/contrib/modules/security/jwt v1.0.0-rc.11
-	github.com/MontFerret/contrib/modules/security/oauth2 v1.0.0-rc.2
-	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.13
-	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.14
-	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.20
-	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.13
-	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.13
-	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.13
-	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.13
+	github.com/MontFerret/barn v1.3.0
+	github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.4
+	github.com/MontFerret/contrib/modules/archive v1.0.0-rc.3
+	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.16
+	github.com/MontFerret/contrib/modules/db/postgres v1.0.0-rc.9
+	github.com/MontFerret/contrib/modules/db/sqlite v1.0.0-rc.12
+	github.com/MontFerret/contrib/modules/document/pdf v1.0.0-rc.8
+	github.com/MontFerret/contrib/modules/document/xlsx v1.0.0-rc.8
+	github.com/MontFerret/contrib/modules/net/rest v1.0.0-rc.11
+	github.com/MontFerret/contrib/modules/security/jwt v1.0.0-rc.12
+	github.com/MontFerret/contrib/modules/security/oauth2 v1.0.0-rc.3
+	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.14
+	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.15
+	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.21
+	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.14
+	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.14
+	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.14
+	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.14
 	github.com/MontFerret/ferret/v2 v2.0.0-alpha.44
-	github.com/MontFerret/specs v1.3.0
+	github.com/MontFerret/specs v1.4.0
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
 	github.com/go-waitfor/waitfor-http v1.1.0
@@ -97,7 +97,7 @@ require (
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/excelize/v2 v2.11.0 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
-	github.com/yuin/goldmark v1.8.2 // indirect
+	github.com/yuin/goldmark v1.8.5 // indirect
 	github.com/ziflex/dbx v1.10.0 // indirect
 	github.com/ziflex/go-options v1.0.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
@@ -107,7 +107,7 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
-	modernc.org/libc v1.75.1 // indirect
+	modernc.org/libc v1.75.3 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.0 // indirect
 	modernc.org/sqlite v1.56.0 // indirect
