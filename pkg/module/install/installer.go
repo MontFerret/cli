@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -45,12 +46,40 @@ func (installer *Installer) Install(ctx context.Context, options Options) (*Resu
 		return nil, err
 	}
 
-	stage, ferretDependencyAdded, err := installer.prepareProjectFerret(ctx, project, options.InstallMissingDependencies)
-	if err != nil {
+	target, compositionScaffolded, compositionErr := discoverComposition(
+		ctx,
+		installer.runner,
+		project,
+		options.ScaffoldMissingComposition,
+	)
+	if compositionErr != nil {
+		var missing *MissingCompositionError
+		if !errors.As(compositionErr, &missing) {
+			return nil, compositionErr
+		}
+	}
+
+	ferretVersion, ferretDependencyAdded, dependencyErr := installer.resolveProjectFerret(options.InstallMissingDependencies, project)
+	if dependencyErr != nil {
+		var missing *MissingDependencyError
+		if !errors.As(dependencyErr, &missing) {
+			return nil, dependencyErr
+		}
+	}
+
+	if err := errors.Join(dependencyErr, compositionErr); err != nil {
 		return nil, err
 	}
 
-	if stage != nil {
+	project.FerretVersion = ferretVersion
+
+	var stage *installStage
+	if ferretDependencyAdded {
+		stage, err = installer.stageProjectFerret(ctx, project, ferretVersion)
+		if err != nil {
+			return nil, err
+		}
+
 		defer os.RemoveAll(stage.directory)
 	}
 
@@ -60,11 +89,6 @@ func (installer *Installer) Install(ctx context.Context, options Options) (*Resu
 	}
 
 	release, err := installer.resolveRelease(ctx, id, requestedVersion, projectVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	target, err := discoverComposition(ctx, installer.runner, project)
 	if err != nil {
 		return nil, err
 	}
@@ -82,9 +106,10 @@ func (installer *Installer) Install(ctx context.Context, options Options) (*Resu
 		ProjectFerret:         project.FerretVersion,
 		EditedFile:            relativeInstallPath(project.Root, target.Filename),
 		FerretDependencyAdded: ferretDependencyAdded,
+		CompositionScaffolded: compositionScaffolded,
 	}
 
-	if !ferretDependencyAdded {
+	if !ferretDependencyAdded && !compositionScaffolded {
 		exactDependency, err := installer.hasExactDependency(ctx, project.Root, release.Version.Package.Path, release.Version.Version)
 		if err != nil {
 			return nil, err
@@ -170,53 +195,55 @@ func (installer *Installer) Install(ctx context.Context, options Options) (*Resu
 	return result, nil
 }
 
-func (installer *Installer) prepareProjectFerret(ctx context.Context, project *projectInfo, installMissing bool) (*installStage, bool, error) {
+func (installer *Installer) resolveProjectFerret(installMissing bool, project *projectInfo) (string, bool, error) {
 	if project.FerretVersion != "" {
-		return nil, false, nil
+		return project.FerretVersion, false, nil
 	}
 
 	if installer.ferretVersion == nil {
-		return nil, false, fmt.Errorf("ferret dependency version provider is not configured")
+		return "", false, fmt.Errorf("ferret dependency version provider is not configured")
 	}
 
 	version, err := installer.ferretVersion()
 	if err != nil {
-		return nil, false, fmt.Errorf("resolve Ferret dependency version: %w", err)
+		return "", false, fmt.Errorf("resolve Ferret dependency version: %w", err)
 	}
 
 	if _, err := parseProjectFerretVersion(version); err != nil {
-		return nil, false, fmt.Errorf("resolve Ferret dependency version: %w", err)
+		return "", false, fmt.Errorf("resolve Ferret dependency version: %w", err)
 	}
 
 	if !installMissing {
-		return nil, false, &MissingDependencyError{Path: ferretCoreModulePath, Version: version}
+		return "", false, &MissingDependencyError{Path: ferretCoreModulePath, Version: version}
 	}
 
+	return version, true, nil
+}
+
+func (installer *Installer) stageProjectFerret(ctx context.Context, project *projectInfo, version string) (*installStage, error) {
 	stage, err := newInstallStage(project)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	query := ferretCoreModulePath + "@" + version
 	if _, err := installer.runner.Run(ctx, project.Root, "get", "-modfile="+stage.modPath, query); err != nil {
 		os.RemoveAll(stage.directory)
-		return nil, false, fmt.Errorf("resolve %s through the Go module toolchain: %w", query, err)
+		return nil, fmt.Errorf("resolve %s through the Go module toolchain: %w", query, err)
 	}
 
 	selected, err := installer.selectedFerretVersion(ctx, project.Root, stage.modPath)
 	if err != nil {
 		os.RemoveAll(stage.directory)
-		return nil, false, err
+		return nil, err
 	}
 
 	if selected != version {
 		os.RemoveAll(stage.directory)
-		return nil, false, fmt.Errorf("go selected %s@%s instead of approved dependency %s@%s", ferretCoreModulePath, selected, ferretCoreModulePath, version)
+		return nil, fmt.Errorf("go selected %s@%s instead of approved dependency %s@%s", ferretCoreModulePath, selected, ferretCoreModulePath, version)
 	}
 
-	project.FerretVersion = selected
-
-	return stage, true, nil
+	return stage, nil
 }
 
 func (installer *Installer) selectedFerretVersion(ctx context.Context, directory, modFile string) (string, error) {

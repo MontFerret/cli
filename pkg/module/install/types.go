@@ -28,6 +28,7 @@ type (
 		Reference                  string
 		Directory                  string
 		InstallMissingDependencies bool
+		ScaffoldMissingComposition bool
 	}
 
 	// Result describes a resolved and validated project installation.
@@ -42,6 +43,7 @@ type (
 		SourceChanged         bool
 		DependenciesChanged   bool
 		FerretDependencyAdded bool
+		CompositionScaffolded bool
 	}
 
 	ferretVersionProvider func() (string, error)
@@ -73,11 +75,20 @@ type (
 	}
 
 	goPackageInfo struct {
-		Dir        string        `json:"Dir"`
-		ImportPath string        `json:"ImportPath"`
-		GoFiles    []string      `json:"GoFiles"`
-		CgoFiles   []string      `json:"CgoFiles"`
-		Module     *goModuleInfo `json:"Module"`
+		Dir         string        `json:"Dir"`
+		Name        string        `json:"Name"`
+		ImportPath  string        `json:"ImportPath"`
+		GoFiles     []string      `json:"GoFiles"`
+		CgoFiles    []string      `json:"CgoFiles"`
+		TestGoFiles []string      `json:"TestGoFiles"`
+		Module      *goModuleInfo `json:"Module"`
+	}
+
+	compositionScaffold struct {
+		Filename    string
+		Directory   string
+		PackageName string
+		ImportPath  string
 	}
 
 	goDownloadInfo struct {

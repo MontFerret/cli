@@ -83,11 +83,14 @@ func renderModuleInstall(output io.Writer, result *install.Result) {
 		fmt.Fprintf(output, "Added github.com/MontFerret/ferret/v2 %s\n", result.ProjectFerret)
 	}
 
-	if result.SourceChanged {
+	if result.CompositionScaffolded {
+		fmt.Fprintf(output, "Created Ferret composition helper in %s\n", result.EditedFile)
+	} else if result.SourceChanged {
 		fmt.Fprintf(output, "Registered module in %s\n", result.EditedFile)
 	} else {
 		fmt.Fprintf(output, "Module registration already present in %s\n", result.EditedFile)
 	}
+
 	fmt.Fprintln(output, "Validated owning package build")
 }
 

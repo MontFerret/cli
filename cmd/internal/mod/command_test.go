@@ -109,11 +109,14 @@ func TestModCommandInstallRendersIdempotentResult(t *testing.T) {
 	}
 }
 
-func TestModCommandInstallApprovesMissingFerretInteractively(t *testing.T) {
-	missing := &install.MissingDependencyError{
-		Path:    "github.com/MontFerret/ferret/v2",
-		Version: "v2.0.0-alpha.44",
-	}
+func TestModCommandInstallApprovesCombinedProjectSetupInteractively(t *testing.T) {
+	missing := errors.Join(
+		&install.MissingDependencyError{
+			Path:    "github.com/MontFerret/ferret/v2",
+			Version: "v2.0.0-alpha.44",
+		},
+		&install.MissingCompositionError{File: "ferret.go", Package: "xproject"},
+	)
 	service := &fakeModuleService{installSequence: []fakeInstallResponse{
 		{err: missing},
 		{result: &install.Result{
@@ -122,11 +125,12 @@ func TestModCommandInstallApprovesMissingFerretInteractively(t *testing.T) {
 			PackagePath:           "example.com/postgres",
 			FerretConstraint:      ">=2.0.0-alpha.43 <3.0.0",
 			ProjectFerret:         "v2.0.0-alpha.44",
-			EditedFile:            "main.go",
+			EditedFile:            "ferret.go",
 			Changed:               true,
 			SourceChanged:         true,
 			DependenciesChanged:   true,
 			FerretDependencyAdded: true,
+			CompositionScaffolded: true,
 		}},
 	}}
 
@@ -137,19 +141,50 @@ func TestModCommandInstallApprovesMissingFerretInteractively(t *testing.T) {
 	if service.installCalls != 2 || len(service.installHistory) != 2 {
 		t.Fatalf("unexpected install calls: %d %#v", service.installCalls, service.installHistory)
 	}
-	if service.installHistory[0].InstallMissingDependencies || !service.installHistory[1].InstallMissingDependencies {
+	if service.installHistory[0].InstallMissingDependencies ||
+		service.installHistory[0].ScaffoldMissingComposition ||
+		!service.installHistory[1].InstallMissingDependencies ||
+		!service.installHistory[1].ScaffoldMissingComposition {
 		t.Fatalf("unexpected approval sequence: %#v", service.installHistory)
 	}
 	for _, expected := range []string{
-		"Project dependency required",
-		"Dependency: github.com/MontFerret/ferret/v2@v2.0.0-alpha.44",
-		"Install github.com/MontFerret/ferret/v2@v2.0.0-alpha.44? [Y/n]:",
+		"Project setup required",
+		"Add dependency: github.com/MontFerret/ferret/v2@v2.0.0-alpha.44",
+		"Create composition helper: ferret.go (package xproject)",
+		"Apply project setup? [Y/n]:",
 	} {
 		if !strings.Contains(stderr, expected) {
 			t.Fatalf("expected %q in stderr:\n%s", expected, stderr)
 		}
 	}
-	if !strings.Contains(stdout, "Resolving montferret/postgres...") || !strings.Contains(stdout, "Added github.com/MontFerret/ferret/v2 v2.0.0-alpha.44") {
+	if !strings.Contains(stdout, "Resolving montferret/postgres...") ||
+		!strings.Contains(stdout, "Added github.com/MontFerret/ferret/v2 v2.0.0-alpha.44") ||
+		!strings.Contains(stdout, "Created Ferret composition helper in ferret.go") {
+		t.Fatalf("unexpected stdout:\n%s", stdout)
+	}
+}
+
+func TestModCommandInstallApprovesMissingCompositionOnly(t *testing.T) {
+	service := &fakeModuleService{installSequence: []fakeInstallResponse{
+		{err: &install.MissingCompositionError{File: "internal/runtime/ferret.go", Package: "runtime"}},
+		{result: &install.Result{
+			ID: "montferret/postgres", Version: "1.0.0", PackagePath: "example.com/postgres",
+			FerretConstraint: ">=2.0.0 <3.0.0", ProjectFerret: "v2.0.0",
+			EditedFile: "internal/runtime/ferret.go", Changed: true, SourceChanged: true, CompositionScaffolded: true,
+		}},
+	}}
+
+	stdout, stderr, err := executeInteractiveModCommand(t, service, "yes\n", "install", "montferret/postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if service.installCalls != 2 || service.installHistory[1].InstallMissingDependencies || !service.installHistory[1].ScaffoldMissingComposition {
+		t.Fatalf("unexpected scaffold approval: %#v", service.installHistory)
+	}
+	if strings.Contains(stderr, "Add dependency:") || !strings.Contains(stderr, "Create composition helper: internal/runtime/ferret.go (package runtime)") {
+		t.Fatalf("unexpected stderr:\n%s", stderr)
+	}
+	if !strings.Contains(stdout, "Created Ferret composition helper in internal/runtime/ferret.go") {
 		t.Fatalf("unexpected stdout:\n%s", stdout)
 	}
 }
@@ -165,7 +200,7 @@ func TestModCommandInstallYesFlagsApproveWithoutPrompt(t *testing.T) {
 			if _, err := executeModCommand(t, service, "install", "montferret/postgres", flag); err != nil {
 				t.Fatal(err)
 			}
-			if service.installCalls != 1 || !service.installOptions.InstallMissingDependencies {
+			if service.installCalls != 1 || !service.installOptions.InstallMissingDependencies || !service.installOptions.ScaffoldMissingComposition {
 				t.Fatalf("unexpected install request: calls=%d options=%#v", service.installCalls, service.installOptions)
 			}
 		})
@@ -226,6 +261,23 @@ func TestModCommandInstallNonTerminalRequiresApproval(t *testing.T) {
 	_, err := executeModCommand(t, service, "install", "montferret/postgres")
 	if err == nil || !strings.Contains(err.Error(), "stdin is not a terminal") || !strings.Contains(err.Error(), "--yes") || !strings.Contains(err.Error(), "go get github.com/MontFerret/ferret/v2@v2.0.0-alpha.44") {
 		t.Fatalf("unexpected non-terminal error: %v", err)
+	}
+	if service.installCalls != 1 {
+		t.Fatalf("unexpected install calls: %d", service.installCalls)
+	}
+}
+
+func TestModCommandInstallNonTerminalReportsCombinedSetup(t *testing.T) {
+	service := &fakeModuleService{installSequence: []fakeInstallResponse{{err: errors.Join(
+		&install.MissingDependencyError{Path: "github.com/MontFerret/ferret/v2", Version: "v2.0.0-alpha.44"},
+		&install.MissingCompositionError{File: "ferret.go", Package: "xproject"},
+	)}}}
+
+	_, err := executeModCommand(t, service, "install", "montferret/postgres")
+	if err == nil ||
+		!strings.Contains(err.Error(), "go get github.com/MontFerret/ferret/v2@v2.0.0-alpha.44") ||
+		!strings.Contains(err.Error(), "create ferret.go with NewFerret in package xproject") {
+		t.Fatalf("unexpected combined setup error: %v", err)
 	}
 	if service.installCalls != 1 {
 		t.Fatalf("unexpected install calls: %d", service.installCalls)

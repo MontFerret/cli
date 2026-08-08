@@ -127,21 +127,26 @@ Install a compatible registered release into an existing Go application:
 ```bash
 ferret mod install montferret/archive
 ferret mod install montferret/archive@1.0.0-rc.3
-ferret mod install --yes montferret/archive # Approve missing Ferret dependency automatically
+ferret mod install --yes montferret/archive # Approve safe missing prerequisites automatically
 ```
 
-If the application does not select `github.com/MontFerret/ferret/v2`, an
-interactive install explains the dependency and asks before adding the exact
-Ferret version embedded in the CLI. Use `-y` or `--yes` to approve it in
-automation. Non-interactive installs without that flag fail with the equivalent
-`go get` command instead of reading stdin.
+If the application is missing `github.com/MontFerret/ferret/v2` or an active
+`ferret.New(...)` composition, an interactive install shows the complete setup
+before changing the project. It can add the exact Ferret version embedded in the
+CLI and create an exported `NewFerret(options ...ferret.Option)` helper in
+`ferret.go` when the destination package is unambiguous. Empty modules derive the
+package name from the module path; projects with one package use that package.
+Projects with multiple packages must add a composition manually.
 
-The application must have an existing `go.mod` and exactly one active, non-test
-`ferret.New(...)` composition. The installer updates `go.mod`, `go.sum`, and that
-composition, then builds only its owning package before committing all changes.
-It does not modify the Ferret CLI runtime or create Ferret-specific project
-state. Installed modules are Go code compiled into the application and execute
-with the application's process permissions.
+Use `-y` or `--yes` to approve safe missing prerequisites in automation.
+Non-interactive installs without that flag fail with equivalent manual steps
+instead of reading stdin. The application must already have a `go.mod`.
+
+The installer updates `go.mod`, `go.sum`, and the composition, then builds only
+its owning package before committing all changes. It does not modify the Ferret
+CLI runtime or create Ferret-specific project state. Installed modules are Go
+code compiled into the application and execute with the application's process
+permissions.
 
 Initialize a new module project with the guided flow. It explains each value,
 offers editable defaults, and shows the resolved configuration before creating

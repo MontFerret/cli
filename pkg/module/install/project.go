@@ -63,6 +63,7 @@ func discoverInstallProject(ctx context.Context, runner Runner, directory string
 	var ferretVersion string
 	var ferretSelected bool
 	decoder := json.NewDecoder(bytes.NewReader(moduleGraphOutput))
+
 	for {
 		var selected goModuleInfo
 		if err := decoder.Decode(&selected); err != nil {
@@ -103,14 +104,15 @@ func discoverInstallProject(ctx context.Context, runner Runner, directory string
 	}, nil
 }
 
-func discoverComposition(ctx context.Context, runner Runner, project *projectInfo) (*composition, error) {
+func discoverComposition(ctx context.Context, runner Runner, project *projectInfo, scaffoldMissing bool) (*composition, bool, error) {
 	output, err := runner.Run(ctx, project.Root, "list", "-e", "-json", "./...")
 	if err != nil {
-		return nil, fmt.Errorf("enumerate project packages: %w", err)
+		return nil, false, fmt.Errorf("enumerate project packages: %w", err)
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(output))
 	var matches []*composition
+	var packages []goPackageInfo
 	var dotImport string
 
 	for {
@@ -121,19 +123,20 @@ func discoverComposition(ctx context.Context, runner Runner, project *projectInf
 				break
 			}
 
-			return nil, fmt.Errorf("decode project package metadata: %w", err)
+			return nil, false, fmt.Errorf("decode project package metadata: %w", err)
 		}
 
 		if pkg.Module == nil || !pkg.Module.Main {
 			continue
 		}
+		packages = append(packages, pkg)
 
 		files := append(append([]string(nil), pkg.GoFiles...), pkg.CgoFiles...)
 		for _, name := range files {
 			filename := filepath.Join(pkg.Dir, name)
 			candidate, hasDotImport, err := inspectCompositionFile(filename, pkg.ImportPath)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 
 			if hasDotImport && dotImport == "" {
@@ -145,14 +148,30 @@ func discoverComposition(ctx context.Context, runner Runner, project *projectInf
 	}
 
 	if dotImport != "" {
-		return nil, fmt.Errorf("dot-imported Ferret package in %s; use a normal or named import before installing modules", dotImport)
+		return nil, false, fmt.Errorf("dot-imported Ferret package in %s; use a normal or named import before installing modules", dotImport)
 	}
 
 	switch len(matches) {
 	case 0:
-		return nil, fmt.Errorf("no active ferret.New(...) composition found in %s", project.Root)
+		scaffold, err := planCompositionScaffold(project, packages)
+		if err != nil {
+			return nil, false, err
+		}
+		if !scaffoldMissing {
+			return nil, false, &MissingCompositionError{
+				File:    relativeInstallPath(project.Root, scaffold.Filename),
+				Package: scaffold.PackageName,
+			}
+		}
+
+		target, err := newScaffoldedComposition(scaffold)
+		if err != nil {
+			return nil, false, err
+		}
+
+		return target, true, nil
 	case 1:
-		return matches[0], nil
+		return matches[0], false, nil
 	default:
 		locations := make([]string, len(matches))
 
@@ -161,7 +180,7 @@ func discoverComposition(ctx context.Context, runner Runner, project *projectInf
 			locations[index] = fmt.Sprintf("%s:%d", position.Filename, position.Line)
 		}
 
-		return nil, fmt.Errorf("multiple active ferret.New(...) compositions found: %s", strings.Join(locations, ", "))
+		return nil, false, fmt.Errorf("multiple active ferret.New(...) compositions found: %s", strings.Join(locations, ", "))
 	}
 }
 

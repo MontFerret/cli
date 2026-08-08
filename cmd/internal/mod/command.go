@@ -59,8 +59,8 @@ func moduleInstallCommand(service Service, terminal terminalDetector, prompts pr
 			"The command updates go.mod, go.sum, and one unambiguous ferret.New(...) " +
 			"composition. Module code is compiled into the application and executes " +
 			"with the application's process permissions. It does not modify the Ferret CLI runtime. " +
-			"When Ferret v2 is missing, interactive use asks before adding the version embedded in this CLI; " +
-			"use --yes for non-interactive approval.",
+			"When Ferret v2 or a safe composition helper is missing, interactive use shows the complete " +
+			"project setup before proceeding; use --yes for non-interactive approval.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			yes, err := command.Flags().GetBool(moduleYesFlag)
@@ -77,6 +77,7 @@ func moduleInstallCommand(service Service, terminal terminalDetector, prompts pr
 					Reference:                  args[0],
 					Directory:                  ".",
 					InstallMissingDependencies: yes,
+					ScaffoldMissingComposition: yes,
 				},
 				terminal,
 				prompts,
@@ -93,7 +94,7 @@ func moduleInstallCommand(service Service, terminal terminalDetector, prompts pr
 		},
 	}
 
-	command.Flags().BoolP(moduleYesFlag, "y", false, "Install missing Ferret dependencies without prompting")
+	command.Flags().BoolP(moduleYesFlag, "y", false, "Set up safe missing project prerequisites without prompting")
 
 	return command
 }
