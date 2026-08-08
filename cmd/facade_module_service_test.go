@@ -18,6 +18,10 @@ func (f *facadeModuleService) Info(context.Context, string) (*modulelifecycle.Mo
 	return nil, nil
 }
 
+func (f *facadeModuleService) Install(context.Context, modulelifecycle.InstallOptions) (*modulelifecycle.InstallResult, error) {
+	return nil, nil
+}
+
 func (f *facadeModuleService) Create(context.Context, modulelifecycle.CreateOptions) (*modulelifecycle.CreateResult, error) {
 	return nil, nil
 }

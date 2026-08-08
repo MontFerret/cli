@@ -102,6 +102,7 @@ ferret debug script.fql     # Start the interactive debugger
 ferret browser open         # Start a managed browser
 ferret config list          # Show configuration
 ferret mod search sqlite    # Search the Ferret module registry
+ferret mod install montferret/archive # Install a module into a Go application
 ferret version              # Show version information
 ```
 
@@ -109,10 +110,9 @@ Run `ferret [command] --help` for command-specific options.
 
 ## Module lifecycle
 
-Ferret CLI handles module discovery, project scaffolding, and preparation of
-registry publication records. Go remains responsible for adding, removing,
-and updating module dependencies through commands such as `go get`,
-`go get -u`, and `go mod tidy`.
+Ferret CLI handles module discovery, installation into Go applications, project
+scaffolding, and preparation of registry publication records. Installation uses
+the Go module toolchain and the package path published by the Ferret registry.
 
 Search the public registry by canonical module ID or description, or inspect
 one registered module:
@@ -121,6 +121,20 @@ one registered module:
 ferret mod search sqlite
 ferret mod info montferret/sqlite
 ```
+
+Install a compatible registered release into an existing Go application:
+
+```bash
+ferret mod install montferret/archive
+ferret mod install montferret/archive@1.0.0-rc.3
+```
+
+The application must already select `github.com/MontFerret/ferret/v2` and have
+exactly one active, non-test `ferret.New(...)` composition. The installer updates
+`go.mod`, `go.sum`, and that composition, then builds only its owning package
+before committing the changes. It does not modify the Ferret CLI runtime or
+create Ferret-specific project state. Installed modules are Go code compiled
+into the application and execute with the application's process permissions.
 
 Initialize a new module project. The Go import path is required because it cannot
 be inferred safely from the Ferret distribution name:

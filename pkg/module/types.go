@@ -20,6 +20,11 @@ type (
 		Prepare(context.Context, PublishOptions) (*barnpublish.Result, error)
 	}
 
+	// GoRunner executes Go toolchain commands in a project directory.
+	GoRunner interface {
+		Run(context.Context, string, ...string) ([]byte, error)
+	}
+
 	// SearchResult is one row in module discovery output.
 	SearchResult struct {
 		Name        string
@@ -61,6 +66,25 @@ type (
 	PublishOptions struct {
 		Directory string
 		Tag       string
+	}
+
+	// InstallOptions controls installation into an existing Go application.
+	InstallOptions struct {
+		Reference string
+		Directory string
+	}
+
+	// InstallResult describes a resolved and validated project installation.
+	InstallResult struct {
+		ID                  string
+		Version             string
+		PackagePath         string
+		FerretConstraint    string
+		ProjectFerret       string
+		EditedFile          string
+		Changed             bool
+		SourceChanged       bool
+		DependenciesChanged bool
 	}
 
 	// ScaffoldEnvironment pins toolchain and Ferret versions in generated projects.

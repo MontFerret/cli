@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/MontFerret/barn v1.0.1
+	github.com/MontFerret/barn v1.2.0
 	github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.3
 	github.com/MontFerret/contrib/modules/archive v1.0.0-rc.2
 	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.15
@@ -23,7 +23,7 @@ require (
 	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.13
 	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.13
 	github.com/MontFerret/ferret/v2 v2.0.0-alpha.44
-	github.com/MontFerret/specs v1.1.0
+	github.com/MontFerret/specs v1.3.0
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
 	github.com/go-waitfor/waitfor-http v1.1.0
@@ -97,6 +97,7 @@ require (
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/excelize/v2 v2.11.0 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
+	github.com/yuin/goldmark v1.8.2 // indirect
 	github.com/ziflex/dbx v1.10.0 // indirect
 	github.com/ziflex/go-options v1.0.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect

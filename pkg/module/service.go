@@ -12,16 +12,20 @@ import (
 	barnregistry "github.com/MontFerret/barn/pkg/registry"
 )
 
-// Service coordinates registry discovery, scaffolding, and publication preparation.
+// Service coordinates registry discovery, application installation, scaffolding, and publication preparation.
 type Service struct {
 	registry   Registry
 	scaffolder *Scaffolder
 	publisher  PublicationPreparer
+	installer  *Installer
 }
 
 // NewService constructs a module lifecycle service.
 func NewService(registry Registry, scaffolder *Scaffolder, publisher PublicationPreparer) *Service {
-	return &Service{registry: registry, scaffolder: scaffolder, publisher: publisher}
+	return &Service{
+		registry: registry, scaffolder: scaffolder, publisher: publisher,
+		installer: NewInstaller(registry, nil),
+	}
 }
 
 // Search returns modules whose canonical identity or description contains query.
@@ -107,6 +111,16 @@ func (s *Service) Info(ctx context.Context, name string) (*ModuleInfo, error) {
 		Commit:          version.Source.Commit,
 		Documentation:   version.Content["documentation"],
 	}, nil
+}
+
+// Install adds a registered module to an existing Go application.
+func (s *Service) Install(ctx context.Context, options InstallOptions) (*InstallResult, error) {
+	installer := s.installer
+	if installer == nil {
+		installer = NewInstaller(s.registry, nil)
+	}
+
+	return installer.Install(ctx, options)
 }
 
 // Create scaffolds a new module project.

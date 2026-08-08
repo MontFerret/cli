@@ -12,6 +12,7 @@ import (
 type Service interface {
 	Search(context.Context, string) ([]modulelifecycle.SearchResult, error)
 	Info(context.Context, string) (*modulelifecycle.ModuleInfo, error)
+	Install(context.Context, modulelifecycle.InstallOptions) (*modulelifecycle.InstallResult, error)
 	Create(context.Context, modulelifecycle.CreateOptions) (*modulelifecycle.CreateResult, error)
 	Publish(context.Context, modulelifecycle.PublishOptions) (*barnpublish.Result, error)
 }

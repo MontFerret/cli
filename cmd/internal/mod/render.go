@@ -63,6 +63,27 @@ func renderModuleInfo(output io.Writer, info *modulelifecycle.ModuleInfo) {
 	}
 }
 
+func renderModuleInstall(output io.Writer, result *modulelifecycle.InstallResult) {
+	fmt.Fprintf(output, "Resolved %s@%s\n", result.ID, result.Version)
+	fmt.Fprintf(output, "Compatible with project Ferret %s (%s)\n", result.ProjectFerret, result.FerretConstraint)
+	fmt.Fprintf(output, "Package: %s\n", result.PackagePath)
+
+	if !result.Changed {
+		fmt.Fprintf(output, "%s@%s is already installed\n", result.ID, result.Version)
+		return
+	}
+
+	if result.DependenciesChanged {
+		fmt.Fprintln(output, "Updated Go module dependencies")
+	}
+	if result.SourceChanged {
+		fmt.Fprintf(output, "Registered module in %s\n", result.EditedFile)
+	} else {
+		fmt.Fprintf(output, "Module registration already present in %s\n", result.EditedFile)
+	}
+	fmt.Fprintln(output, "Validated owning package build")
+}
+
 func renderModuleInit(output io.Writer, result *modulelifecycle.CreateResult) {
 	fmt.Fprintf(output, "Created Ferret module in %s\n", result.Directory)
 	fmt.Fprintf(output, "Runtime namespace: %s\n", result.Namespace)

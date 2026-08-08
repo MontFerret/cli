@@ -55,7 +55,7 @@ func InspectCommand(store *config.Store) *cobra.Command {
 	return inspectcmd.New(store)
 }
 
-// ModCommand creates the module discovery, scaffolding, and publication command group.
+// ModCommand creates the module discovery, installation, scaffolding, and publication command group.
 func ModCommand(store *config.Store, service moduleService) *cobra.Command {
 	return modcmd.New(store, service)
 }

@@ -8,8 +8,8 @@ github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2 h1:XFJZFWESIWlUEHHjzBuv8R
 github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2/go.mod h1:BHWO8lJzttJLqwuV8Rb1B3OG2OSzLbssZDI1FRg2eAA=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
-github.com/MontFerret/barn v1.0.1 h1:3gXHJqHf3Sc6tk4IwUvhLz2flDq01qO1RIZ+nhevsQs=
-github.com/MontFerret/barn v1.0.1/go.mod h1:mx09fQEy3+BZZOpIVCsmXG8y6V/s85BywJQP3xX4pJw=
+github.com/MontFerret/barn v1.2.0 h1:n5ZOlPN7vTOnt9Kxr+iLx/gcKfdiR1XRtnnM8764+S0=
+github.com/MontFerret/barn v1.2.0/go.mod h1:LJQg7rPS5GZNM8IkPaZ7q+TdcdhsOdSQRQPv/DopxOY=
 github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.3 h1:9HIwVqIwhk/8ergf9Y6GX0hWJxUGvdacf9BXQrA4NUE=
 github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.3/go.mod h1:i2NDjugVn3UGbCB+4/1ObX6bWHg1ve1hBhfx0/7CexM=
 github.com/MontFerret/contrib/modules/archive v1.0.0-rc.2 h1:I0Lhek6ms9XfYzSa8rJD3KvOQ3HUKU98Vcu7OXeJFLQ=
@@ -50,8 +50,8 @@ github.com/MontFerret/cssx v0.2.0 h1:De0C6Irbg+qgFPXgWmPpVnwD4RRYUBQSbIYFTUVCNWU
 github.com/MontFerret/cssx v0.2.0/go.mod h1:fmGtRUNVaeJYpiPSDlNIbbYzb3+K8NxmNmJOYqlHATU=
 github.com/MontFerret/ferret/v2 v2.0.0-alpha.44 h1:iuizFAAo2rQ26HWisB0qtsP5rxJ45bHH6qBr14TyUUU=
 github.com/MontFerret/ferret/v2 v2.0.0-alpha.44/go.mod h1:IjoBKZuRggOvP+beDB4FPosw2NAq/EYabdaHpUVtfmY=
-github.com/MontFerret/specs v1.1.0 h1:pTljD5Ny+HV80YR1k5pfDPHq2lVpAd3WXrjmWA3RPfA=
-github.com/MontFerret/specs v1.1.0/go.mod h1:GNhrtvQHBotGlNbRrHSAVVHGBmjLSi8UdtrQctA7N40=
+github.com/MontFerret/specs v1.3.0 h1:Hk+bwJ32LaqIzCwPlG+eMjvfSDWmOXvyQuP7YgNRVkU=
+github.com/MontFerret/specs v1.3.0/go.mod h1:ENGyEPFjrWVPWOUAsBMc1acUsqpswieTrAJfhcm576E=
 github.com/PuerkitoBio/goquery v1.12.0 h1:pAcL4g3WRXekcB9AU/y1mbKez2dbY2AajVhtkO8RIBo=
 github.com/PuerkitoBio/goquery v1.12.0/go.mod h1:802ej+gV2y7bbIhOIoPY5sT183ZW0YFofScC4q/hIpQ=
 github.com/andybalholm/cascadia v1.3.4 h1:vM2lgh0Vru9Vwyfm4cQqWP2HHMW0u0+2PAW7Q38Qufg=

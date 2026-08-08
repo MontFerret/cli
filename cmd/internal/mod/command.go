@@ -20,7 +20,7 @@ const (
 func New(store *config.Store, service Service) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "mod",
-		Short: "Discover, initialize, and publish Ferret modules",
+		Short: "Discover, install, initialize, and publish Ferret modules",
 		Args:  cobra.MaximumNArgs(0),
 		PersistentPreRun: func(command *cobra.Command, _ []string) {
 			store.BindFlags(command)
@@ -37,11 +37,39 @@ func New(store *config.Store, service Service) *cobra.Command {
 	command.AddCommand(
 		moduleSearchCommand(service),
 		moduleInfoCommand(service),
+		moduleInstallCommand(service),
 		moduleInitCommand(service),
 		modulePublishCommand(service),
 	)
 
 	return command
+}
+
+func moduleInstallCommand(service Service) *cobra.Command {
+	return &cobra.Command{
+		Use:   "install <module>[@version]",
+		Short: "Install a registered module into the current Go application",
+		Long: "Install a registered module into the current Go application.\n\n" +
+			"The command updates go.mod, go.sum, and one unambiguous ferret.New(...) " +
+			"composition. Module code is compiled into the application and executes " +
+			"with the application's process permissions. It does not modify the Ferret CLI runtime.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(command *cobra.Command, args []string) error {
+			fmt.Fprintf(command.OutOrStdout(), "Resolving %s...\n", args[0])
+
+			result, err := service.Install(command.Context(), modulelifecycle.InstallOptions{
+				Reference: args[0],
+				Directory: ".",
+			})
+			if err != nil {
+				return err
+			}
+
+			renderModuleInstall(command.OutOrStdout(), result)
+
+			return nil
+		},
+	}
 }
 
 func moduleSearchCommand(service Service) *cobra.Command {

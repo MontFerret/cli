@@ -55,6 +55,56 @@ func TestModCommandInfoRendersOptionalFields(t *testing.T) {
 	}
 }
 
+func TestModCommandInstallPassesReferenceAndRendersChanges(t *testing.T) {
+	service := &fakeModuleService{install: &modulelifecycle.InstallResult{
+		ID:                  "montferret/archive",
+		Version:             "1.0.0-rc.3",
+		PackagePath:         "github.com/MontFerret/contrib/modules/archive",
+		FerretConstraint:    ">=2.0.0-alpha.43 <3.0.0",
+		ProjectFerret:       "v2.0.0-alpha.44",
+		EditedFile:          "main.go",
+		Changed:             true,
+		SourceChanged:       true,
+		DependenciesChanged: true,
+	}}
+
+	output, err := executeModCommand(t, service, "install", "montferret/archive@1.0.0-rc.3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if service.installOptions.Reference != "montferret/archive@1.0.0-rc.3" || service.installOptions.Directory != "." {
+		t.Fatalf("unexpected install options: %#v", service.installOptions)
+	}
+	for _, expected := range []string{
+		"Resolving montferret/archive@1.0.0-rc.3...",
+		"Resolved montferret/archive@1.0.0-rc.3",
+		"Compatible with project Ferret v2.0.0-alpha.44",
+		"Package: github.com/MontFerret/contrib/modules/archive",
+		"Updated Go module dependencies",
+		"Registered module in main.go",
+		"Validated owning package build",
+	} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("expected %q in output:\n%s", expected, output)
+		}
+	}
+}
+
+func TestModCommandInstallRendersIdempotentResult(t *testing.T) {
+	service := &fakeModuleService{install: &modulelifecycle.InstallResult{
+		ID: "montferret/archive", Version: "1.0.0-rc.3", PackagePath: "example.com/archive",
+		FerretConstraint: ">=2.0.0 <3.0.0", ProjectFerret: "v2.1.0",
+	}}
+
+	output, err := executeModCommand(t, service, "install", "montferret/archive")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output, "montferret/archive@1.0.0-rc.3 is already installed") || strings.Contains(output, "Validated owning package build") {
+		t.Fatalf("unexpected idempotent output:\n%s", output)
+	}
+}
+
 func TestModCommandInitRequiresAndPassesFlags(t *testing.T) {
 	service := &fakeModuleService{create: &modulelifecycle.CreateResult{Directory: "/tmp/sqlite", Namespace: "DB::SQLITE"}}
 	if _, err := executeModCommand(t, service, "init", "db/sqlite"); err == nil || !strings.Contains(err.Error(), "--go-module is required") {
@@ -126,13 +176,13 @@ func TestModCommandExposesOnlyRenamedLifecycleSubcommands(t *testing.T) {
 		t.Fatalf("unexpected command name or aliases: %q %#v", command.Name(), command.Aliases)
 	}
 
-	want := map[string]bool{"search": true, "info": true, "init": true, "publish": true}
+	want := map[string]bool{"search": true, "info": true, "install": true, "init": true, "publish": true}
 	for _, child := range command.Commands() {
 		delete(want, child.Name())
 		if len(child.Aliases) != 0 {
 			t.Fatalf("unexpected aliases for %q: %#v", child.Name(), child.Aliases)
 		}
-		if child.Name() == "add" || child.Name() == "create" || child.Name() == "install" || child.Name() == "update" {
+		if child.Name() == "add" || child.Name() == "create" || child.Name() == "update" {
 			t.Fatalf("unexpected dependency command %q", child.Name())
 		}
 	}
