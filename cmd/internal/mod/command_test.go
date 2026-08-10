@@ -3,6 +3,7 @@ package mod
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/MontFerret/cli/v2/pkg/config"
 	"github.com/MontFerret/cli/v2/pkg/module/discovery"
 	"github.com/MontFerret/cli/v2/pkg/module/install"
+	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
 	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
@@ -527,45 +529,188 @@ func TestModCommandInitFullySpecifiedBypassesInteractivePrompt(t *testing.T) {
 	}
 }
 
-func TestModCommandPublishRendersRecords(t *testing.T) {
-	service := &fakeModuleService{publication: &barnpublish.Result{
+func TestModCommandPublishSubmitsAndRendersProgress(t *testing.T) {
+	prepared := &barnpublish.Result{
 		Kind: barnpublish.NewModule,
 		Module: &registryspec.ModuleManifest{
+			Owner: "acme", Name: "widget",
 			Source: registryspec.Source{Repository: "https://example.com/acme/widget", Path: "modules/widget"},
 		},
-		Version: &registryspec.VersionRecord{Version: "1.2.3", Tag: "release-1.2.3", Commit: "abc"},
+		Version: &registryspec.VersionRecord{Version: "1.2.3", Tag: "release-1.2.3", Commit: "abcdef0123456789"},
 		Files: []barnpublish.File{
 			{Path: "registry/modules/acme/widget/manifest.json", Content: []byte("{}\n")},
 			{Path: "registry/modules/acme/widget/versions/v1.2.3.json", Content: []byte("{}\n")},
 		},
+	}
+	service := &fakeModuleService{publication: &modulepublish.Result{
+		Status: modulepublish.StatusSubmitted, Module: "acme/widget", Version: "1.2.3",
+		Tag: "release-1.2.3", Prepared: prepared, PullRequestURL: "https://github.com/MontFerret/barn/pull/123",
 	}}
 	output, err := executeModCommand(t, service, "publish", "--tag", "release-1.2.3")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if service.publishOptions.Tag != "release-1.2.3" || !strings.Contains(output, "Manifest: valid") || !strings.Contains(output, service.publication.Files[1].Path) || !strings.Contains(output, "Add both records") {
+	wantOutput := "✓ Validated ferret.yaml\n" +
+		"✓ Resolved release-1.2.3 → abcdef0\n" +
+		"✓ Verified public source\n" +
+		"✓ Verified README.md and go.mod\n" +
+		"✓ Prepared acme/widget@1.2.3\n" +
+		"✓ Submitted to Ferret Registry\n" +
+		"https://github.com/MontFerret/barn/pull/123\n"
+	if service.publishOptions.Tag != "release-1.2.3" || service.publishOptions.Mode != modulepublish.ModeSubmit || output != wantOutput {
 		t.Fatalf("unexpected publication output:\n%s", output)
 	}
 }
 
-func TestModCommandPublishRendersOnlyNewVersionFile(t *testing.T) {
-	service := &fakeModuleService{publication: &barnpublish.Result{
-		Kind: barnpublish.NewVersion,
-		Module: &registryspec.ModuleManifest{
-			Source: registryspec.Source{Repository: "https://example.com/acme/widget"},
+func TestModCommandPublishReportsExistingSubmission(t *testing.T) {
+	service := &fakeModuleService{publication: &modulepublish.Result{
+		Status: modulepublish.StatusExistingSubmission, Module: "acme/widget", Version: "1.2.3",
+		Tag: "v1.2.3", Prepared: &barnpublish.Result{
+			Kind:    barnpublish.NewVersion,
+			Module:  &registryspec.ModuleManifest{Owner: "acme", Name: "widget"},
+			Version: &registryspec.VersionRecord{Version: "1.2.3", Tag: "v1.2.3", Commit: "abcdef0123456789"},
 		},
-		Version: &registryspec.VersionRecord{Version: "1.2.4", Tag: "v1.2.4", Commit: "def"},
-		Files: []barnpublish.File{{
-			Path: "registry/modules/acme/widget/versions/v1.2.4.json", Content: []byte("{\"version\":\"1.2.4\"}\n"),
-		}},
+		PullRequestURL: "https://github.com/MontFerret/barn/pull/123",
 	}}
 
 	output, err := executeModCommand(t, service, "publish")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if service.publishOptions.Tag != "" || strings.Contains(output, "manifest.json") || !strings.Contains(output, service.publication.Files[0].Path) || !strings.Contains(output, "without modifying published records") {
-		t.Fatalf("unexpected new-version output:\n%s", output)
+	wantOutput := "✓ Validated ferret.yaml\n" +
+		"✓ Resolved v1.2.3 → abcdef0\n" +
+		"✓ Verified public source\n" +
+		"✓ Verified README.md and go.mod\n" +
+		"✓ Prepared acme/widget@1.2.3\n" +
+		"✓ Found existing Registry submission\n" +
+		"https://github.com/MontFerret/barn/pull/123\n"
+	if output != wantOutput {
+		t.Fatalf("unexpected existing-submission output:\n%s", output)
+	}
+}
+
+func TestModCommandPublishPrintsDeterministicJSON(t *testing.T) {
+	prepared := &barnpublish.Result{
+		Kind: barnpublish.NewModule,
+		Module: &registryspec.ModuleManifest{
+			Owner: "acme", Name: "widget",
+			Source: registryspec.Source{Repository: "https://example.com/acme/widget"},
+		},
+		Version: &registryspec.VersionRecord{Version: "1.2.4", Tag: "v1.2.4", Commit: "def0123456789abc"},
+		Files: []barnpublish.File{
+			{Path: "registry/modules/acme/widget/versions/v1.2.4.json", Content: []byte("{\"version\":\"1.2.4\"}\n")},
+			{Path: "registry/modules/acme/widget/manifest.json", Content: []byte("{\"name\":\"widget\"}\n")},
+		},
+	}
+	service := &fakeModuleService{publication: &modulepublish.Result{
+		Status: modulepublish.StatusReady, Module: "acme/widget", Version: "1.2.4", Tag: "v1.2.4", Prepared: prepared,
+	}}
+
+	output, err := executeModCommand(t, service, "publish", "--print")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]json.RawMessage
+	var document publicationDocument
+	if decodeErr := json.Unmarshal([]byte(output), &fields); decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	if decodeErr := json.Unmarshal([]byte(output), &document); decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	if service.publishOptions.Mode != modulepublish.ModePrint || strings.Contains(output, "✓") || !strings.HasSuffix(output, "\n") ||
+		len(fields) != 8 || document.SchemaVersion != 1 || document.Status != modulepublish.StatusReady ||
+		document.Module != "acme/widget" || document.Version != "1.2.4" || document.Tag != "v1.2.4" ||
+		document.Kind != string(barnpublish.NewModule) || document.Commit != "def0123456789abc" || len(document.Records) != 2 ||
+		document.Records[0].Path != "registry/modules/acme/widget/manifest.json" || document.Records[0].Content != "{\"name\":\"widget\"}\n" ||
+		document.Records[1].Path != "registry/modules/acme/widget/versions/v1.2.4.json" || document.Records[1].Content != "{\"version\":\"1.2.4\"}\n" {
+		t.Fatalf("unexpected publication JSON:\n%s", output)
+	}
+}
+
+func TestModCommandPublishDryRunAndAlreadyPublished(t *testing.T) {
+	prepared := &barnpublish.Result{
+		Kind:    barnpublish.NewVersion,
+		Module:  &registryspec.ModuleManifest{Owner: "acme", Name: "widget"},
+		Version: &registryspec.VersionRecord{Version: "1.2.4", Tag: "v1.2.4", Commit: "def0123456789abc"},
+	}
+	service := &fakeModuleService{publication: &modulepublish.Result{
+		Status: modulepublish.StatusReady, Module: "acme/widget", Version: "1.2.4", Tag: "v1.2.4", Prepared: prepared,
+	}}
+	output, err := executeModCommand(t, service, "publish", "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if service.publishOptions.Mode != modulepublish.ModeDryRun || !strings.Contains(output, "Ready to publish.") {
+		t.Fatalf("unexpected dry-run output:\n%s", output)
+	}
+
+	service.publication = &modulepublish.Result{
+		Status: modulepublish.StatusAlreadyPublished, Module: "acme/widget", Version: "1.2.4", Tag: "v1.2.4",
+	}
+	output, err = executeModCommand(t, service, "publish")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output != "✓ Validated ferret.yaml\nacme/widget@1.2.4 is already published.\n" {
+		t.Fatalf("unexpected already-published output: %q", output)
+	}
+}
+
+func TestModCommandPublishRejectsConflictingModesBeforeService(t *testing.T) {
+	service := &fakeModuleService{}
+	_, err := executeModCommand(t, service, "publish", "--dry-run", "--print")
+	if err == nil || !strings.Contains(err.Error(), "cannot be used together") {
+		t.Fatalf("unexpected flag error: %v", err)
+	}
+	if service.publishCalls != 0 {
+		t.Fatalf("service called for conflicting modes: %d", service.publishCalls)
+	}
+}
+
+func TestModCommandPublishRendersPreparedProgressBeforeSubmissionError(t *testing.T) {
+	want := errors.New("create pull request")
+	prepared := &barnpublish.Result{
+		Kind:    barnpublish.NewVersion,
+		Module:  &registryspec.ModuleManifest{Owner: "acme", Name: "widget"},
+		Version: &registryspec.VersionRecord{Version: "1.2.4", Tag: "v1.2.4", Commit: "def0123456789abc"},
+	}
+	service := &fakeModuleService{
+		publication: &modulepublish.Result{
+			Status: modulepublish.StatusReady, Module: "acme/widget", Version: "1.2.4", Tag: "v1.2.4", Prepared: prepared,
+		},
+		err: want,
+	}
+
+	output, err := executeModCommand(t, service, "publish")
+	if !errors.Is(err, want) {
+		t.Fatalf("expected submission error, got %v", err)
+	}
+	if !strings.Contains(output, "✓ Prepared acme/widget@1.2.4") || strings.Contains(output, "Submitted") || strings.Contains(output, "Ready to publish") {
+		t.Fatalf("unexpected partial publication output:\n%s", output)
+	}
+}
+
+func TestModCommandPublishPrintsAlreadyPublishedEnvelope(t *testing.T) {
+	service := &fakeModuleService{publication: &modulepublish.Result{
+		Status: modulepublish.StatusAlreadyPublished, Module: "acme/widget", Version: "1.2.4", Tag: "v1.2.4",
+	}}
+
+	output, err := executeModCommand(t, service, "publish", "--print")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]json.RawMessage
+	var document publicationDocument
+	if decodeErr := json.Unmarshal([]byte(output), &fields); decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	if decodeErr := json.Unmarshal([]byte(output), &document); decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	if len(fields) != 6 || document.Status != modulepublish.StatusAlreadyPublished || len(document.Records) != 0 ||
+		document.Kind != "" || document.Commit != "" || strings.Contains(output, "✓") || !strings.HasSuffix(output, "\n") {
+		t.Fatalf("unexpected already-published JSON:\n%s", output)
 	}
 }
 

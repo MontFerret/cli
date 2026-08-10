@@ -103,6 +103,7 @@ ferret browser open         # Start a managed browser
 ferret config list          # Show configuration
 ferret mod search sqlite    # Search the Ferret module registry
 ferret mod install montferret/archive # Install a module into a Go application
+ferret mod publish          # Submit a tagged module release to the Registry
 ferret version              # Show version information
 ```
 
@@ -167,22 +168,53 @@ ferret mod init acme/sqlite \
   --namespace DB::SQLITE
 ```
 
-The scaffold contains schema-valid TODO metadata. Replace it before preparing
-a release, commit the module files, and push the release tag. The manifest must
-identify a public repository that supports anonymous HTTPS Git access. From the
-module root, print the validated Barn registration records and pull-request
-guidance:
+The scaffold contains schema-valid TODO metadata. Replace it before publishing
+a release. The manifest must identify a public repository that supports
+anonymous HTTPS Git access. Commit the module files, create and push the release
+tag, then run the publication command from the module root:
 
 ```bash
+git tag v1.0.0
+git push origin v1.0.0
 ferret mod publish
 ```
 
 By default, the tag is `v<version>` for a standalone module or
 `<repository.directory>/v<version>` for a monorepo module. For non-standard
-release tags, pass `--tag`. Publication preparation consults the public
-registry, inspects the pushed tag through anonymous HTTPS Git, and returns only
-the records needed for a new module or version. It does not write records,
-upload packages, authenticate with a provider, or open a pull request.
+release tags, pass `--tag`.
+
+Publication validates `ferret.yaml`, resolves the public tag and pinned commit,
+checks the adjacent `README.md` and `go.mod`, consults the current Registry, and
+prepares only the immutable Barn source records needed for the release. The CLI
+then uses the GitHub API to create or reuse your personal Barn fork, create a
+focused publication branch, and open a pull request against
+`MontFerret/barn`. You do not need a local Barn checkout or knowledge of its
+record layout.
+
+Set `GH_TOKEN` or `GITHUB_TOKEN` before publishing. If neither is set, Ferret
+uses the token from `gh auth token --hostname github.com`; authenticate it with
+`gh auth login --hostname github.com` when needed. The credential must be able
+to write to your personal Barn fork and open a pull request against the public
+Barn repository.
+
+Validate the complete release without authenticating or mutating GitHub:
+
+```bash
+ferret mod publish --dry-run
+```
+
+Print the deterministic Barn-relative records as a versioned JSON document for
+inspection or unusual manual automation:
+
+```bash
+ferret mod publish --print
+```
+
+`--dry-run` and `--print` cannot be combined, and neither mode submits records.
+Publication retries are safe: an already-published version exits successfully,
+and an exact open pull request or publication branch is reused. Ferret never
+overwrites an immutable Registry record or a divergent branch; delete a stale
+publication branch from your fork before retrying if its contents differ.
 
 ## Browser usage
 

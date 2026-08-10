@@ -3,8 +3,6 @@ package mod
 import (
 	"context"
 
-	barnpublish "github.com/MontFerret/barn/pkg/publish"
-
 	"github.com/MontFerret/cli/v2/pkg/module/discovery"
 	"github.com/MontFerret/cli/v2/pkg/module/install"
 	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
@@ -16,10 +14,11 @@ type fakeModuleService struct {
 	info            *discovery.ModuleInfo
 	install         *install.Result
 	create          *scaffold.Result
-	publication     *barnpublish.Result
+	publication     *modulepublish.Result
 	createOptions   scaffold.Options
 	installOptions  install.Options
 	publishOptions  modulepublish.Options
+	publishCalls    int
 	createCalls     int
 	installCalls    int
 	installHistory  []install.Options
@@ -58,7 +57,8 @@ func (f *fakeModuleService) Create(_ context.Context, options scaffold.Options) 
 	return f.create, f.err
 }
 
-func (f *fakeModuleService) Publish(_ context.Context, options modulepublish.Options) (*barnpublish.Result, error) {
+func (f *fakeModuleService) Publish(_ context.Context, options modulepublish.Options) (*modulepublish.Result, error) {
 	f.publishOptions = options
+	f.publishCalls++
 	return f.publication, f.err
 }

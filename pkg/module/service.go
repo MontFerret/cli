@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 
-	barnpublish "github.com/MontFerret/barn/pkg/publish"
-
 	"github.com/MontFerret/cli/v2/pkg/module/discovery"
 	"github.com/MontFerret/cli/v2/pkg/module/install"
 	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
@@ -63,11 +61,11 @@ func (s *Service) Create(ctx context.Context, options scaffold.Options) (*scaffo
 	return s.scaffolder.Create(ctx, options)
 }
 
-// Publish prepares validated Barn registration records from a local release.
-func (s *Service) Publish(ctx context.Context, options modulepublish.Options) (*barnpublish.Result, error) {
+// Publish prepares and optionally submits a module release to the Registry.
+func (s *Service) Publish(ctx context.Context, options modulepublish.Options) (*modulepublish.Result, error) {
 	if s.publisher == nil {
 		return nil, errors.New("module publisher is not configured")
 	}
 
-	return s.publisher.Prepare(ctx, options)
+	return s.publisher.Publish(ctx, options)
 }

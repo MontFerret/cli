@@ -15,6 +15,8 @@ const (
 	moduleDirFlag       = "dir"
 	moduleNamespaceFlag = "namespace"
 	moduleTagFlag       = "tag"
+	moduleDryRunFlag    = "dry-run"
+	modulePrintFlag     = "print"
 	moduleYesFlag       = "yes"
 )
 
@@ -185,7 +187,7 @@ func moduleInitCommand(service Service, terminal terminalDetector, prompts promp
 func modulePublishCommand(service Service) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "publish",
-		Short: "Prepare Barn registration records for the current module release",
+		Short: "Publish the current module release to the Ferret Registry",
 		Args:  cobra.MaximumNArgs(0),
 		RunE: func(command *cobra.Command, _ []string) error {
 			tag, err := command.Flags().GetString(moduleTagFlag)
@@ -193,18 +195,49 @@ func modulePublishCommand(service Service) *cobra.Command {
 				return err
 			}
 
-			publication, err := service.Publish(command.Context(), modulepublish.Options{Directory: ".", Tag: tag})
+			dryRun, err := command.Flags().GetBool(moduleDryRunFlag)
 			if err != nil {
 				return err
 			}
 
-			renderModulePublication(command.OutOrStdout(), publication)
+			printRecords, err := command.Flags().GetBool(modulePrintFlag)
+			if err != nil {
+				return err
+			}
 
-			return nil
+			if dryRun && printRecords {
+				return fmt.Errorf("--dry-run and --print cannot be used together")
+			}
+
+			mode := modulepublish.ModeSubmit
+			if dryRun {
+				mode = modulepublish.ModeDryRun
+			} else if printRecords {
+				mode = modulepublish.ModePrint
+			}
+
+			publication, publishErr := service.Publish(
+				command.Context(),
+				modulepublish.Options{Directory: ".", Tag: tag, Mode: mode},
+			)
+
+			if publication != nil {
+				if printRecords {
+					if err := renderModulePublicationJSON(command.OutOrStdout(), publication); err != nil {
+						return err
+					}
+				} else {
+					renderModulePublication(command.OutOrStdout(), publication, mode)
+				}
+			}
+
+			return publishErr
 		},
 	}
 
 	command.Flags().String(moduleTagFlag, "", "Release tag (defaults to v<version> or <source-path>/v<version>)")
+	command.Flags().Bool(moduleDryRunFlag, false, "Validate and prepare the release without submitting to GitHub")
+	command.Flags().Bool(modulePrintFlag, false, "Print deterministic Barn-relative records as JSON without submitting")
 
 	return command
 }
