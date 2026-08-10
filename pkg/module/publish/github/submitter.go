@@ -57,17 +57,23 @@ func (s *Submitter) Submit(ctx context.Context, publication *barnpublish.Result)
 
 	token, err := s.token.Token(ctx)
 	if err != nil {
-		return nil, stageError(StageAuthentication, err)
+		return nil, stageError(StageAuthentication, newAuthenticationError(err))
 	}
 
 	client := newClient(s.apiURL, s.httpClient, token)
 	currentUser, err := client.currentUser(ctx)
 	if err != nil {
-		return nil, stageError(StageAuthentication, err)
+		return nil, stageError(
+			StageAuthentication,
+			newAuthenticationError(fmt.Errorf("validate GitHub credential: %w", err)),
+		)
 	}
 
 	if currentUser.Login == "" {
-		return nil, stageError(StageAuthentication, errors.New("GitHub returned no authenticated user login"))
+		return nil, stageError(
+			StageAuthentication,
+			newAuthenticationError(errors.New("GitHub returned no authenticated user login")),
+		)
 	}
 
 	upstream, err := client.repository(ctx, upstreamOwner, upstreamName)
@@ -275,7 +281,11 @@ func (s *Submitter) findPullRequest(ctx context.Context, client *client, base st
 
 		for _, item := range records {
 			content, err := client.content(ctx, headOwner, headName, item.Path, pull.Head.SHA)
-			if err != nil || !bytes.Equal(content, item.Content) {
+			if err != nil {
+				return nil, fmt.Errorf("read pull request record %s from %s: %w", item.Path, pull.HTMLURL, err)
+			}
+
+			if !bytes.Equal(content, item.Content) {
 				return nil, fmt.Errorf("%w: %s", ErrPullConflict, pull.HTMLURL)
 			}
 		}
@@ -361,7 +371,11 @@ func (s *Submitter) existingBranch(ctx context.Context, client *client, owner, n
 
 	for _, item := range records {
 		content, err := client.content(ctx, owner, name, item.Path, reference.Object.SHA)
-		if err != nil || !bytes.Equal(content, item.Content) {
+		if err != nil {
+			return false, fmt.Errorf("read publication branch record %s from %s/%s: %w", item.Path, owner, name, err)
+		}
+
+		if !bytes.Equal(content, item.Content) {
 			return false, fmt.Errorf("%w: %s; delete the branch from %s/%s and retry", ErrBranchConflict, branch, owner, name)
 		}
 	}

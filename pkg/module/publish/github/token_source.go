@@ -44,14 +44,17 @@ func (s *TokenSource) Token(ctx context.Context) (string, error) {
 	}
 
 	data, err := s.run.Run(ctx, "gh", "auth", "token", "--hostname", "github.com")
+	if contextErr := ctx.Err(); contextErr != nil {
+		return "", contextErr
+	}
+
 	if err == nil {
 		if token := strings.TrimSpace(string(data)); token != "" {
 			return token, nil
 		}
+
+		err = fmt.Errorf("GitHub CLI returned no credential")
 	}
 
-	return "", fmt.Errorf(
-		"GitHub authentication is required; set GH_TOKEN or GITHUB_TOKEN, or run %q",
-		"gh auth login --hostname github.com",
-	)
+	return "", newAuthenticationError(fmt.Errorf("resolve GitHub credential: %w", err))
 }

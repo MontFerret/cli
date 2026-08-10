@@ -550,10 +550,14 @@ func TestModCommandPublishSubmitsAndRendersProgress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if service.publishOptions.Tag != "release-1.2.3" || service.publishOptions.Mode != modulepublish.ModeSubmit ||
-		!strings.Contains(output, "✓ Resolved release-1.2.3 → abcdef0") ||
-		!strings.Contains(output, "✓ Submitted to Ferret Registry") ||
-		!strings.Contains(output, service.publication.PullRequestURL) || strings.Contains(output, "registry/modules/") {
+	wantOutput := "✓ Validated ferret.yaml\n" +
+		"✓ Resolved release-1.2.3 → abcdef0\n" +
+		"✓ Verified public source\n" +
+		"✓ Verified README.md and go.mod\n" +
+		"✓ Prepared acme/widget@1.2.3\n" +
+		"✓ Submitted to Ferret Registry\n" +
+		"https://github.com/MontFerret/barn/pull/123\n"
+	if service.publishOptions.Tag != "release-1.2.3" || service.publishOptions.Mode != modulepublish.ModeSubmit || output != wantOutput {
 		t.Fatalf("unexpected publication output:\n%s", output)
 	}
 }
@@ -573,7 +577,14 @@ func TestModCommandPublishReportsExistingSubmission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output, "✓ Found existing Registry submission") || !strings.Contains(output, service.publication.PullRequestURL) {
+	wantOutput := "✓ Validated ferret.yaml\n" +
+		"✓ Resolved v1.2.3 → abcdef0\n" +
+		"✓ Verified public source\n" +
+		"✓ Verified README.md and go.mod\n" +
+		"✓ Prepared acme/widget@1.2.3\n" +
+		"✓ Found existing Registry submission\n" +
+		"https://github.com/MontFerret/barn/pull/123\n"
+	if output != wantOutput {
 		t.Fatalf("unexpected existing-submission output:\n%s", output)
 	}
 }

@@ -326,6 +326,129 @@ func TestSubmitterReusesExactRetryBranch(t *testing.T) {
 	}
 }
 
+func TestSubmitterRecoversReferenceCreationRace(t *testing.T) {
+	publication := testPublication(barnpublish.NewVersion)
+	versionFile := publication.Files[0]
+	branchLookups := 0
+	mutations := make([]string, 0, 4)
+	transport := &scriptedTransport{handle: func(request *http.Request) (*http.Response, error) {
+		path := request.URL.Path
+		switch {
+		case path == "/user":
+			return jsonResponse(http.StatusOK, user{Login: "alice"}), nil
+		case path == "/repos/MontFerret/barn":
+			return jsonResponse(http.StatusOK, repository{DefaultBranch: "main"}), nil
+		case strings.HasPrefix(path, "/repos/MontFerret/barn/git/ref/heads/main"):
+			return jsonResponse(http.StatusOK, gitReference{Object: gitObject{SHA: "base"}}), nil
+		case path == "/repos/MontFerret/barn/git/commits/base":
+			return jsonResponse(http.StatusOK, gitCommit{Tree: gitObject{SHA: "tree"}}), nil
+		case strings.Contains(path, "/repos/MontFerret/barn/contents/"):
+			return apiFailure(http.StatusNotFound, "Not Found"), nil
+		case path == "/repos/MontFerret/barn/pulls" && request.Method == http.MethodGet:
+			return jsonResponse(http.StatusOK, []pullRequest{}), nil
+		case path == "/repos/MontFerret/barn/forks":
+			return jsonResponse(http.StatusOK, []repository{{FullName: "alice/barn", Owner: user{Login: "alice"}}}), nil
+		case path == "/repos/alice/barn":
+			return jsonResponse(http.StatusOK, repository{FullName: "alice/barn", Permissions: permissions{Push: true}}), nil
+		case request.Method == http.MethodGet && strings.HasPrefix(path, "/repos/alice/barn/git/ref/heads/"):
+			branchLookups++
+			if branchLookups == 1 {
+				return apiFailure(http.StatusNotFound, "Not Found"), nil
+			}
+
+			return jsonResponse(http.StatusOK, gitReference{Object: gitObject{SHA: "new-commit"}}), nil
+		case path == "/repos/alice/barn/git/trees":
+			mutations = append(mutations, "tree")
+
+			return jsonResponse(http.StatusCreated, createdTree{SHA: "new-tree"}), nil
+		case path == "/repos/alice/barn/git/commits":
+			mutations = append(mutations, "commit")
+
+			return jsonResponse(http.StatusCreated, createdCommit{SHA: "new-commit"}), nil
+		case path == "/repos/alice/barn/git/refs":
+			mutations = append(mutations, "reference")
+
+			return apiFailure(http.StatusUnprocessableEntity, "Reference already exists"), nil
+		case path == "/repos/alice/barn/commits/new-commit":
+			return jsonResponse(http.StatusOK, commitDetails{
+				Parents: []gitObject{{SHA: "base"}},
+				Files:   []pullFile{{Filename: versionFile.Path, Status: "added"}},
+			}), nil
+		case strings.Contains(path, "/repos/alice/barn/contents/"):
+			return jsonResponse(http.StatusOK, encodedContent(versionFile.Content)), nil
+		case path == "/repos/MontFerret/barn/pulls" && request.Method == http.MethodPost:
+			mutations = append(mutations, "pull")
+
+			return jsonResponse(http.StatusCreated, pullRequest{HTMLURL: "https://github.com/MontFerret/barn/pull/10"}), nil
+		default:
+			t.Fatalf("unexpected GitHub request: %s %s", request.Method, request.URL)
+
+			return nil, nil
+		}
+	}}
+	submitter, err := New(
+		WithHTTPClient(&http.Client{Transport: transport}),
+		WithTokenProvider(&fakeTokenProvider{token: "secret"}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := submitter.Submit(context.Background(), publication)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.URL != "https://github.com/MontFerret/barn/pull/10" || result.Existing || branchLookups != 2 ||
+		strings.Join(mutations, ",") != "tree,commit,reference,pull" {
+		t.Fatalf("unexpected reference race recovery: result=%#v lookups=%d mutations=%v", result, branchLookups, mutations)
+	}
+}
+
+func TestSubmitterPreservesBranchContentReadFailure(t *testing.T) {
+	publication := testPublication(barnpublish.NewVersion)
+	records, _, err := publicationRecords(publication)
+	if err != nil {
+		t.Fatal(err)
+	}
+	branch := "ferret-publish/acme-widget-v1.2.3-abcdef01"
+	transport := &scriptedTransport{handle: func(request *http.Request) (*http.Response, error) {
+		switch {
+		case strings.HasPrefix(request.URL.Path, "/repos/alice/barn/git/ref/heads/"):
+			return jsonResponse(http.StatusOK, gitReference{Object: gitObject{SHA: "branch"}}), nil
+		case request.URL.Path == "/repos/alice/barn/commits/branch":
+			return jsonResponse(http.StatusOK, commitDetails{
+				Parents: []gitObject{{SHA: "base"}},
+				Files:   []pullFile{{Filename: records[0].Path, Status: "added"}},
+			}), nil
+		case strings.Contains(request.URL.Path, "/repos/alice/barn/contents/"):
+			return apiFailure(http.StatusInternalServerError, "content unavailable"), nil
+		default:
+			t.Fatalf("unexpected GitHub request: %s %s", request.Method, request.URL)
+
+			return nil, nil
+		}
+	}}
+	submitter, err := New(WithHTTPClient(&http.Client{Transport: transport}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = submitter.existingBranch(
+		context.Background(),
+		newClient("https://api.github.test", &http.Client{Transport: transport}, "secret"),
+		"alice",
+		"barn",
+		branch,
+		"base",
+		records,
+	)
+	if err == nil || errors.Is(err, ErrBranchConflict) || strings.Contains(err.Error(), "delete the branch") ||
+		!strings.Contains(err.Error(), "read publication branch record "+records[0].Path) ||
+		!strings.Contains(err.Error(), "HTTP 500") {
+		t.Fatalf("unexpected branch content failure: %v", err)
+	}
+}
+
 func TestSubmitterAuthenticationFailureMakesNoGitHubRequest(t *testing.T) {
 	want := errors.New("not authenticated")
 	requests := 0
@@ -344,8 +467,46 @@ func TestSubmitterAuthenticationFailureMakesNoGitHubRequest(t *testing.T) {
 
 	_, err = submitter.Submit(context.Background(), testPublication(barnpublish.NewVersion))
 	var submissionError *Error
-	if !errors.Is(err, want) || !errors.As(err, &submissionError) || submissionError.Stage != StageAuthentication || requests != 0 {
+	if !errors.Is(err, want) || !errors.As(err, &submissionError) || submissionError.Stage != StageAuthentication || requests != 0 ||
+		!strings.Contains(err.Error(), "GH_TOKEN") || !strings.Contains(err.Error(), "gh auth login") {
 		t.Fatalf("unexpected authentication result: err=%v requests=%d", err, requests)
+	}
+}
+
+func TestSubmitterReturnsActionableCredentialValidationErrors(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		response *http.Response
+	}{
+		{name: "invalid token", response: apiFailure(http.StatusUnauthorized, "Bad credentials")},
+		{name: "empty user", response: jsonResponse(http.StatusOK, user{})},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			requests := 0
+			transport := &scriptedTransport{handle: func(request *http.Request) (*http.Response, error) {
+				requests++
+				if request.URL.Path != "/user" {
+					t.Fatalf("unexpected GitHub request: %s %s", request.Method, request.URL)
+				}
+
+				return test.response, nil
+			}}
+			submitter, err := New(
+				WithHTTPClient(&http.Client{Transport: transport}),
+				WithTokenProvider(&fakeTokenProvider{token: "secret-token-value"}),
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			_, err = submitter.Submit(context.Background(), testPublication(barnpublish.NewVersion))
+			var submissionError *Error
+			if err == nil || !errors.As(err, &submissionError) || submissionError.Stage != StageAuthentication || requests != 1 ||
+				!strings.Contains(err.Error(), "GH_TOKEN") || !strings.Contains(err.Error(), "gh auth login") ||
+				strings.Contains(err.Error(), "secret-token-value") {
+				t.Fatalf("unexpected credential validation error: %v", err)
+			}
+		})
 	}
 }
 

@@ -7,7 +7,10 @@ import (
 	"time"
 )
 
-const defaultAPIURL = "https://api.github.com"
+const (
+	defaultAPIURL      = "https://api.github.com"
+	defaultHTTPTimeout = 30 * time.Second
+)
 
 type (
 	Option func(*submitterOptions) error
@@ -71,7 +74,7 @@ func WithTokenProvider(value TokenProvider) Option {
 func defaultSubmitterOptions() submitterOptions {
 	return submitterOptions{
 		apiURL:       defaultAPIURL,
-		httpClient:   http.DefaultClient,
+		httpClient:   &http.Client{Timeout: defaultHTTPTimeout},
 		pollInterval: 500 * time.Millisecond,
 		token:        NewTokenSource(),
 	}

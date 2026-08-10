@@ -25,16 +25,20 @@ func publicationRecords(publication *barnpublish.Result) ([]record, string, erro
 		return nil, "", fmt.Errorf("prepared publication commit is incomplete")
 	}
 
-	if publication.Kind != barnpublish.NewVersion {
-		return nil, "", fmt.Errorf("prepared publication kind %q is unsupported", publication.Kind)
-	}
-
 	moduleRoot := path.Join("registry", "modules", publication.Module.Owner, publication.Module.Name)
 	manifestPath := path.Join(moduleRoot, "manifest.json")
 	versionPath := path.Join(moduleRoot, "versions", "v"+publication.Version.Version+".json")
 
 	allowed := map[string]bool{versionPath: true}
-	allowed[manifestPath] = true
+
+	switch publication.Kind {
+	case barnpublish.NewModule:
+		allowed[manifestPath] = true
+	case barnpublish.NewVersion:
+	default:
+		return nil, "", fmt.Errorf("prepared publication kind %q is unsupported", publication.Kind)
+	}
+
 	records := make([]record, 0, len(publication.Files))
 	seen := make(map[string]struct{}, len(publication.Files))
 

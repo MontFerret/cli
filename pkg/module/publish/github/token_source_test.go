@@ -56,3 +56,20 @@ func TestTokenSourceReturnsActionableAuthenticationError(t *testing.T) {
 		t.Fatalf("unexpected authentication error: %v", err)
 	}
 }
+
+func TestTokenSourcePreservesGitHubCLICancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	source := &TokenSource{
+		getenv: func(string) string { return "" },
+		run: commandRunnerFunc(func(context.Context, string, ...string) ([]byte, error) {
+			cancel()
+
+			return nil, errors.New("command interrupted")
+		}),
+	}
+
+	_, err := source.Token(ctx)
+	if !errors.Is(err, context.Canceled) || strings.Contains(err.Error(), "gh auth login") {
+		t.Fatalf("expected unmodified context cancellation, got %v", err)
+	}
+}

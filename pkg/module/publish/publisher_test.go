@@ -172,6 +172,22 @@ func TestPublisherReturnsPreparationAfterSubmissionFailure(t *testing.T) {
 	}
 }
 
+func TestPublisherPreparationFailureNeverSubmits(t *testing.T) {
+	directory := t.TempDir()
+	writePublisherManifest(t, directory, "")
+	wantErr := errors.New("prepare publication")
+	submitter := new(fakeSubmitter)
+	publisher := New(nil, submitter)
+	publisher.prepare = func(context.Context, barnpublish.Request) (*barnpublish.Result, error) {
+		return nil, wantErr
+	}
+
+	result, err := publisher.Publish(context.Background(), Options{Directory: directory})
+	if !errors.Is(err, wantErr) || result != nil || submitter.calls != 0 {
+		t.Fatalf("unexpected preparation failure: result=%#v err=%v submitterCalls=%d", result, err, submitter.calls)
+	}
+}
+
 func writePublisherManifest(t *testing.T, directory, sourcePath string) {
 	t.Helper()
 
