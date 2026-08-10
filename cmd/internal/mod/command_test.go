@@ -562,6 +562,40 @@ func TestModCommandPublishSubmitsAndRendersProgress(t *testing.T) {
 	}
 }
 
+func TestModCommandPublishPassesModuleDirectory(t *testing.T) {
+	for _, test := range []struct {
+		name          string
+		args          []string
+		wantDirectory string
+	}{
+		{name: "current directory", args: []string{"publish"}, wantDirectory: "."},
+		{name: "empty directory", args: []string{"publish", "--dir="}, wantDirectory: "."},
+		{name: "nested module", args: []string{"publish", "--dir", "modules/widget"}, wantDirectory: "modules/widget"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			service := &fakeModuleService{}
+
+			if _, err := executeModCommand(t, service, test.args...); err != nil {
+				t.Fatal(err)
+			}
+			if service.publishOptions.Directory != test.wantDirectory {
+				t.Fatalf("unexpected module directory: %q", service.publishOptions.Directory)
+			}
+		})
+	}
+}
+
+func TestModCommandPublishDescribesModuleDirectoryFlag(t *testing.T) {
+	command := modulePublishCommand(&fakeModuleService{})
+	flag := command.Flags().Lookup(moduleDirFlag)
+	if flag == nil {
+		t.Fatal("expected module directory flag")
+	}
+	if flag.Usage != "Module directory (defaults to the current directory)" {
+		t.Fatalf("unexpected module directory help: %q", flag.Usage)
+	}
+}
+
 func TestModCommandPublishReportsExistingSubmission(t *testing.T) {
 	service := &fakeModuleService{publication: &modulepublish.Result{
 		Status: modulepublish.StatusExistingSubmission, Module: "acme/widget", Version: "1.2.3",

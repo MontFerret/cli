@@ -183,6 +183,17 @@ By default, the tag is `v<version>` for a standalone module or
 `<repository.directory>/v<version>` for a monorepo module. For non-standard
 release tags, pass `--tag`.
 
+To publish a nested monorepo module while staying in the repository root, pass
+the local module directory explicitly:
+
+```bash
+ferret mod publish --dir modules/widget
+```
+
+`--dir` selects the local module directory containing `ferret.yaml`; it does not
+override the manifest's `repository.directory`. The flag can also be combined
+with `--dry-run` or `--print`.
+
 Publication validates `ferret.yaml`, resolves the public tag and pinned commit,
 checks the adjacent `README.md` and `go.mod`, consults the current Registry, and
 prepares only the immutable Barn source records needed for the release. The CLI

@@ -190,6 +190,15 @@ func modulePublishCommand(service Service) *cobra.Command {
 		Short: "Publish the current module release to the Ferret Registry",
 		Args:  cobra.MaximumNArgs(0),
 		RunE: func(command *cobra.Command, _ []string) error {
+			directory, err := command.Flags().GetString(moduleDirFlag)
+			if err != nil {
+				return err
+			}
+
+			if directory == "" {
+				directory = "."
+			}
+
 			tag, err := command.Flags().GetString(moduleTagFlag)
 			if err != nil {
 				return err
@@ -218,7 +227,7 @@ func modulePublishCommand(service Service) *cobra.Command {
 
 			publication, publishErr := service.Publish(
 				command.Context(),
-				modulepublish.Options{Directory: ".", Tag: tag, Mode: mode},
+				modulepublish.Options{Directory: directory, Tag: tag, Mode: mode},
 			)
 
 			if publication != nil {
@@ -235,6 +244,7 @@ func modulePublishCommand(service Service) *cobra.Command {
 		},
 	}
 
+	command.Flags().String(moduleDirFlag, "", "Module directory (defaults to the current directory)")
 	command.Flags().String(moduleTagFlag, "", "Release tag (defaults to v<version> or <source-path>/v<version>)")
 	command.Flags().Bool(moduleDryRunFlag, false, "Validate and prepare the release without submitting to GitHub")
 	command.Flags().Bool(modulePrintFlag, false, "Print deterministic Barn-relative records as JSON without submitting")
