@@ -13,6 +13,7 @@ import (
 	barnregistry "github.com/MontFerret/barn/pkg/registry"
 
 	"github.com/MontFerret/cli/v2/cmd"
+	"github.com/MontFerret/cli/v2/internal/migration"
 	"github.com/MontFerret/cli/v2/pkg/config"
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	modulelifecycle "github.com/MontFerret/cli/v2/pkg/module"
@@ -73,6 +74,7 @@ func main() {
 		scaffold.New(nil),
 		modulepublish.New(registryClient, registrySubmitter),
 	)
+	migrationService := migration.New(nil)
 
 	rootCmd.AddCommand(
 		cmd.VersionCommand(store),
@@ -84,6 +86,7 @@ func main() {
 		cmd.CheckCommand(store),
 		cmd.BuildCommand(store),
 		cmd.InspectCommand(store),
+		cmd.MigrateCommand(store, migrationService),
 		cmd.BrowserCommand(store),
 		cmd.SelfUpdateCommand(store),
 		cmd.ModCommand(store, moduleService),

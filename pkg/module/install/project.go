@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -13,49 +14,21 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/MontFerret/cli/v2/internal/goproject"
 )
 
 func discoverInstallProject(ctx context.Context, runner Runner, directory string) (*projectInfo, error) {
-	if strings.TrimSpace(directory) == "" {
-		directory = "."
-	}
-
-	absDirectory, err := filepath.Abs(directory)
+	project, err := goproject.Discover(ctx, runner, directory)
 	if err != nil {
-		return nil, fmt.Errorf("resolve project directory: %w", err)
+		if errors.Is(err, goproject.ErrNoModule) {
+			return nil, fmt.Errorf("%w; create go.mod before installing Ferret modules", err)
+		}
+
+		return nil, err
 	}
 
-	goModOutput, err := runner.Run(ctx, absDirectory, "env", "GOMOD")
-	if err != nil {
-		return nil, fmt.Errorf("locate project go.mod: %w", err)
-	}
-
-	goModPath := strings.TrimSpace(string(goModOutput))
-	if goModPath == "" || goModPath == os.DevNull {
-		return nil, fmt.Errorf("current directory is not inside a Go module; create go.mod before installing Ferret modules")
-	}
-
-	goModPath, err = filepath.Abs(goModPath)
-	if err != nil {
-		return nil, fmt.Errorf("resolve go.mod path: %w", err)
-	}
-
-	root := filepath.Dir(goModPath)
-	moduleOutput, err := runner.Run(ctx, root, "list", "-m", "-json")
-	if err != nil {
-		return nil, fmt.Errorf("inspect project module: %w", err)
-	}
-
-	var projectModule goModuleInfo
-	if err := json.NewDecoder(bytes.NewReader(moduleOutput)).Decode(&projectModule); err != nil {
-		return nil, fmt.Errorf("decode project module metadata: %w", err)
-	}
-
-	if projectModule.Path == "" {
-		return nil, fmt.Errorf("project go.mod does not declare a module path")
-	}
-
-	moduleGraphOutput, err := runner.Run(ctx, root, "list", "-m", "-json", "all")
+	moduleGraphOutput, err := runner.Run(ctx, project.Root, "list", "-m", "-json", "all")
 	if err != nil {
 		return nil, fmt.Errorf("inspect project module graph: %w", err)
 	}
@@ -96,10 +69,10 @@ func discoverInstallProject(ctx context.Context, runner Runner, directory string
 	}
 
 	return &projectInfo{
-		Root:          root,
-		ModulePath:    projectModule.Path,
-		GoModPath:     goModPath,
-		GoSumPath:     filepath.Join(root, "go.sum"),
+		Root:          project.Root,
+		ModulePath:    project.ModulePath,
+		GoModPath:     project.GoModPath,
+		GoSumPath:     project.GoSumPath,
 		FerretVersion: ferretVersion,
 	}, nil
 }

@@ -10,6 +10,7 @@ import (
 	debugcmd "github.com/MontFerret/cli/v2/cmd/internal/debug"
 	formatcmd "github.com/MontFerret/cli/v2/cmd/internal/format"
 	inspectcmd "github.com/MontFerret/cli/v2/cmd/internal/inspect"
+	migratecmd "github.com/MontFerret/cli/v2/cmd/internal/migrate"
 	modcmd "github.com/MontFerret/cli/v2/cmd/internal/mod"
 	replcmd "github.com/MontFerret/cli/v2/cmd/internal/repl"
 	runcmd "github.com/MontFerret/cli/v2/cmd/internal/run"
@@ -19,6 +20,7 @@ import (
 )
 
 type moduleService = modcmd.Service
+type migrationService = migratecmd.Service
 
 // BrowserCommand creates the browser management command group.
 func BrowserCommand(store *config.Store) *cobra.Command {
@@ -53,6 +55,11 @@ func FormatCommand(store *config.Store) *cobra.Command {
 // InspectCommand creates the bytecode inspection command.
 func InspectCommand(store *config.Store) *cobra.Command {
 	return inspectcmd.New(store)
+}
+
+// MigrateCommand creates the Ferret v1-to-v2 compatibility migration command.
+func MigrateCommand(store *config.Store, service migrationService) *cobra.Command {
+	return migratecmd.New(store, service)
 }
 
 // ModCommand creates the module discovery, installation, scaffolding, and publication command group.

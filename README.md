@@ -99,6 +99,7 @@ ferret fmt script.fql       # Format source
 ferret build script.fql     # Compile to a bytecode artifact
 ferret inspect script.fql   # Print compiled program details
 ferret debug script.fql     # Start the interactive debugger
+ferret migrate              # Move a Ferret v1 Go application to the v2 compatibility API
 ferret browser open         # Start a managed browser
 ferret config list          # Show configuration
 ferret mod search sqlite    # Search the Ferret module registry
@@ -108,6 +109,33 @@ ferret version              # Show version information
 ```
 
 Run `ferret [command] --help` for command-specific options.
+
+## Migrating embedded Ferret applications
+
+Run `ferret migrate` from anywhere inside a Go module that embeds Ferret v1:
+
+```bash
+ferret migrate
+```
+
+The command rewrites the documented Ferret v1 imports to their Ferret v2
+compatibility packages, updates `go.mod` and `go.sum` as needed, and formats
+changed Go files. It is intentionally limited to the mechanical first stage of
+migration. It does not convert application logic to the native Ferret v2 API,
+rewrite generated or vendored code, or guess replacements for unsupported v1
+packages such as the former drivers packages.
+
+Preview the affected paths without changing the project, or print a unified
+diff for review:
+
+```bash
+ferret migrate --dry-run
+ferret migrate --print
+```
+
+Unsupported and generated-file imports are reported as manual follow-up. If a
+project vendors dependencies, run `go mod vendor` after reviewing and applying
+the migration.
 
 ## Module lifecycle
 
