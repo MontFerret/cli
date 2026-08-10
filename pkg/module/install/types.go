@@ -7,9 +7,12 @@ import (
 	"io/fs"
 
 	barnregistry "github.com/MontFerret/barn/pkg/registry"
+
+	"github.com/MontFerret/cli/v2/internal/buildinfo"
+	"github.com/MontFerret/cli/v2/internal/goproject"
 )
 
-const ferretCoreModulePath = "github.com/MontFerret/ferret/v2"
+const ferretCoreModulePath = buildinfo.FerretModulePath
 
 type (
 	// Registry provides the registry operations used to resolve module releases.
@@ -19,9 +22,7 @@ type (
 	}
 
 	// Runner executes Go toolchain commands in a project directory.
-	Runner interface {
-		Run(context.Context, string, ...string) ([]byte, error)
-	}
+	Runner = goproject.Runner
 
 	// Options controls installation into an existing Go application.
 	Options struct {
