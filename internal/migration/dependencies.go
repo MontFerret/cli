@@ -20,7 +20,8 @@ func planDependencyChanges(
 	project *migrationProject,
 	sources *sourcePlan,
 ) ([]plannedChange, bool, error) {
-	if !sources.HasCompat {
+	// Existing compat imports alone are not a migration and must not trigger dependency cleanup or upgrades.
+	if sources.UpdatedImports == 0 {
 		return nil, false, nil
 	}
 

@@ -69,7 +69,6 @@ func planSourceChanges(ctx context.Context, project *migrationProject) (*sourceP
 			}
 
 			if isV2CompatImport(importPath) {
-				result.HasCompat = true
 				continue
 			}
 
@@ -100,7 +99,6 @@ func planSourceChanges(ctx context.Context, project *migrationProject) (*sourceP
 				continue
 			}
 
-			result.HasCompat = true
 			spec.Path.Value = strconv.Quote(replacement)
 			if importPath == v1ModulePath && spec.Name == nil {
 				spec.Name = ast.NewIdent("ferret")

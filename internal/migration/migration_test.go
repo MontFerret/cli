@@ -314,38 +314,67 @@ var _ = ferret.New
 	}
 }
 
-func TestMigratorUsesCLIEmbeddedVersionAsFloor(t *testing.T) {
+func TestMigratorDoesNotUpgradeAlreadyMigratedCompatDependency(t *testing.T) {
+	const existingVersion = "v2.0.0-alpha.43"
+
+	root := writeMigrationFixture(t, `module example.com/app
+
+go 1.25.0
+
+require github.com/MontFerret/ferret/v2 v2.0.0-alpha.43
+`, map[string]string{
+		"go.sum": `github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbKJ3jJ8ytPNgQxk1Sc1Z/TcxLB0wY=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZqGeKgJRHDYQ=
+`,
+		"main.go": `package app
+import ferret "github.com/MontFerret/ferret/v2/compat"
+var _ = ferret.New
+`,
+	})
+	before := snapshotMigrationFixture(t, root)
+	migrator, runner := newFixtureMigrator()
+
+	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(result.Changes) != 0 || result.Applied || result.DependenciesChanged {
+		t.Fatalf("unexpected no-op result: %#v", result)
+	}
+	if runner.getCalls != 0 {
+		t.Fatalf("expected no go get calls, got %d", runner.getCalls)
+	}
+	assertMigrationFixtureUnchanged(t, root, before)
+
+	parsed := parseMigrationFixtureMod(t, root)
+	if version, indirect := migrationRequirement(parsed, v2ModulePath); version != existingVersion || indirect {
+		t.Fatalf("unexpected v2 requirement: version=%q indirect=%v", version, indirect)
+	}
+}
+
+func TestMigratorUsesCLIEmbeddedVersionAsFloorDuringMigration(t *testing.T) {
 	tests := []struct {
-		name           string
-		existing       string
-		indirect       bool
-		want           string
-		wantChanges    bool
-		wantDependency bool
-		wantGoGetCalls int
+		name     string
+		existing string
+		indirect bool
+		want     string
 	}{
 		{
-			name:           "upgrade older",
-			existing:       "v2.0.0-alpha.43",
-			want:           fixtureFerretVersion,
-			wantChanges:    true,
-			wantDependency: true,
-			wantGoGetCalls: 1,
+			name:     "upgrade older",
+			existing: "v2.0.0-alpha.43",
+			want:     fixtureFerretVersion,
 		},
 		{
-			name:           "preserve newer",
-			existing:       "v2.0.0-alpha.45",
-			want:           "v2.0.0-alpha.45",
-			wantGoGetCalls: 0,
+			name:     "preserve newer",
+			existing: "v2.0.0-alpha.45",
+			want:     "v2.0.0-alpha.45",
 		},
 		{
-			name:           "promote indirect",
-			existing:       fixtureFerretVersion,
-			indirect:       true,
-			want:           fixtureFerretVersion,
-			wantChanges:    true,
-			wantDependency: true,
-			wantGoGetCalls: 1,
+			name:     "promote indirect",
+			existing: fixtureFerretVersion,
+			indirect: true,
+			want:     fixtureFerretVersion,
 		},
 	}
 
@@ -360,10 +389,13 @@ func TestMigratorUsesCLIEmbeddedVersionAsFloor(t *testing.T) {
 
 go 1.25.0
 
-require github.com/MontFerret/ferret/v2 %s%s
+require (
+	github.com/MontFerret/ferret v1.0.0
+	github.com/MontFerret/ferret/v2 %s%s
+)
 `, tt.existing, indirect), map[string]string{
 				"main.go": `package app
-import ferret "github.com/MontFerret/ferret/v2/compat"
+import "github.com/MontFerret/ferret"
 var _ = ferret.New
 `,
 			})
@@ -374,16 +406,19 @@ var _ = ferret.New
 				t.Fatal(err)
 			}
 
-			if (len(result.Changes) > 0) != tt.wantChanges || result.DependenciesChanged != tt.wantDependency {
+			if len(result.Changes) == 0 || !result.DependenciesChanged || result.UpdatedImports != 1 {
 				t.Fatalf("unexpected result: %#v", result)
 			}
-			if runner.getCalls != tt.wantGoGetCalls {
-				t.Fatalf("expected %d go get calls, got %d", tt.wantGoGetCalls, runner.getCalls)
+			if runner.getCalls != 1 {
+				t.Fatalf("expected one go get call, got %d", runner.getCalls)
 			}
 
 			parsed := parseMigrationFixtureMod(t, root)
-			if version, _ := migrationRequirement(parsed, v2ModulePath); version != tt.want {
-				t.Fatalf("expected version %s, got %s", tt.want, version)
+			if version, indirect := migrationRequirement(parsed, v2ModulePath); version != tt.want || indirect {
+				t.Fatalf("unexpected v2 requirement: version=%q indirect=%v", version, indirect)
+			}
+			if version, _ := migrationRequirement(parsed, v1ModulePath); version != "" {
+				t.Fatalf("expected v1 requirement to be removed, got %s", version)
 			}
 		})
 	}

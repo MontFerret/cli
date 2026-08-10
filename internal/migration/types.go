@@ -99,7 +99,6 @@ type (
 		ScannedFiles   int
 		UpdatedImports int
 		FormattedFiles int
-		HasCompat      bool
 		RemainingV1    bool
 	}
 
