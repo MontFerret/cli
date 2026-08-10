@@ -1,8 +1,10 @@
 package mod
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"text/tabwriter"
 
@@ -10,7 +12,26 @@ import (
 
 	"github.com/MontFerret/cli/v2/pkg/module/discovery"
 	"github.com/MontFerret/cli/v2/pkg/module/install"
+	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
 	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
+)
+
+type (
+	publicationDocument struct {
+		SchemaVersion int                  `json:"schemaVersion"`
+		Status        modulepublish.Status `json:"status"`
+		Module        string               `json:"module"`
+		Version       string               `json:"version"`
+		Tag           string               `json:"tag"`
+		Kind          string               `json:"kind,omitempty"`
+		Commit        string               `json:"commit,omitempty"`
+		Records       []publicationRecord  `json:"records"`
+	}
+
+	publicationRecord struct {
+		Path    string `json:"path"`
+		Content string `json:"content"`
+	}
 )
 
 func renderModuleSearch(output io.Writer, results []discovery.SearchResult) error {
@@ -103,24 +124,69 @@ func renderModuleInit(output io.Writer, result *scaffold.Result) {
 	fmt.Fprintln(output, "  3. Run go mod tidy when you are ready to resolve dependencies.")
 }
 
-func renderModulePublication(output io.Writer, publication *barnpublish.Result) {
-	fmt.Fprintln(output, "Manifest: valid")
-	fmt.Fprintf(output, "Repository: %s\n", publication.Module.Source.Repository)
-	if publication.Module.Source.Path != "" {
-		fmt.Fprintf(output, "Source path: %s\n", publication.Module.Source.Path)
-	}
-	fmt.Fprintf(output, "Version: %s\n", publication.Version.Version)
-	fmt.Fprintf(output, "Tag: %s\n", publication.Version.Tag)
-	fmt.Fprintf(output, "Commit: %s\n\n", publication.Version.Commit)
+func renderModulePublication(output io.Writer, publication *modulepublish.Result, mode modulepublish.Mode) {
+	if publication.Status == modulepublish.StatusAlreadyPublished {
+		fmt.Fprintln(output, "✓ Validated ferret.yaml")
+		fmt.Fprintf(output, "%s@%s is already published.\n", publication.Module, publication.Version)
 
-	for _, file := range publication.Files {
-		fmt.Fprintf(output, "%s\n%s\n", file.Path, file.Content)
+		return
 	}
 
-	switch publication.Kind {
-	case barnpublish.NewModule:
-		fmt.Fprintln(output, "Add both records to a Barn pull request.")
-	case barnpublish.NewVersion:
-		fmt.Fprintln(output, "Add the new version record to a Barn pull request without modifying published records.")
+	if publication.Prepared == nil {
+		return
 	}
+
+	commit := publication.Prepared.Version.Commit
+	shortCommit := commit
+	if len(shortCommit) > 7 {
+		shortCommit = shortCommit[:7]
+	}
+
+	fmt.Fprintln(output, "✓ Validated ferret.yaml")
+	fmt.Fprintf(output, "✓ Resolved %s → %s\n", publication.Tag, shortCommit)
+	fmt.Fprintln(output, "✓ Verified public source")
+	fmt.Fprintln(output, "✓ Verified README.md and go.mod")
+	fmt.Fprintf(output, "✓ Prepared %s@%s\n", publication.Module, publication.Version)
+
+	switch publication.Status {
+	case modulepublish.StatusReady:
+		if mode == modulepublish.ModeDryRun {
+			fmt.Fprintln(output, "Ready to publish.")
+		}
+	case modulepublish.StatusSubmitted:
+		fmt.Fprintln(output, "✓ Submitted to Ferret Registry")
+		fmt.Fprintln(output, publication.PullRequestURL)
+	case modulepublish.StatusExistingSubmission:
+		fmt.Fprintln(output, "✓ Found existing Registry submission")
+		fmt.Fprintln(output, publication.PullRequestURL)
+	}
+}
+
+func renderModulePublicationJSON(output io.Writer, publication *modulepublish.Result) error {
+	document := publicationDocument{
+		SchemaVersion: 1,
+		Status:        publication.Status,
+		Module:        publication.Module,
+		Version:       publication.Version,
+		Tag:           publication.Tag,
+		Records:       []publicationRecord{},
+	}
+
+	if publication.Prepared != nil {
+		document.Kind = string(publication.Prepared.Kind)
+		document.Commit = publication.Prepared.Version.Commit
+		files := append([]barnpublish.File{}, publication.Prepared.Files...)
+		sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+		document.Records = make([]publicationRecord, len(files))
+
+		for index, file := range files {
+			document.Records[index] = publicationRecord{Path: file.Path, Content: string(file.Content)}
+		}
+	}
+
+	encoder := json.NewEncoder(output)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+
+	return encoder.Encode(document)
 }

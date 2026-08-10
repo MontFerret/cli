@@ -5,8 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	barnpublish "github.com/MontFerret/barn/pkg/publish"
-
 	"github.com/MontFerret/cli/v2/pkg/module/discovery"
 	"github.com/MontFerret/cli/v2/pkg/module/install"
 	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
@@ -23,7 +21,7 @@ type fakeLifecycle struct {
 	info           *discovery.ModuleInfo
 	installResult  *install.Result
 	createResult   *scaffold.Result
-	publishResult  *barnpublish.Result
+	publishResult  *modulepublish.Result
 }
 
 func (f *fakeLifecycle) Search(_ context.Context, query string) ([]discovery.SearchResult, error) {
@@ -46,7 +44,7 @@ func (f *fakeLifecycle) Create(_ context.Context, options scaffold.Options) (*sc
 	return f.createResult, nil
 }
 
-func (f *fakeLifecycle) Prepare(_ context.Context, options modulepublish.Options) (*barnpublish.Result, error) {
+func (f *fakeLifecycle) Publish(_ context.Context, options modulepublish.Options) (*modulepublish.Result, error) {
 	f.publishOptions = options
 	return f.publishResult, nil
 }
@@ -57,7 +55,7 @@ func TestServiceDelegatesToWorkflowComponents(t *testing.T) {
 		info:          &discovery.ModuleInfo{Name: "acme/widget"},
 		installResult: &install.Result{ID: "acme/widget"},
 		createResult:  &scaffold.Result{Directory: "widget"},
-		publishResult: &barnpublish.Result{Kind: barnpublish.NewModule},
+		publishResult: &modulepublish.Result{Status: modulepublish.StatusSubmitted},
 	}
 	service := NewService(lifecycle, lifecycle, lifecycle, lifecycle)
 	ctx := context.Background()

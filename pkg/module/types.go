@@ -3,8 +3,6 @@ package module
 import (
 	"context"
 
-	barnpublish "github.com/MontFerret/barn/pkg/publish"
-
 	"github.com/MontFerret/cli/v2/pkg/module/discovery"
 	"github.com/MontFerret/cli/v2/pkg/module/install"
 	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
@@ -28,8 +26,8 @@ type (
 		Create(context.Context, scaffold.Options) (*scaffold.Result, error)
 	}
 
-	// Publisher prepares a module release for publication.
+	// Publisher prepares and optionally submits a module release for publication.
 	Publisher interface {
-		Prepare(context.Context, modulepublish.Options) (*barnpublish.Result, error)
+		Publish(context.Context, modulepublish.Options) (*modulepublish.Result, error)
 	}
 )

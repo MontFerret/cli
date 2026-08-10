@@ -19,6 +19,7 @@ import (
 	"github.com/MontFerret/cli/v2/pkg/module/discovery"
 	"github.com/MontFerret/cli/v2/pkg/module/install"
 	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
+	githubpublish "github.com/MontFerret/cli/v2/pkg/module/publish/github"
 	"github.com/MontFerret/cli/v2/pkg/module/scaffold"
 )
 
@@ -60,11 +61,17 @@ func main() {
 	if err != nil {
 		exit(err)
 	}
+
+	registrySubmitter, err := githubpublish.New()
+	if err != nil {
+		exit(err)
+	}
+
 	moduleService := modulelifecycle.NewService(
 		discovery.New(registryClient),
 		install.New(registryClient, nil),
 		scaffold.New(nil),
-		modulepublish.New(registryClient),
+		modulepublish.New(registryClient, registrySubmitter),
 	)
 
 	rootCmd.AddCommand(

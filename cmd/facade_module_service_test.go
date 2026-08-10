@@ -3,8 +3,6 @@ package cmd
 import (
 	"context"
 
-	barnpublish "github.com/MontFerret/barn/pkg/publish"
-
 	"github.com/MontFerret/cli/v2/pkg/module/discovery"
 	"github.com/MontFerret/cli/v2/pkg/module/install"
 	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
@@ -29,6 +27,6 @@ func (f *facadeModuleService) Create(context.Context, scaffold.Options) (*scaffo
 	return nil, nil
 }
 
-func (f *facadeModuleService) Publish(context.Context, modulepublish.Options) (*barnpublish.Result, error) {
+func (f *facadeModuleService) Publish(context.Context, modulepublish.Options) (*modulepublish.Result, error) {
 	return nil, nil
 }

@@ -32,23 +32,24 @@ func (s *Service) Search(ctx context.Context, query string) ([]SearchResult, err
 	group.SetLimit(6)
 
 	for index, summary := range summaries {
-		index, summary := index, summary
+		idx, sum := index, summary
+
 		group.Go(func() error {
-			item, err := s.registry.Module(groupContext, summary.ID)
+			item, err := s.registry.Module(groupContext, sum.ID)
 			if err != nil {
-				return fmt.Errorf("load registry module %q: %w", summary.ID, err)
+				return fmt.Errorf("load registry module %q: %w", sum.ID, err)
 			}
 
 			if len(item.Versions) == 0 {
 				return fmt.Errorf("%w: module %q has no versions", barnregistry.ErrMalformedArtifact, item.ID)
 			}
 
-			version := summary.Latest
+			version := sum.Latest
 			if version == "" {
 				version = item.Versions[0].Version
 			}
 
-			results[index] = SearchResult{Name: item.ID, Version: version, Description: item.Description}
+			results[idx] = SearchResult{Name: item.ID, Version: version, Description: item.Description}
 
 			return nil
 		})

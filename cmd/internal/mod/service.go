@@ -3,8 +3,6 @@ package mod
 import (
 	"context"
 
-	barnpublish "github.com/MontFerret/barn/pkg/publish"
-
 	"github.com/MontFerret/cli/v2/pkg/module/discovery"
 	"github.com/MontFerret/cli/v2/pkg/module/install"
 	modulepublish "github.com/MontFerret/cli/v2/pkg/module/publish"
@@ -17,5 +15,5 @@ type Service interface {
 	Info(context.Context, string) (*discovery.ModuleInfo, error)
 	Install(context.Context, install.Options) (*install.Result, error)
 	Create(context.Context, scaffold.Options) (*scaffold.Result, error)
-	Publish(context.Context, modulepublish.Options) (*barnpublish.Result, error)
+	Publish(context.Context, modulepublish.Options) (*modulepublish.Result, error)
 }
