@@ -26,7 +26,9 @@
 
 ## What is this?
 
-Ferret CLI is the command-line interface for [Ferret](https://github.com/MontFerret/ferret), a declarative query language and runtime for structured data extraction, browser automation, and data workflows.
+Ferret CLI is the command-line interface for [Ferret](https://github.com/MontFerret/ferret), a declarative-first, expression-oriented embedded language and runtime for data automation.
+
+FQL combines a declarative core with domain orchestration through expressions such as `match`, `for`, `filter`, `query`, and `waitfor`. When a workflow needs state, `var` and `while` provide constrained mutation without turning FQL into a general-purpose language.
 
 Use it to run FQL scripts, format and check source files, inspect compiled bytecode, manage browser sessions, and debug local scripts.
 
@@ -57,7 +59,7 @@ ferret repl
 Run an inline expression:
 
 ```bash
-ferret run --eval 'RETURN "Hello, Ferret!"'
+ferret run --eval 'return "Hello, Ferret!"'
 ```
 
 Run a script:
@@ -83,9 +85,9 @@ ferret run example.fql --param code='"123"'
 Use parameters in FQL with `@name`:
 
 ```fql
-LET page = DOCUMENT(@url)
+let page = DOCUMENT(@url)
 
-RETURN ELEMENT(page, "title").innerText
+return ELEMENT(page, "title").innerText
 ```
 
 ## Common commands

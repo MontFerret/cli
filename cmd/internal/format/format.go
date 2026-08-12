@@ -82,7 +82,7 @@ func New(store *config.Store) *cobra.Command {
 	cmd.Flags().Uint64("tab-width", 4, "Indentation size")
 	cmd.Flags().Bool("single-quote", false, "Use single quotes instead of double quotes")
 	cmd.Flags().Bool("bracket-spacing", true, "Add spaces inside brackets")
-	cmd.Flags().String("case-mode", "upper", "Keyword case mode: upper, lower, ignore")
+	cmd.Flags().String("case-mode", "lower", "Keyword case mode: lower (default), upper, or ignore")
 
 	return cmd
 }
@@ -130,21 +130,19 @@ func buildFormatterOptions(cmd *cobra.Command) ([]formatter.Option, error) {
 		opts = append(opts, formatter.WithBracketSpacing(v))
 	}
 
-	if cmd.Flags().Changed("case-mode") {
-		v, err := cmd.Flags().GetString("case-mode")
+	v, err := cmd.Flags().GetString("case-mode")
 
-		if err != nil {
-			return nil, err
-		}
-
-		mode, err := parseCaseMode(v)
-
-		if err != nil {
-			return nil, err
-		}
-
-		opts = append(opts, formatter.WithCaseMode(mode))
+	if err != nil {
+		return nil, err
 	}
+
+	mode, err := parseCaseMode(v)
+
+	if err != nil {
+		return nil, err
+	}
+
+	opts = append(opts, formatter.WithCaseMode(mode))
 
 	return opts, nil
 }
