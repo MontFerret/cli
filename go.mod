@@ -22,7 +22,7 @@ require (
 	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.14
 	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.14
 	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.14
-	github.com/MontFerret/ferret/v2 v2.0.0-alpha.44
+	github.com/MontFerret/ferret/v2 v2.0.0-alpha.45
 	github.com/MontFerret/specs v1.4.0
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
@@ -94,7 +94,6 @@ require (
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	github.com/wI2L/jettison v0.7.4 // indirect
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/excelize/v2 v2.11.0 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
@@ -108,6 +107,7 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+	gopkg.in/yaml.v2 v2.2.8 // indirect
 	modernc.org/libc v1.75.3 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.0 // indirect
