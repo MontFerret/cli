@@ -34,12 +34,12 @@ type (
 		BeforeExists bool
 	}
 
-	// ManualAction identifies a v1 import that cannot be rewritten safely.
+	// ManualAction identifies project content that cannot be rewritten safely.
 	ManualAction struct {
-		Path       string
-		ImportPath string
-		Reason     string
-		Line       int
+		Path   string
+		Detail string
+		Reason string
+		Line   int
 	}
 
 	// Result describes the complete migration plan and its application status.
@@ -49,8 +49,10 @@ type (
 		Changes             []Change
 		ManualActions       []ManualAction
 		ScannedFiles        int
+		ScannedFQLFiles     int
 		UpdatedImports      int
 		FormattedFiles      int
+		MigratedFQLFiles    int
 		DependenciesChanged bool
 		VendorDetected      bool
 		Applied             bool
@@ -71,6 +73,7 @@ type (
 		GoSumPath  string
 		GoModFile  *modfile.File
 		GoFiles    []string
+		FQLFiles   []string
 		GoMod      fileSnapshot
 		GoSum      fileSnapshot
 	}
@@ -93,13 +96,30 @@ type (
 		Exists bool
 	}
 
-	sourcePlan struct {
+	goSourcePlan struct {
 		Changes        []plannedChange
 		ManualActions  []ManualAction
 		ScannedFiles   int
 		UpdatedImports int
 		FormattedFiles int
 		RemainingV1    bool
+	}
+
+	fqlSourcePlan struct {
+		Changes       []plannedChange
+		ManualActions []ManualAction
+		ScannedFiles  int
+		MigratedFiles int
+	}
+
+	fqlMigrationResult struct {
+		Data    []byte
+		Changed bool
+	}
+
+	migrationFiles struct {
+		Go  []string
+		FQL []string
 	}
 
 	goPackageInfo struct {

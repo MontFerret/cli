@@ -24,6 +24,7 @@ require (
 	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.14
 	github.com/MontFerret/ferret/v2 v2.0.0-alpha.46
 	github.com/MontFerret/specs v1.4.0
+	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
 	github.com/go-waitfor/waitfor-http v1.1.0
@@ -51,7 +52,6 @@ require (
 	github.com/andybalholm/cascadia v1.3.4 // indirect
 	github.com/antchfx/htmlquery v1.3.6 // indirect
 	github.com/antchfx/xpath v1.3.8 // indirect
-	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/corpix/uarand v0.2.0 // indirect

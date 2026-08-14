@@ -28,7 +28,12 @@ func (planner *v1ToV2Planner) Plan(ctx context.Context, options Options) (*migra
 		return nil, err
 	}
 
-	sources, err := planSourceChanges(ctx, project)
+	goSources, err := planGoSourceChanges(ctx, project)
+	if err != nil {
+		return nil, err
+	}
+
+	fqlSources, err := planFQLSourceChanges(ctx, project)
 	if err != nil {
 		return nil, err
 	}
@@ -38,13 +43,15 @@ func (planner *v1ToV2Planner) Plan(ctx context.Context, options Options) (*migra
 		planner.runner,
 		planner.ferretVersion,
 		project,
-		sources,
+		goSources,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	changes := append(append([]plannedChange{}, sources.Changes...), dependencies...)
+	changes := append([]plannedChange{}, goSources.Changes...)
+	changes = append(changes, fqlSources.Changes...)
+	changes = append(changes, dependencies...)
 	sort.Slice(changes, func(i, j int) bool {
 		return changes[i].change.Path < changes[j].change.Path
 	})
@@ -53,6 +60,10 @@ func (planner *v1ToV2Planner) Plan(ctx context.Context, options Options) (*migra
 	for index, change := range changes {
 		resultChanges[index] = change.change
 	}
+
+	manualActions := append([]ManualAction{}, goSources.ManualActions...)
+	manualActions = append(manualActions, fqlSources.ManualActions...)
+	sortManualActions(manualActions)
 
 	vendorDetected := false
 	if info, statErr := os.Stat(filepath.Join(project.Root, "vendor")); statErr == nil {
@@ -66,10 +77,12 @@ func (planner *v1ToV2Planner) Plan(ctx context.Context, options Options) (*migra
 			Root:                project.Root,
 			GoModPath:           project.GoModPath,
 			Changes:             resultChanges,
-			ManualActions:       sources.ManualActions,
-			ScannedFiles:        sources.ScannedFiles,
-			UpdatedImports:      sources.UpdatedImports,
-			FormattedFiles:      sources.FormattedFiles,
+			ManualActions:       manualActions,
+			ScannedFiles:        goSources.ScannedFiles,
+			ScannedFQLFiles:     fqlSources.ScannedFiles,
+			UpdatedImports:      goSources.UpdatedImports,
+			FormattedFiles:      goSources.FormattedFiles,
+			MigratedFQLFiles:    fqlSources.MigratedFiles,
 			DependenciesChanged: dependencyChanged,
 			VendorDetected:      vendorDetected,
 		},
