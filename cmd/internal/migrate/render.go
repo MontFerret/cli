@@ -14,6 +14,16 @@ func renderMigrationStatus(output io.Writer, result *migration.Result, mode migr
 	fmt.Fprintln(output, "Ferret v1 → v2 compatibility migration")
 	fmt.Fprintln(output, "✓ Found go.mod")
 	fmt.Fprintf(output, "✓ Scanned %d Go %s\n", result.ScannedFiles, migrationNoun(result.ScannedFiles, "file", "files"))
+	fmt.Fprintf(output, "✓ Scanned %d FQL %s\n", result.ScannedFQLFiles, migrationNoun(result.ScannedFQLFiles, "file", "files"))
+
+	if result.MigratedFQLFiles > 0 && mode != migration.ModeApply {
+		fmt.Fprintf(
+			output,
+			"✓ Found %d supported FQL source %s\n",
+			result.MigratedFQLFiles,
+			migrationNoun(result.MigratedFQLFiles, "migration", "migrations"),
+		)
+	}
 
 	if len(result.Changes) == 0 {
 		if len(result.ManualActions) == 0 {
@@ -75,6 +85,14 @@ func renderMigrationStatus(output io.Writer, result *migration.Result, mode migr
 			migrationNoun(result.FormattedFiles, "file", "files"),
 		)
 	}
+	if result.MigratedFQLFiles > 0 {
+		fmt.Fprintf(
+			output,
+			"✓ Migrated and formatted %d FQL %s\n",
+			result.MigratedFQLFiles,
+			migrationNoun(result.MigratedFQLFiles, "file", "files"),
+		)
+	}
 
 	if len(result.ManualActions) > 0 {
 		fmt.Fprintln(output, "Mechanical migration completed. Manual follow-up is still required.")
@@ -95,7 +113,7 @@ func renderMigrationWarnings(output io.Writer, result *migration.Result) {
 				"  %s:%d: %s (%s)\n",
 				action.Path,
 				action.Line,
-				action.ImportPath,
+				action.Detail,
 				action.Reason,
 			)
 		}

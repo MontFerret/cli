@@ -8,8 +8,6 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
-	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -23,8 +21,8 @@ var v1CompatibilityImports = map[string]string{
 	"github.com/MontFerret/ferret/pkg/runtime/values/types": "github.com/MontFerret/ferret/v2/compat/runtime/values/types",
 }
 
-func planSourceChanges(ctx context.Context, project *migrationProject) (*sourcePlan, error) {
-	result := &sourcePlan{ScannedFiles: len(project.GoFiles)}
+func planGoSourceChanges(ctx context.Context, project *migrationProject) (*goSourcePlan, error) {
+	result := &goSourcePlan{ScannedFiles: len(project.GoFiles)}
 
 	for _, filename := range project.GoFiles {
 		if err := ctx.Err(); err != nil {
@@ -52,14 +50,10 @@ func planSourceChanges(ctx context.Context, project *migrationProject) (*sourceP
 			return nil, fmt.Errorf("parse %s: %w", filename, err)
 		}
 
-		relative, err := filepath.Rel(project.Root, filename)
+		relative, err := migrationRelativePath(project.Root, filename, "Go")
 		if err != nil {
-			return nil, fmt.Errorf("resolve project-relative path for %s: %w", filename, err)
+			return nil, err
 		}
-		if relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-			return nil, fmt.Errorf("refusing to migrate Go file outside project root: %s", filename)
-		}
-		relative = filepath.ToSlash(relative)
 
 		updated := 0
 		for _, spec := range file.Imports {
@@ -77,10 +71,10 @@ func planSourceChanges(ctx context.Context, project *migrationProject) (*sourceP
 				if isV1FerretImport(importPath) {
 					result.RemainingV1 = true
 					result.ManualActions = append(result.ManualActions, ManualAction{
-						Path:       relative,
-						ImportPath: importPath,
-						Reason:     "no documented v2 compatibility replacement",
-						Line:       fileSet.Position(spec.Pos()).Line,
+						Path:   relative,
+						Detail: importPath,
+						Reason: "no documented v2 compatibility replacement",
+						Line:   fileSet.Position(spec.Pos()).Line,
 					})
 				}
 
@@ -90,10 +84,10 @@ func planSourceChanges(ctx context.Context, project *migrationProject) (*sourceP
 			if generated {
 				result.RemainingV1 = true
 				result.ManualActions = append(result.ManualActions, ManualAction{
-					Path:       relative,
-					ImportPath: importPath,
-					Reason:     "generated file was not modified",
-					Line:       fileSet.Position(spec.Pos()).Line,
+					Path:   relative,
+					Detail: importPath,
+					Reason: "generated file was not modified",
+					Line:   fileSet.Position(spec.Pos()).Line,
 				})
 
 				continue
@@ -130,17 +124,7 @@ func planSourceChanges(ctx context.Context, project *migrationProject) (*sourceP
 		result.FormattedFiles++
 	}
 
-	sort.Slice(result.ManualActions, func(i, j int) bool {
-		if result.ManualActions[i].Path != result.ManualActions[j].Path {
-			return result.ManualActions[i].Path < result.ManualActions[j].Path
-		}
-
-		if result.ManualActions[i].Line != result.ManualActions[j].Line {
-			return result.ManualActions[i].Line < result.ManualActions[j].Line
-		}
-
-		return result.ManualActions[i].ImportPath < result.ManualActions[j].ImportPath
-	})
+	sortManualActions(result.ManualActions)
 
 	return result, nil
 }

@@ -18,7 +18,7 @@ func planDependencyChanges(
 	runner Runner,
 	versionProvider ferretVersionProvider,
 	project *migrationProject,
-	sources *sourcePlan,
+	sources *goSourcePlan,
 ) ([]plannedChange, bool, error) {
 	// Existing compat imports alone are not a migration and must not trigger dependency cleanup or upgrades.
 	if sources.UpdatedImports == 0 {

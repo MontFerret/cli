@@ -65,19 +65,21 @@ func discoverMigrationProject(ctx context.Context, runner Runner, directory stri
 		GoModPath:  discovered.GoModPath,
 		GoSumPath:  discovered.GoSumPath,
 		GoModFile:  parsed,
-		GoFiles:    files,
+		GoFiles:    files.Go,
+		FQLFiles:   files.FQL,
 		GoMod:      goMod,
 		GoSum:      goSum,
 	}, nil
 }
 
-func listMigrationFiles(ctx context.Context, runner Runner, root string) ([]string, error) {
+func listMigrationFiles(ctx context.Context, runner Runner, root string) (migrationFiles, error) {
 	output, err := runner.Run(ctx, root, "list", "-e", "-json", "-mod=readonly", "./...")
 	if err != nil {
-		return nil, fmt.Errorf("enumerate project Go files: %w", err)
+		return migrationFiles{}, fmt.Errorf("enumerate project Go files: %w", err)
 	}
 
-	files := make(map[string]struct{})
+	goFiles := make(map[string]struct{})
+	fqlFiles := make(map[string]struct{})
 	decoder := json.NewDecoder(bytes.NewReader(output))
 
 	for {
@@ -87,7 +89,7 @@ func listMigrationFiles(ctx context.Context, runner Runner, root string) ([]stri
 				break
 			}
 
-			return nil, fmt.Errorf("decode project package metadata: %w", err)
+			return migrationFiles{}, fmt.Errorf("decode project package metadata: %w", err)
 		}
 
 		packageFiles := append([]string{}, pkg.GoFiles...)
@@ -99,7 +101,7 @@ func listMigrationFiles(ctx context.Context, runner Runner, root string) ([]stri
 
 		if pkg.Error != nil && pkg.Error.Err != "" &&
 			(pkg.Module == nil || pkg.Dir == "" || len(packageFiles) == 0) {
-			return nil, fmt.Errorf("enumerate package %q: %s", pkg.ImportPath, pkg.Error.Err)
+			return migrationFiles{}, fmt.Errorf("enumerate package %q: %s", pkg.ImportPath, pkg.Error.Err)
 		}
 
 		if pkg.Module == nil || !pkg.Module.Main || pkg.Dir == "" {
@@ -111,25 +113,39 @@ func listMigrationFiles(ctx context.Context, runner Runner, root string) ([]stri
 				continue
 			}
 
-			files[filepath.Join(pkg.Dir, name)] = struct{}{}
+			goFiles[filepath.Join(pkg.Dir, name)] = struct{}{}
 		}
 	}
 
-	if err := walkMigrationFiles(ctx, root, files); err != nil {
-		return nil, err
+	if err := walkMigrationFiles(ctx, root, goFiles, fqlFiles); err != nil {
+		return migrationFiles{}, err
 	}
 
-	result := make([]string, 0, len(files))
-	for filename := range files {
-		result = append(result, filename)
+	result := migrationFiles{
+		Go:  make([]string, 0, len(goFiles)),
+		FQL: make([]string, 0, len(fqlFiles)),
 	}
 
-	sort.Strings(result)
+	for filename := range goFiles {
+		result.Go = append(result.Go, filename)
+	}
+
+	for filename := range fqlFiles {
+		result.FQL = append(result.FQL, filename)
+	}
+
+	sort.Strings(result.Go)
+	sort.Strings(result.FQL)
 
 	return result, nil
 }
 
-func walkMigrationFiles(ctx context.Context, root string, files map[string]struct{}) error {
+func walkMigrationFiles(
+	ctx context.Context,
+	root string,
+	goFiles map[string]struct{},
+	fqlFiles map[string]struct{},
+) error {
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -159,14 +175,17 @@ func walkMigrationFiles(ctx context.Context, root string, files map[string]struc
 			return nil
 		}
 
-		if filepath.Ext(entry.Name()) == ".go" {
-			files[path] = struct{}{}
+		switch filepath.Ext(entry.Name()) {
+		case ".go":
+			goFiles[path] = struct{}{}
+		case ".fql":
+			fqlFiles[path] = struct{}{}
 		}
 
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("scan project Go files: %w", err)
+		return fmt.Errorf("scan project source files: %w", err)
 	}
 
 	return nil

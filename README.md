@@ -101,7 +101,7 @@ ferret fmt script.fql       # Format source
 ferret build script.fql     # Compile to a bytecode artifact
 ferret inspect script.fql   # Print compiled program details
 ferret debug script.fql     # Start the interactive debugger
-ferret migrate              # Move a Ferret v1 Go application to the v2 compatibility API
+ferret migrate              # Migrate supported Ferret v1 Go and FQL source behavior
 ferret browser open         # Start a managed browser
 ferret config list          # Show configuration
 ferret mod search sqlite    # Search the Ferret module registry
@@ -120,12 +120,31 @@ Run `ferret migrate` from anywhere inside a Go module that embeds Ferret v1:
 ferret migrate
 ```
 
-The command rewrites the documented Ferret v1 imports to their Ferret v2
-compatibility packages, updates `go.mod` and `go.sum` as needed, and formats
-changed Go files. It is intentionally limited to the mechanical first stage of
-migration. It does not convert application logic to the native Ferret v2 API,
-rewrite generated or vendored code, or guess replacements for unsupported v1
-packages such as the former drivers packages.
+The command rewrites documented Ferret v1 imports to their Ferret v2
+compatibility packages and updates `go.mod` and `go.sum` only when an import was
+rewritten. It also finds lowercase `.fql` files in the containing Go module and
+preserves v1's implicit result for a final top-level `FOR` by returning it
+explicitly:
+
+```fql
+// Before
+FOR item IN 1..3
+    RETURN item
+```
+
+```fql
+// After
+return for item in 1..3 {
+    return item
+}
+```
+
+Only a structurally recognized final top-level `FOR` without an explicit
+terminal `return` is changed. Nested, assigned, expression-contained,
+function-contained, non-final, and already-returned loops remain untouched.
+Changed FQL is canonically formatted; files needing only formatting remain
+byte-for-byte unchanged. A project with only FQL migrations does not run
+`go get` or change Go module dependencies.
 
 Preview the affected paths without changing the project, or print a unified
 diff for review:
@@ -135,9 +154,18 @@ ferret migrate --dry-run
 ferret migrate --print
 ```
 
-Unsupported and generated-file imports are reported as manual follow-up. If a
-project vendors dependencies, run `go mod vendor` after reviewing and applying
-the migration.
+The source scan excludes `vendor`, `testdata`, `node_modules`, hidden and
+underscore-prefixed directories, and nested Go modules. Malformed FQL is left
+unchanged and reported with its first useful diagnostic and line while other
+files continue to migrate. Unsupported and generated-file imports are also
+reported as manual follow-up.
+
+Migration is intentionally limited to documented mechanical changes. It does
+not translate arbitrary v1 APIs or application logic, rewrite generated Go
+files or files under excluded directories, or guess replacements for
+unsupported v1 packages such as the former drivers packages. If a project
+vendors dependencies, run `go mod vendor` after reviewing and applying the
+migration.
 
 ## Module lifecycle
 

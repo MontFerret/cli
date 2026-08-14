@@ -18,10 +18,12 @@ const (
 func New(store *config.Store, service Service) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "migrate",
-		Short: "Migrate a Ferret v1 Go application to the v2 compatibility API",
-		Long: "Migrate the containing Go module from Ferret v1 imports to the Ferret v2 compatibility API.\n\n" +
-			"The command performs only documented mechanical import and dependency changes. " +
-			"It does not convert application logic to the native Ferret v2 API.",
+		Short: "Migrate supported Ferret v1 Go and FQL source behavior",
+		Long: "Migrate the containing Go module from supported Ferret v1 Go imports and FQL source behavior to Ferret v2.\n\n" +
+			"FQL migration returns and canonically formats a structurally recognized final top-level FOR. " +
+			"Malformed FQL is left unchanged and reported for manual follow-up.\n\n" +
+			"The command performs only documented mechanical import, dependency, and source changes. " +
+			"It does not convert application logic or arbitrary APIs to native Ferret v2 equivalents.",
 		Args: cobra.NoArgs,
 		PreRun: func(command *cobra.Command, _ []string) {
 			store.BindFlags(command)

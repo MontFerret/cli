@@ -16,8 +16,10 @@ import (
 func TestMigrateCommandAppliesAndRendersMigration(t *testing.T) {
 	service := &fakeMigrationService{result: &migration.Result{
 		ScannedFiles:        4,
+		ScannedFQLFiles:     2,
 		UpdatedImports:      2,
 		FormattedFiles:      1,
+		MigratedFQLFiles:    1,
 		DependenciesChanged: true,
 		Applied:             true,
 		Changes: []migration.Change{
@@ -34,11 +36,13 @@ func TestMigrateCommandAppliesAndRendersMigration(t *testing.T) {
 	for _, expected := range []string{
 		"Ferret v1 → v2 compatibility migration",
 		"✓ Scanned 4 Go files",
+		"✓ Scanned 2 FQL files",
 		"  go.mod",
 		"  main.go",
 		"✓ Updated 2 Ferret imports",
 		"✓ Updated Go module dependencies",
 		"✓ Formatted 1 Go file",
+		"✓ Migrated and formatted 1 FQL file",
 		"Migration completed.",
 	} {
 		if !strings.Contains(stdout, expected) {
@@ -55,7 +59,9 @@ func TestMigrateCommandAppliesAndRendersMigration(t *testing.T) {
 
 func TestMigrateCommandDryRunListsFilesWithoutApplying(t *testing.T) {
 	service := &fakeMigrationService{result: &migration.Result{
-		ScannedFiles: 3,
+		ScannedFiles:     3,
+		ScannedFQLFiles:  1,
+		MigratedFQLFiles: 1,
 		Changes: []migration.Change{
 			{Path: "go.mod"},
 			{Path: "internal/app.go"},
@@ -67,7 +73,14 @@ func TestMigrateCommandDryRunListsFilesWithoutApplying(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, expected := range []string{"Would update:", "  go.mod", "  internal/app.go", "No files changed."} {
+	for _, expected := range []string{
+		"✓ Scanned 1 FQL file",
+		"✓ Found 1 supported FQL source migration",
+		"Would update:",
+		"  go.mod",
+		"  internal/app.go",
+		"No files changed.",
+	} {
 		if !strings.Contains(stdout, expected) {
 			t.Fatalf("expected stdout to contain %q:\n%s", expected, stdout)
 		}
@@ -82,13 +95,14 @@ func TestMigrateCommandDryRunListsFilesWithoutApplying(t *testing.T) {
 
 func TestMigrateCommandPrintsDeterministicUnifiedDiffOnlyOnStdout(t *testing.T) {
 	service := &fakeMigrationService{result: &migration.Result{
-		ScannedFiles: 1,
+		ScannedFQLFiles:  1,
+		MigratedFQLFiles: 1,
 		Changes: []migration.Change{
 			{
-				Path:         "main.go",
+				Path:         "query.fql",
 				BeforeExists: true,
-				Before:       []byte("package main\n\nvar version = 1\n"),
-				After:        []byte("package main\n\nvar version = 2\n"),
+				Before:       []byte("FOR x IN 1..3\n    RETURN x\n"),
+				After:        []byte("return for x in 1..3 {\n    return x\n}"),
 			},
 		},
 	}}
@@ -98,14 +112,15 @@ func TestMigrateCommandPrintsDeterministicUnifiedDiffOnlyOnStdout(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	want := "--- a/main.go\n" +
-		"+++ b/main.go\n" +
-		"@@ -1,4 +1,4 @@\n" +
-		" package main\n" +
-		" \n" +
-		"-var version = 1\n" +
-		"+var version = 2\n" +
-		" \n"
+	want := "--- a/query.fql\n" +
+		"+++ b/query.fql\n" +
+		"@@ -1,3 +1,3 @@\n" +
+		"-FOR x IN 1..3\n" +
+		"-    RETURN x\n" +
+		"-\n" +
+		"+return for x in 1..3 {\n" +
+		"+    return x\n" +
+		"+}\n"
 	if stdout != want {
 		t.Fatalf("unexpected diff:\n%s", stdout)
 	}
@@ -126,10 +141,10 @@ func TestMigrateCommandRendersManualAndVendorWarnings(t *testing.T) {
 		Changes:        []migration.Change{{Path: "main.go"}},
 		ManualActions: []migration.ManualAction{
 			{
-				Path:       "generated.go",
-				Line:       4,
-				ImportPath: "github.com/MontFerret/ferret/pkg/runtime",
-				Reason:     "generated file was not modified",
+				Path:   "generated.go",
+				Line:   4,
+				Detail: "github.com/MontFerret/ferret/pkg/runtime",
+				Reason: "generated file was not modified",
 			},
 		},
 	}}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -139,9 +140,9 @@ func generatedButMalformed(
 	if len(result.ManualActions) != 2 {
 		t.Fatalf("expected two manual actions, got %#v", result.ManualActions)
 	}
-	if result.ManualActions[0].ImportPath != "github.com/MontFerret/ferret/pkg/runtime" ||
+	if result.ManualActions[0].Detail != "github.com/MontFerret/ferret/pkg/runtime" ||
 		result.ManualActions[0].Reason != "generated file was not modified" ||
-		result.ManualActions[1].ImportPath != "github.com/MontFerret/ferret/pkg/drivers/cdp" {
+		result.ManualActions[1].Detail != "github.com/MontFerret/ferret/pkg/drivers/cdp" {
 		t.Fatalf("unexpected manual actions: %#v", result.ManualActions)
 	}
 	if after := readMigrationFixture(t, filepath.Join(root, "generated.go")); after != generatedBefore {
@@ -555,6 +556,213 @@ import "github.com/MontFerret/ferret"
 	}
 }
 
+func TestMigratorAppliesPureFQLMigrationWithoutChangingDependencies(t *testing.T) {
+	root := writeMigrationFixture(t, `module example.com/app
+
+go 1.25.0
+`, map[string]string{
+		"main.go": "package app\n",
+		"query.fql": `FOR x IN 1..3
+    RETURN x`,
+	})
+	goModBefore := readMigrationFixture(t, filepath.Join(root, "go.mod"))
+	migrator, runner := newFixtureMigrator()
+
+	first, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !first.Applied || first.ScannedFQLFiles != 1 || first.MigratedFQLFiles != 1 ||
+		first.DependenciesChanged || runner.getCalls != 0 {
+		t.Fatalf("unexpected FQL migration result: %#v, get calls=%d", first, runner.getCalls)
+	}
+
+	if got := readMigrationFixture(t, filepath.Join(root, "query.fql")); got != `return for x in 1..3 {
+    return x
+}` {
+		t.Fatalf("unexpected migrated FQL:\n%s", got)
+	}
+
+	if got := readMigrationFixture(t, filepath.Join(root, "go.mod")); got != goModBefore {
+		t.Fatalf("pure FQL migration changed go.mod:\n%s", got)
+	}
+
+	second, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if second.Applied || second.MigratedFQLFiles != 0 || len(second.Changes) != 0 || runner.getCalls != 0 {
+		t.Fatalf("second migration was not a no-op: %#v, get calls=%d", second, runner.getCalls)
+	}
+}
+
+func TestMigratorAppliesGoAndFQLChangesTogether(t *testing.T) {
+	root := writeMigrationFixture(t, `module example.com/app
+
+go 1.25.0
+
+require github.com/MontFerret/ferret v1.0.0
+`, map[string]string{
+		"main.go": `package app
+import "github.com/MontFerret/ferret"
+`,
+		"query.fql": `LET values = 1..3
+FOR value IN values
+    RETURN value`,
+	})
+	migrator, runner := newFixtureMigrator()
+
+	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !result.Applied || result.UpdatedImports != 1 || result.MigratedFQLFiles != 1 ||
+		!result.DependenciesChanged || runner.getCalls != 1 {
+		t.Fatalf("unexpected mixed migration result: %#v, get calls=%d", result, runner.getCalls)
+	}
+
+	paths := make([]string, len(result.Changes))
+	for index, change := range result.Changes {
+		paths[index] = change.Path
+	}
+
+	wantPaths := []string{"go.mod", "go.sum", "main.go", "query.fql"}
+	if !slices.Equal(paths, wantPaths) {
+		t.Fatalf("mixed migration paths = %v, want %v", paths, wantPaths)
+	}
+}
+
+func TestMigratorFQLDiscoveryPreservesExistingExclusions(t *testing.T) {
+	root := writeMigrationFixture(t, `module example.com/app
+
+go 1.25.0
+`, map[string]string{
+		"main.go":                       "package app\n",
+		"query.fql":                     "FOR x IN 1..3 RETURN x",
+		"vendor/dependency/vendor.fql":  "FOR x IN 1..3 RETURN x",
+		"testdata/fixture.fql":          "FOR x IN 1..3 RETURN x",
+		"node_modules/module/query.fql": "FOR x IN 1..3 RETURN x",
+		".hidden/query.fql":             "FOR x IN 1..3 RETURN x",
+		"_generated/query.fql":          "FOR x IN 1..3 RETURN x",
+		"upper.FQL":                     "FOR x IN 1..3 RETURN x",
+		"nested/go.mod":                 "module example.com/nested\n\ngo 1.25.0\n",
+		"nested/query.fql":              "FOR x IN 1..3 RETURN x",
+	})
+	excluded := []string{
+		"vendor/dependency/vendor.fql",
+		"testdata/fixture.fql",
+		"node_modules/module/query.fql",
+		".hidden/query.fql",
+		"_generated/query.fql",
+		"upper.FQL",
+		"nested/query.fql",
+	}
+	before := make(map[string]string, len(excluded))
+	for _, path := range excluded {
+		before[path] = readMigrationFixture(t, filepath.Join(root, path))
+	}
+
+	migrator, _ := newFixtureMigrator()
+	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if result.ScannedFQLFiles != 1 || result.MigratedFQLFiles != 1 {
+		t.Fatalf("unexpected FQL discovery result: %#v", result)
+	}
+
+	for _, path := range excluded {
+		if got := readMigrationFixture(t, filepath.Join(root, path)); got != before[path] {
+			t.Fatalf("excluded FQL file %s changed:\n%s", path, got)
+		}
+	}
+}
+
+func TestMigratorReportsMalformedFQLAndContinues(t *testing.T) {
+	root := writeMigrationFixture(t, `module example.com/app
+
+go 1.25.0
+`, map[string]string{
+		"main.go":   "package app\n",
+		"valid.fql": "FOR x IN 1..3 RETURN x",
+		"broken.fql": `LET ok = 1
+FOR x IN
+    RETURN x`,
+	})
+	brokenBefore := readMigrationFixture(t, filepath.Join(root, "broken.fql"))
+	migrator, _ := newFixtureMigrator()
+
+	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !result.Applied || result.ScannedFQLFiles != 2 || result.MigratedFQLFiles != 1 ||
+		len(result.ManualActions) != 1 {
+		t.Fatalf("unexpected malformed FQL result: %#v", result)
+	}
+
+	action := result.ManualActions[0]
+	if action.Path != "broken.fql" || action.Line < 2 || action.Detail == "" {
+		t.Fatalf("unexpected manual action: %#v", action)
+	}
+
+	if got := readMigrationFixture(t, filepath.Join(root, "broken.fql")); got != brokenBefore {
+		t.Fatalf("malformed FQL changed:\n%s", got)
+	}
+
+	if got := readMigrationFixture(t, filepath.Join(root, "valid.fql")); !strings.HasPrefix(got, "return for") {
+		t.Fatalf("valid FQL was not migrated:\n%s", got)
+	}
+}
+
+func TestMigratorFQLDryRunDoesNotWriteAndPreservesModeOnApply(t *testing.T) {
+	root := writeMigrationFixture(t, `module example.com/app
+
+go 1.25.0
+`, map[string]string{
+		"main.go":   "package app\n",
+		"query.fql": "FOR x IN 1..3 RETURN x",
+	})
+	path := filepath.Join(root, "query.fql")
+	if err := os.Chmod(path, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	before := readMigrationFixture(t, path)
+	migrator, _ := newFixtureMigrator()
+
+	preview, err := migrator.Migrate(context.Background(), Options{Directory: root, Mode: ModeDryRun})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if preview.Applied || preview.MigratedFQLFiles != 1 || readMigrationFixture(t, path) != before {
+		t.Fatalf("dry run mutated FQL: %#v", preview)
+	}
+
+	applied, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !applied.Applied || applied.MigratedFQLFiles != 1 {
+		t.Fatalf("unexpected applied result: %#v", applied)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("FQL mode = %o, want 600", got)
+	}
+}
+
 func TestMigratorRejectsMissingOrMalformedProjects(t *testing.T) {
 	t.Run("missing go.mod", func(t *testing.T) {
 		migrator, _ := newFixtureMigrator()
@@ -600,7 +808,7 @@ func TestListMigrationFilesDoesNotHideEnumerationFailures(t *testing.T) {
 func TestCommitMigrationChangesRollsBackEarlierFiles(t *testing.T) {
 	root := t.TempDir()
 	firstPath := filepath.Join(root, "first.go")
-	secondPath := filepath.Join(root, "second.go")
+	secondPath := filepath.Join(root, "query.fql")
 	if err := os.WriteFile(firstPath, []byte("first-before"), 0o640); err != nil {
 		t.Fatal(err)
 	}
@@ -617,7 +825,7 @@ func TestCommitMigrationChangesRollsBackEarlierFiles(t *testing.T) {
 			mode:   first.Mode,
 		},
 		{
-			change: Change{Path: "second.go", Before: second.Data, After: []byte("second-after"), BeforeExists: true},
+			change: Change{Path: "query.fql", Before: second.Data, After: []byte("second-after"), BeforeExists: true},
 			before: second,
 			mode:   second.Mode,
 		},
@@ -668,12 +876,44 @@ var Value%d = values.NewInt(%d)
 	b.ResetTimer()
 
 	for range b.N {
-		result, err := planSourceChanges(context.Background(), project)
+		result, err := planGoSourceChanges(context.Background(), project)
 		if err != nil {
 			b.Fatal(err)
 		}
+
 		if result.UpdatedImports != len(files) {
 			b.Fatalf("expected %d imports, got %d", len(files), result.UpdatedImports)
+		}
+	}
+}
+
+func BenchmarkPlanFQLSourceChanges(b *testing.B) {
+	root := b.TempDir()
+	files := make([]string, 100)
+	for index := range files {
+		filename := filepath.Join(root, fmt.Sprintf("query_%03d.fql", index))
+		source := fmt.Sprintf(`LET seed = %d
+FOR value IN 1..100 {
+    FILTER value > seed
+    RETURN value * 2
+}`, index)
+		if err := os.WriteFile(filename, []byte(source), 0o644); err != nil {
+			b.Fatal(err)
+		}
+		files[index] = filename
+	}
+
+	project := &migrationProject{Root: root, FQLFiles: files}
+	b.ResetTimer()
+
+	for range b.N {
+		result, err := planFQLSourceChanges(context.Background(), project)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		if result.MigratedFiles != len(files) {
+			b.Fatalf("expected %d FQL migrations, got %d", len(files), result.MigratedFiles)
 		}
 	}
 }
