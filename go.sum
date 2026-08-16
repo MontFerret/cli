@@ -12,8 +12,8 @@ github.com/MontFerret/barn v1.3.0 h1:K2KcVikrySe6wSgq22pU0psy0lilc5qH34nnW5eC+AY
 github.com/MontFerret/barn v1.3.0/go.mod h1:46XVT6XLqSsSxu0yu/CXakLohWsrJP4N4tg6rqzMs9g=
 github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.4 h1:Pp172wbsDnfcvCqD3gjwxthFGV8TML1PCnVPnFQ9/vE=
 github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.4/go.mod h1:i2NDjugVn3UGbCB+4/1ObX6bWHg1ve1hBhfx0/7CexM=
-github.com/MontFerret/contrib/modules/archive v1.0.0-rc.3 h1:0D4bQ9z85AsG9+EeBSputmsfCaLpk5PX28Jw8ZkynZY=
-github.com/MontFerret/contrib/modules/archive v1.0.0-rc.3/go.mod h1:D6jS9vE+qy2Ael8nwHU7z1R5eOXZPy+jki0cJKvn2kQ=
+github.com/MontFerret/contrib/modules/archive v1.0.0-rc.4 h1:fPjMi7CwNpi6kUdp9jlfeG7UIjESt+Jp1hgPcGwVTUM=
+github.com/MontFerret/contrib/modules/archive v1.0.0-rc.4/go.mod h1:D6jS9vE+qy2Ael8nwHU7z1R5eOXZPy+jki0cJKvn2kQ=
 github.com/MontFerret/contrib/modules/csv v1.0.0-rc.16 h1:+jLsKlrHVdyv/b+Bg1NdBnpWyIV/fwMQG3m5PVzKCg0=
 github.com/MontFerret/contrib/modules/csv v1.0.0-rc.16/go.mod h1:oxDkLx2Gy4CzePVjzeD6luIJsJ9J3IlKUZZj3r5CN+Q=
 github.com/MontFerret/contrib/modules/db/postgres v1.0.0-rc.9 h1:+ymkAWmCEjdUkJIZVaqsKCiK8ODN8H1G4Bnj/ddplec=
