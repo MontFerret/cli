@@ -20,7 +20,7 @@ require (
 	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.21
 	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.14
 	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.14
-	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.14
+	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.15
 	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.14
 	github.com/MontFerret/ferret/v2 v2.0.0-alpha.48
 	github.com/MontFerret/specs v1.4.0
