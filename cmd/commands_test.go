@@ -24,7 +24,7 @@ func TestCommandFacadePreservesCommandMetadata(t *testing.T) {
 		{name: "debug", use: "debug <script.fql>"},
 		{name: "format", use: "fmt [files...]"},
 		{name: "inspect", use: "inspect [script]"},
-		{name: "migrate", use: "migrate"},
+		{name: "migrate", use: "migrate", subcommands: []string{"check"}},
 		{name: "mod", use: "mod", subcommands: []string{"info", "init", "install", "publish", "search"}},
 		{name: "repl", use: "repl"},
 		{name: "run", use: "run [script]", aliases: []string{"exec"}},

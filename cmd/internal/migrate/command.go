@@ -80,6 +80,7 @@ func New(store *config.Store, service Service) *cobra.Command {
 
 	command.Flags().Bool(dryRunFlag, false, "Show which files would change without modifying the project")
 	command.Flags().Bool(printFlag, false, "Print a unified diff without modifying the project")
+	command.AddCommand(newCompatibilityCheckCommand(service))
 
 	return command
 }

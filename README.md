@@ -102,6 +102,7 @@ ferret build script.fql     # Compile to a bytecode artifact
 ferret inspect script.fql   # Print compiled program details
 ferret debug script.fql     # Start the interactive debugger
 ferret migrate              # Migrate supported Ferret v1 Go and FQL source behavior
+ferret migrate check .      # Check FQL source for v1 compatibility issues
 ferret browser open         # Start a managed browser
 ferret config list          # Show configuration
 ferret mod search sqlite    # Search the Ferret module registry
@@ -166,6 +167,38 @@ files or files under excluded directories, or guess replacements for
 unsupported v1 packages such as the former drivers packages. If a project
 vendors dependencies, run `go mod vendor` after reviewing and applying the
 migration.
+
+### Checking FQL compatibility
+
+Check a standalone FQL file or recursively inspect a directory without
+modifying source files:
+
+```bash
+ferret migrate check --from v1 .
+ferret migrate check scripts/query.fql
+```
+
+The path defaults to the current directory, and `--from` currently defaults to
+and accepts only `v1`. The check does not require a Go module, run Go tooling,
+resolve dependencies, or format source. Directory scans include lowercase
+`.fql` files in test fixtures, hidden or underscore-prefixed directories, and
+nested Go modules. They skip `.git`, `.hg`, `.svn`, `vendor`, and
+`node_modules`, and do not follow directory symlinks.
+
+Compatibility findings use editor-friendly locations and include a suggested
+manual fix:
+
+```text
+1_hackernews.fql:2:1: Final collecting FOR no longer becomes the script result in Ferret v2.
+  help: Add `return` before this loop.
+
+Found 1 v1 compatibility issue in 1 of 12 FQL files.
+```
+
+The command exits nonzero when it finds a compatibility issue or cannot parse
+an FQL file. Malformed files are reported while the remaining files continue
+to be checked. Filesystem, cancellation, and internal failures stop the check
+immediately.
 
 ## Module lifecycle
 

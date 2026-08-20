@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -196,11 +198,208 @@ func TestMigrateCommandRejectsArgumentsAndPropagatesServiceErrors(t *testing.T) 
 	}
 }
 
+func TestMigrateCheckReportsCompatibilityIssues(t *testing.T) {
+	service := &fakeMigrationService{checkResult: &migration.CompatibilityResult{
+		ScannedFiles: 12,
+		Diagnostics: []migration.CompatibilityDiagnostic{
+			{
+				Path:    "1_hackernews.fql",
+				Line:    2,
+				Column:  1,
+				Message: "Final collecting FOR no longer becomes the script result in Ferret v2.",
+				Help:    "Add `return` before this loop.",
+				Kind:    migration.CompatibilityDiagnosticIssue,
+			},
+		},
+	}}
+
+	stdout, stderr, err := executeMigrateCommand(t, service, "check", "--from", "v1", ".")
+	if err == nil || err.Error() != "Found 1 v1 compatibility issue in 1 of 12 FQL files." {
+		t.Fatalf("unexpected check error: %v", err)
+	}
+
+	if stdout != "" {
+		t.Fatalf("unexpected stdout: %s", stdout)
+	}
+
+	wantStderr := "1_hackernews.fql:2:1: Final collecting FOR no longer becomes the script result in Ferret v2.\n" +
+		"  help: Add `return` before this loop.\n\n"
+	if stderr != wantStderr {
+		t.Fatalf("unexpected stderr:\nwant:\n%s\ngot:\n%s", wantStderr, stderr)
+	}
+
+	if service.checkCalls != 1 || service.checkOptions.Path != "." || service.checkOptions.From != "v1" {
+		t.Fatalf("unexpected compatibility check call: calls=%d options=%#v", service.checkCalls, service.checkOptions)
+	}
+}
+
+func TestMigrateCheckDefaultsToV1AndCurrentDirectory(t *testing.T) {
+	service := &fakeMigrationService{checkResult: &migration.CompatibilityResult{ScannedFiles: 1}}
+
+	stdout, stderr, err := executeMigrateCommand(t, service, "check")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if stdout != "✓ No v1 compatibility issues found in 1 FQL file.\n" || stderr != "" {
+		t.Fatalf("unexpected output:\nstdout:\n%s\nstderr:\n%s", stdout, stderr)
+	}
+
+	if service.checkOptions != (migration.CompatibilityOptions{Path: ".", From: "v1"}) {
+		t.Fatalf("unexpected default options: %#v", service.checkOptions)
+	}
+}
+
+func TestMigrateCheckReportsEmptyDirectory(t *testing.T) {
+	service := &fakeMigrationService{checkResult: new(migration.CompatibilityResult)}
+
+	stdout, stderr, err := executeMigrateCommand(t, service, "check", "scripts")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if stdout != "✓ No FQL files found at scripts.\n" || stderr != "" {
+		t.Fatalf("unexpected output:\nstdout:\n%s\nstderr:\n%s", stdout, stderr)
+	}
+}
+
+func TestMigrateCheckReportsUncheckableSourceAndFails(t *testing.T) {
+	service := &fakeMigrationService{checkResult: &migration.CompatibilityResult{
+		ScannedFiles: 2,
+		Diagnostics: []migration.CompatibilityDiagnostic{
+			{
+				Path:    "broken.fql",
+				Line:    3,
+				Column:  5,
+				Message: "Could not check v1 compatibility: unexpected end of input",
+				Help:    "Fix this FQL source and rerun the check.",
+				Kind:    migration.CompatibilityDiagnosticFailure,
+			},
+		},
+	}}
+
+	stdout, stderr, err := executeMigrateCommand(t, service, "check", ".")
+	if err == nil || err.Error() != "Could not check 1 of 2 FQL files for v1 compatibility." {
+		t.Fatalf("unexpected check error: %v", err)
+	}
+
+	if stdout != "" || !strings.Contains(stderr, "broken.fql:3:5: Could not check v1 compatibility") {
+		t.Fatalf("unexpected output:\nstdout:\n%s\nstderr:\n%s", stdout, stderr)
+	}
+}
+
+func TestMigrateCheckRejectsUnsupportedVersionAndExtraArguments(t *testing.T) {
+	service := new(fakeMigrationService)
+
+	if _, _, err := executeMigrateCommand(t, service, "check", "--from", "v2", "."); err == nil || !strings.Contains(err.Error(), "expected v1") {
+		t.Fatalf("unexpected source-version error: %v", err)
+	}
+
+	if service.checkCalls != 0 {
+		t.Fatalf("compatibility checker was called %d times", service.checkCalls)
+	}
+
+	if _, _, err := executeMigrateCommand(t, service, "check", "one", "two"); err == nil {
+		t.Fatal("expected positional argument error")
+	}
+}
+
+func TestMigrateCheckHelpDocumentsReadOnlyScanBoundaries(t *testing.T) {
+	service := new(fakeMigrationService)
+
+	stdout, stderr, err := executeMigrateCommand(t, service, "check", "--help")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, expected := range []string{
+		"migrate check [path]",
+		"does not require a Go module and never modifies source files",
+		"include testdata, hidden and underscore-prefixed directories, and nested Go modules",
+		"skip .git, .hg, .svn, vendor, and node_modules",
+		"currently only v1",
+	} {
+		if !strings.Contains(stdout, expected) {
+			t.Fatalf("expected help to contain %q:\n%s", expected, stdout)
+		}
+	}
+
+	if stderr != "" || service.checkCalls != 0 {
+		t.Fatalf("unexpected help side effects: stderr=%q calls=%d", stderr, service.checkCalls)
+	}
+}
+
+func TestMigrateCheckChecksStandaloneFQLWithoutGoModule(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "query.fql")
+	if err := os.WriteFile(path, []byte("let label = \"привет\"\nfor value in 1..3 return value"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, err := executeMigrateCommand(t, migration.New(nil), "check", path)
+	if err == nil || err.Error() != "Found 1 v1 compatibility issue in 1 of 1 FQL file." {
+		t.Fatalf("unexpected check error: %v", err)
+	}
+
+	workingDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	displayPath, err := filepath.Rel(workingDirectory, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantDiagnostic := filepath.ToSlash(displayPath) +
+		":2:1: Final collecting FOR no longer becomes the script result in Ferret v2.\n" +
+		"  help: Add `return` before this loop.\n\n"
+	if stdout != "" || stderr != wantDiagnostic {
+		t.Fatalf("unexpected output:\nstdout:\n%s\nstderr:\n%s", stdout, stderr)
+	}
+}
+
+func TestCompatibilityCheckErrorSummarizesMultipleFindingsAndFailures(t *testing.T) {
+	result := &migration.CompatibilityResult{
+		ScannedFiles: 4,
+		Diagnostics: []migration.CompatibilityDiagnostic{
+			{Path: "first.fql", Kind: migration.CompatibilityDiagnosticIssue},
+			{Path: "first.fql", Kind: migration.CompatibilityDiagnosticIssue},
+			{Path: "second.fql", Kind: migration.CompatibilityDiagnosticIssue},
+			{Path: "broken.fql", Kind: migration.CompatibilityDiagnosticFailure},
+		},
+	}
+
+	err := newCompatibilityCheckError(result)
+	want := "Found 3 v1 compatibility issues in 2 of 4 FQL files; could not check 1 FQL file."
+	if err == nil || err.Error() != want {
+		t.Fatalf("unexpected summary: %v", err)
+	}
+}
+
 type fakeMigrationService struct {
-	result  *migration.Result
-	err     error
-	options migration.Options
-	calls   int
+	result       *migration.Result
+	err          error
+	options      migration.Options
+	calls        int
+	checkResult  *migration.CompatibilityResult
+	checkErr     error
+	checkOptions migration.CompatibilityOptions
+	checkCalls   int
+}
+
+func (service *fakeMigrationService) CheckCompatibility(
+	_ context.Context,
+	options migration.CompatibilityOptions,
+) (*migration.CompatibilityResult, error) {
+	service.checkCalls++
+	service.checkOptions = options
+
+	if service.checkResult == nil && service.checkErr == nil {
+		service.checkResult = new(migration.CompatibilityResult)
+	}
+
+	return service.checkResult, service.checkErr
 }
 
 func (service *fakeMigrationService) Migrate(_ context.Context, options migration.Options) (*migration.Result, error) {
@@ -218,6 +417,8 @@ func executeMigrateCommand(t *testing.T, service Service, args ...string) (strin
 	t.Helper()
 
 	command := New(newMigrateTestStore(t), service)
+	command.SilenceErrors = true
+	command.SilenceUsage = true
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
 	command.SetOut(stdout)

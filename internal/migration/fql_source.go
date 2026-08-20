@@ -69,27 +69,12 @@ func planFQLSourceChanges(ctx context.Context, project *migrationProject) (*fqlS
 }
 
 func migrateFQLSource(src *source.Source) (fqlMigrationResult, error) {
-	if !utf8.ValidString(src.Content()) {
-		return fqlMigrationResult{}, fmt.Errorf("parse Ferret source: source is not valid UTF-8")
-	}
-
-	program, err := parseFQLSource(src)
+	loop, err := finalTopLevelFQLFor(src)
 	if err != nil {
 		return fqlMigrationResult{}, err
 	}
 
-	body := program.Body()
-	if body == nil || body.BodyExpression() != nil {
-		return fqlMigrationResult{}, nil
-	}
-
-	statements := body.AllBodyStatement()
-	if len(statements) == 0 {
-		return fqlMigrationResult{}, nil
-	}
-
-	loop := statements[len(statements)-1].ForExpression()
-	if loop == nil || loop.GetStart() == nil {
+	if loop == nil {
 		return fqlMigrationResult{}, nil
 	}
 
@@ -104,6 +89,34 @@ func migrateFQLSource(src *source.Source) (fqlMigrationResult, error) {
 	}
 
 	return fqlMigrationResult{Data: formatted, Changed: true}, nil
+}
+
+func finalTopLevelFQLFor(src *source.Source) (fql.IForExpressionContext, error) {
+	if !utf8.ValidString(src.Content()) {
+		return nil, fmt.Errorf("parse Ferret source: source is not valid UTF-8")
+	}
+
+	program, err := parseFQLSource(src)
+	if err != nil {
+		return nil, err
+	}
+
+	body := program.Body()
+	if body == nil || body.BodyExpression() != nil {
+		return nil, nil
+	}
+
+	statements := body.AllBodyStatement()
+	if len(statements) == 0 {
+		return nil, nil
+	}
+
+	loop := statements[len(statements)-1].ForExpression()
+	if loop == nil || loop.GetStart() == nil {
+		return nil, nil
+	}
+
+	return loop, nil
 }
 
 func rewriteFinalFQLFor(content string, loop fql.IForExpressionContext) (string, error) {
@@ -256,19 +269,27 @@ func nonASCIISequence(content string) []rune {
 }
 
 func fqlManualAction(path string, src *source.Source, err error) ManualAction {
-	action := ManualAction{
+	detail, line, _ := fqlDiagnosticDetails(src, err)
+
+	return ManualAction{
 		Path:   path,
-		Detail: err.Error(),
+		Detail: detail,
 		Reason: "Ferret source could not be migrated safely; file was not modified",
-		Line:   1,
+		Line:   line,
 	}
+}
+
+func fqlDiagnosticDetails(src *source.Source, err error) (detail string, line, column int) {
+	detail = err.Error()
+	line = 1
+	column = 1
 
 	var diagnostic *diagnostics.Diagnostic
 	if !errors.As(err, &diagnostic) {
-		return action
+		return detail, line, column
 	}
 
-	action.Detail = diagnostic.Message
+	detail = diagnostic.Message
 	for _, span := range diagnostic.Spans {
 		if !span.Main {
 			continue
@@ -276,18 +297,22 @@ func fqlManualAction(path string, src *source.Source, err error) ManualAction {
 
 		byteSpan, ok := fqlByteSpan(src.Content(), span.Span)
 		if !ok {
-			return action
+			return detail, line, column
 		}
 
-		line, _ := src.LocationAt(byteSpan)
-		if line > 0 {
-			action.Line = line
+		spanLine, spanColumn := src.LocationAt(byteSpan)
+		if spanLine > 0 {
+			line = spanLine
 		}
 
-		return action
+		if spanColumn > 0 {
+			column = spanColumn
+		}
+
+		return detail, line, column
 	}
 
-	return action
+	return detail, line, column
 }
 
 func fqlByteSpan(content string, span source.Span) (source.Span, bool) {
