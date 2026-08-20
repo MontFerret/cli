@@ -23,7 +23,7 @@ require (
 	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.15
 	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.14
 	github.com/MontFerret/ferret/v2 v2.0.0-alpha.50
-	github.com/MontFerret/specs v1.4.0
+	github.com/MontFerret/specs v1.11.0
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
