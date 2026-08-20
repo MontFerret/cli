@@ -101,6 +101,7 @@ type (
 		FQLFiles   []string
 		GoMod      fileSnapshot
 		GoSum      fileSnapshot
+		ModuleWide bool
 	}
 
 	migrationPlan struct {

@@ -17,6 +17,7 @@ import (
 
 func TestMigrateRunAppliesAndRendersMigration(t *testing.T) {
 	service := &fakeMigrationService{result: &migration.Result{
+		GoModPath:           "/project/go.mod",
 		ScannedFiles:        4,
 		ScannedFQLFiles:     2,
 		UpdatedImports:      2,
@@ -37,6 +38,7 @@ func TestMigrateRunAppliesAndRendersMigration(t *testing.T) {
 
 	for _, expected := range []string{
 		"Ferret v1 → v2 compatibility migration",
+		"✓ Found go.mod",
 		"✓ Scanned 4 Go files",
 		"✓ Scanned 2 FQL files",
 		"  go.mod",
@@ -46,6 +48,7 @@ func TestMigrateRunAppliesAndRendersMigration(t *testing.T) {
 		"✓ Formatted 1 Go file",
 		"✓ Migrated and formatted 1 FQL file",
 		"Migration completed.",
+		"Migrated Go source now uses the Ferret v2 compatibility API.",
 	} {
 		if !strings.Contains(stdout, expected) {
 			t.Fatalf("expected stdout to contain %q:\n%s", expected, stdout)
@@ -71,8 +74,44 @@ func TestMigrateRunPassesExplicitTarget(t *testing.T) {
 	}
 }
 
+func TestMigrateRunRendersFQLOnlyMigrationWithoutGoStatus(t *testing.T) {
+	service := &fakeMigrationService{result: &migration.Result{
+		ScannedFQLFiles:  1,
+		MigratedFQLFiles: 1,
+		Applied:          true,
+		Changes:          []migration.Change{{Path: "query.fql"}},
+	}}
+
+	stdout, stderr, err := executeMigrateCommand(t, service, "run", "query.fql")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, expected := range []string{
+		"✓ Scanned 0 Go files",
+		"✓ Scanned 1 FQL file",
+		"✓ Migrated and formatted 1 FQL file",
+		"Migration completed.",
+	} {
+		if !strings.Contains(stdout, expected) {
+			t.Fatalf("expected stdout to contain %q:\n%s", expected, stdout)
+		}
+	}
+
+	for _, unexpected := range []string{"Found go.mod", "Go module dependencies", "compatibility API"} {
+		if strings.Contains(stdout, unexpected) {
+			t.Fatalf("expected FQL-only output to omit %q:\n%s", unexpected, stdout)
+		}
+	}
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr: %s", stderr)
+	}
+}
+
 func TestMigrateRunDryRunListsFilesWithoutApplying(t *testing.T) {
 	service := &fakeMigrationService{result: &migration.Result{
+		GoModPath:        "/project/go.mod",
 		ScannedFiles:     3,
 		ScannedFQLFiles:  1,
 		MigratedFQLFiles: 1,
@@ -140,6 +179,7 @@ func TestMigrateRunPrintsDeterministicUnifiedDiffOnlyOnStdout(t *testing.T) {
 	}
 	if !strings.Contains(stderr, "Printed a unified diff for 1 file.") ||
 		!strings.Contains(stderr, "No files changed.") ||
+		strings.Contains(stderr, "Found go.mod") ||
 		strings.Contains(stdout, "Ferret v1") {
 		t.Fatalf("unexpected status streams:\nstdout:\n%s\nstderr:\n%s", stdout, stderr)
 	}
@@ -174,7 +214,7 @@ func TestMigrateRunRendersManualAndVendorWarnings(t *testing.T) {
 	for _, expected := range []string{
 		"Manual follow-up:",
 		"generated.go:4: github.com/MontFerret/ferret/pkg/runtime (generated file was not modified)",
-		"Vendor directory was not modified; run go mod vendor",
+		"Project uses vendoring; run go mod vendor",
 	} {
 		if !strings.Contains(stderr, expected) {
 			t.Fatalf("expected stderr to contain %q:\n%s", expected, stderr)
@@ -249,7 +289,10 @@ func TestMigrateRunHelpDocumentsTargetsAndMutationBoundaries(t *testing.T) {
 		"migrate run [path]",
 		"standalone FQL file or project directory",
 		"do not require a Go module or Go toolchain",
-		"skips vendor, testdata, node_modules, hidden and underscore-prefixed directories",
+		"selected directory is the migration boundary",
+		"containing Go module supplies metadata and dependency ownership",
+		"skips descendant vendor, testdata, node_modules, hidden and underscore-prefixed directories",
+		"selected directory itself is scanned regardless of its name",
 		"nested Go modules",
 	} {
 		if !strings.Contains(stdout, expected) {

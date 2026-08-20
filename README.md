@@ -124,12 +124,14 @@ ferret migrate run path/to/project
 ferret migrate run scripts/query.fql
 ```
 
-For directories inside a Go module, the command migrates the containing module.
-It rewrites documented Ferret v1 imports to their Ferret v2 compatibility
-packages and updates `go.mod` and `go.sum` only when an import was rewritten. A
-directory without a containing `go.mod` is accepted when it has no eligible Go
-source; it is migrated as an FQL-only project rooted at that directory. A
-standalone file migration changes only that file.
+The selected directory is the migration boundary, including when the path is
+omitted and defaults to `.`. When selected Go source belongs to a containing Go
+module, the command uses that module for metadata and dependency updates without
+scanning source outside the selected directory. It rewrites documented Ferret
+v1 imports to their Ferret v2 compatibility packages and updates `go.mod` and
+`go.sum` only when a selected import was rewritten. A selected directory with no
+eligible Go source is treated as FQL-only even when a containing `go.mod` exists.
+A standalone file migration changes only that file.
 
 The command finds lowercase `.fql` files and preserves v1's implicit result for
 a final top-level `FOR` by returning it explicitly:
@@ -164,16 +166,23 @@ ferret migrate run --dry-run
 ferret migrate run --print path/to/project
 ```
 
-The source scan excludes `vendor`, `testdata`, `node_modules`, hidden and
-underscore-prefixed directories, and nested Go modules. Malformed FQL is left
-unchanged and reported with its first useful diagnostic and line while other
-files continue to migrate. Unsupported and generated-file imports are also
-reported as manual follow-up. Symlink targets are rejected, and directory
+Within the selected directory, the source scan excludes descendant `vendor`,
+`testdata`, `node_modules`, hidden and underscore-prefixed directories, and
+nested Go modules. The selected directory itself is scanned even when its name
+would be excluded as a descendant, such as `.tmp` or `testdata`. Malformed FQL
+is left unchanged and reported with its first useful diagnostic and line while
+other files continue to migrate. Unsupported and generated-file imports are
+also reported as manual follow-up. Symlink targets are rejected, and directory
 symlinks are not followed.
+
+When the selected directory covers only part of a Go module, migration retains
+the existing Ferret v1 dependency because source outside the selected directory
+is not inspected. Run the migration from the module root when the entire module
+is ready to remove that dependency.
 
 Migration is intentionally limited to documented mechanical changes. It does
 not translate arbitrary v1 APIs or application logic, rewrite generated Go
-files or files under excluded directories, or guess replacements for
+files or source in excluded descendant directories, or guess replacements for
 unsupported v1 packages such as the former drivers packages. If a project
 vendors dependencies, run `go mod vendor` after reviewing and applying the
 migration.

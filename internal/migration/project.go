@@ -38,30 +38,25 @@ func discoverMigrationProject(ctx context.Context, runner Runner, directory stri
 		return nil, fmt.Errorf("migration path is not a regular FQL file or directory: %s", directory)
 	}
 
-	goModPath, hasGoModule, err := findContainingMigrationGoMod(ctx, target)
-	if err != nil {
-		return nil, err
-	}
-
-	root := target
-	if hasGoModule {
-		root = filepath.Dir(goModPath)
-	}
-
-	files, err := scanMigrationFiles(ctx, root)
+	files, err := scanMigrationFiles(ctx, target)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(files.Go) == 0 {
-		return &migrationProject{Root: root, FQLFiles: files.FQL}, nil
+		return &migrationProject{Root: target, FQLFiles: files.FQL}, nil
+	}
+
+	goModPath, hasGoModule, err := findContainingMigrationGoMod(ctx, target)
+	if err != nil {
+		return nil, err
 	}
 
 	if !hasGoModule {
 		return nil, fmt.Errorf(
 			"%w; Go source was found under %s, so run ferret migrate run from inside a Go module",
 			goproject.ErrNoModule,
-			root,
+			target,
 		)
 	}
 
@@ -154,6 +149,11 @@ func discoverGoMigrationProject(
 		)
 	}
 
+	moduleWide, err := sameMigrationDirectory(directory, discovered.Root)
+	if err != nil {
+		return nil, err
+	}
+
 	goMod, err := snapshotMigrationFile(discovered.GoModPath)
 	if err != nil {
 		return nil, err
@@ -181,7 +181,7 @@ func discoverGoMigrationProject(
 		return nil, err
 	}
 
-	files, err = listMigrationGoFiles(ctx, runner, discovered.Root, files)
+	files, err = listMigrationGoFiles(ctx, runner, directory, files)
 	if err != nil {
 		return nil, err
 	}
@@ -196,6 +196,7 @@ func discoverGoMigrationProject(
 		FQLFiles:   files.FQL,
 		GoMod:      goMod,
 		GoSum:      goSum,
+		ModuleWide: moduleWide,
 	}, nil
 }
 
@@ -208,6 +209,20 @@ func sameMigrationFile(left, right string) (bool, error) {
 	rightInfo, err := os.Stat(right)
 	if err != nil {
 		return false, fmt.Errorf("stat Go-reported project file %s: %w", right, err)
+	}
+
+	return os.SameFile(leftInfo, rightInfo), nil
+}
+
+func sameMigrationDirectory(left, right string) (bool, error) {
+	leftInfo, err := os.Stat(left)
+	if err != nil {
+		return false, fmt.Errorf("stat selected migration directory %s: %w", left, err)
+	}
+
+	rightInfo, err := os.Stat(right)
+	if err != nil {
+		return false, fmt.Errorf("stat discovered module root %s: %w", right, err)
 	}
 
 	return os.SameFile(leftInfo, rightInfo), nil
@@ -251,10 +266,10 @@ func scanMigrationFiles(ctx context.Context, root string) (migrationFiles, error
 func listMigrationGoFiles(
 	ctx context.Context,
 	runner Runner,
-	root string,
+	directory string,
 	files migrationFiles,
 ) (migrationFiles, error) {
-	output, err := runner.Run(ctx, root, "list", "-e", "-json", "-mod=readonly", "./...")
+	output, err := runner.Run(ctx, directory, "list", "-e", "-json", "-mod=readonly", "./...")
 	if err != nil {
 		return migrationFiles{}, fmt.Errorf("enumerate project Go files: %w", err)
 	}

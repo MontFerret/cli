@@ -234,30 +234,168 @@ func TestMigratorReportsMalformedStandaloneFQL(t *testing.T) {
 	}
 }
 
-func TestMigratorDirectoryInsideModuleTargetsContainingModule(t *testing.T) {
+func TestMigratorAcceptsExplicitExcludedDirectoryTargets(t *testing.T) {
+	for _, name := range []string{".hidden", "_generated", "vendor", "testdata", "node_modules"} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			target := filepath.Join(root, name)
+			writeMigrationTargetFile(t, target, "query.fql", "FOR x IN 1..3 RETURN x")
+
+			migrator, runner := newFixtureMigrator()
+			result, err := migrator.Migrate(context.Background(), Options{Path: target})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !result.Applied || result.ScannedFiles != 0 ||
+				result.ScannedFQLFiles != 1 || result.MigratedFQLFiles != 1 {
+				t.Fatalf("unexpected explicit-directory migration: %#v", result)
+			}
+			assertMigrationRoot(t, result.Root, target)
+
+			if got := readMigrationFixture(t, filepath.Join(target, "query.fql")); !strings.HasPrefix(got, "return for") {
+				t.Fatalf("explicitly selected FQL was not migrated:\n%s", got)
+			}
+
+			if runner.runCalls != 0 {
+				t.Fatalf("FQL-only directory invoked Go tooling %d times", runner.runCalls)
+			}
+		})
+	}
+}
+
+func TestMigratorFQLOnlySubdirectoryInsideModuleSkipsGoTooling(t *testing.T) {
+	tests := []struct {
+		name   string
+		goMod  string
+		source bool
+	}{
+		{
+			name:   "valid module",
+			goMod:  "module example.com/app\n\ngo 1.26.0\n",
+			source: true,
+		},
+		{
+			name:   "malformed module",
+			goMod:  "module [\n",
+			source: true,
+		},
+		{
+			name:  "empty target",
+			goMod: "module example.com/app\n\ngo 1.26.0\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeMigrationTargetFile(t, root, "go.mod", tt.goMod)
+			writeMigrationTargetFile(t, root, "main.go", "package app\n")
+			writeMigrationTargetFile(t, root, "root.fql", "FOR x IN 1..3 RETURN x")
+			rootFQLBefore := readMigrationFixture(t, filepath.Join(root, "root.fql"))
+
+			target := filepath.Join(root, ".tmp")
+			if err := os.Mkdir(target, 0o755); err != nil {
+				t.Fatal(err)
+			}
+
+			if tt.source {
+				writeMigrationTargetFile(t, target, "query.fql", "FOR x IN 1..3 RETURN x")
+			}
+
+			migrator, runner := newFixtureMigrator()
+			result, err := migrator.Migrate(context.Background(), Options{Path: target})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			wantCount := 0
+			if tt.source {
+				wantCount = 1
+			}
+
+			if result.Applied != tt.source || result.GoModPath != "" ||
+				result.ScannedFiles != 0 || result.ScannedFQLFiles != wantCount ||
+				result.MigratedFQLFiles != wantCount {
+				t.Fatalf("unexpected scoped FQL-only migration: %#v", result)
+			}
+			assertMigrationRoot(t, result.Root, target)
+
+			if runner.runCalls != 0 || runner.getCalls != 0 {
+				t.Fatalf("scoped FQL-only migration invoked Go tooling: runs=%d gets=%d", runner.runCalls, runner.getCalls)
+			}
+
+			if got := readMigrationFixture(t, filepath.Join(root, "root.fql")); got != rootFQLBefore {
+				t.Fatalf("FQL outside selected directory changed:\n%s", got)
+			}
+
+			if tt.source {
+				if got := readMigrationFixture(t, filepath.Join(target, "query.fql")); !strings.HasPrefix(got, "return for") {
+					t.Fatalf("selected FQL was not migrated:\n%s", got)
+				}
+			}
+		})
+	}
+}
+
+func TestMigratorDirectoryInsideModuleScopesSourcesToTarget(t *testing.T) {
 	root := writeMigrationFixture(t, `module example.com/app
 
 go 1.26.0
+
+require github.com/MontFerret/ferret v1.0.0
 `, map[string]string{
-		"main.go":           "package app\n",
-		"root.fql":          "FOR x IN 1..3 RETURN x",
+		"main.go": `package app
+import "github.com/MontFerret/ferret"
+`,
+		"root.fql": "FOR x IN 1..3 RETURN x",
+		"scripts/main.go": `package scripts
+import "github.com/MontFerret/ferret"
+`,
 		"scripts/query.fql": "FOR x IN 1..3 RETURN x",
 	})
+	rootGoBefore := readMigrationFixture(t, filepath.Join(root, "main.go"))
+	rootFQLBefore := readMigrationFixture(t, filepath.Join(root, "root.fql"))
 
-	migrator, _ := newFixtureMigrator()
+	migrator, runner := newFixtureMigrator()
 	result, err := migrator.Migrate(context.Background(), Options{Path: filepath.Join(root, "scripts")})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !result.Applied || result.ScannedFiles != 1 || result.ScannedFQLFiles != 2 || result.MigratedFQLFiles != 2 {
-		t.Fatalf("unexpected containing-module migration: %#v", result)
+	if !result.Applied || result.ScannedFiles != 1 || result.ScannedFQLFiles != 1 ||
+		result.UpdatedImports != 1 || result.MigratedFQLFiles != 1 || !result.DependenciesChanged {
+		t.Fatalf("unexpected scoped module migration: %#v", result)
+	}
+	assertMigrationRoot(t, result.Root, root)
+
+	if runner.getCalls != 1 {
+		t.Fatalf("dependency resolution calls = %d, want 1", runner.getCalls)
 	}
 
-	for _, path := range []string{"root.fql", "scripts/query.fql"} {
-		if got := readMigrationFixture(t, filepath.Join(root, filepath.FromSlash(path))); !strings.HasPrefix(got, "return for") {
-			t.Fatalf("module FQL %s was not migrated:\n%s", path, got)
-		}
+	if got := readMigrationFixture(t, filepath.Join(root, "main.go")); got != rootGoBefore {
+		t.Fatalf("Go source outside selected directory changed:\n%s", got)
+	}
+
+	if got := readMigrationFixture(t, filepath.Join(root, "root.fql")); got != rootFQLBefore {
+		t.Fatalf("FQL outside selected directory changed:\n%s", got)
+	}
+
+	if got := readMigrationFixture(t, filepath.Join(root, "scripts", "main.go")); !strings.Contains(got, v2CompatPath) {
+		t.Fatalf("selected Go source was not migrated:\n%s", got)
+	}
+
+	if got := readMigrationFixture(t, filepath.Join(root, "scripts", "query.fql")); !strings.HasPrefix(got, "return for") {
+		t.Fatalf("selected FQL was not migrated:\n%s", got)
+	}
+
+	parsed := parseMigrationFixtureMod(t, root)
+	if version, _ := migrationRequirement(parsed, v1ModulePath); version != "v1.0.0" {
+		t.Fatalf("scoped migration removed the module-wide v1 requirement: %q", version)
+	}
+
+	if version, indirect := migrationRequirement(parsed, v2ModulePath); version != fixtureFerretVersion || indirect {
+		t.Fatalf("unexpected v2 requirement after scoped migration: version=%q indirect=%t", version, indirect)
 	}
 }
 
@@ -353,6 +491,57 @@ func BenchmarkDiscoverFQLOnlyMigrationProject(b *testing.B) {
 	}
 }
 
+func BenchmarkDiscoverExplicitFQLOnlyMigrationSubtree(b *testing.B) {
+	root := b.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(root, "go.mod"),
+		[]byte("module example.com/app\n\ngo 1.26.0\n"),
+		0o644,
+	); err != nil {
+		b.Fatal(err)
+	}
+
+	target := filepath.Join(root, ".hidden")
+	if err := os.Mkdir(target, 0o755); err != nil {
+		b.Fatal(err)
+	}
+
+	for index := range 100 {
+		name := fmt.Sprintf("query_%03d.fql", index)
+		if err := os.WriteFile(filepath.Join(root, name), []byte("RETURN 1\n"), 0o644); err != nil {
+			b.Fatal(err)
+		}
+
+		if err := os.WriteFile(filepath.Join(target, name), []byte("RETURN 1\n"), 0o644); err != nil {
+			b.Fatal(err)
+		}
+	}
+
+	runner := new(fixtureGoRunner)
+	resolvedTarget, err := filepath.EvalSymlinks(target)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
+
+	for range b.N {
+		project, err := discoverMigrationProject(context.Background(), runner, target)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		if len(project.GoFiles) != 0 || len(project.FQLFiles) != 100 ||
+			filepath.Dir(project.FQLFiles[0]) != resolvedTarget {
+			b.Fatalf("unexpected discovered project: %#v", project)
+		}
+	}
+
+	if runner.runCalls != 0 {
+		b.Fatalf("FQL-only discovery invoked Go tooling %d times", runner.runCalls)
+	}
+}
+
 func writeMigrationTargetFile(t *testing.T, root, name, content string) {
 	t.Helper()
 
@@ -363,5 +552,18 @@ func writeMigrationTargetFile(t *testing.T, root, name, content string) {
 
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func assertMigrationRoot(t *testing.T, got, want string) {
+	t.Helper()
+
+	same, err := sameMigrationDirectory(got, want)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !same {
+		t.Fatalf("migration root = %q, want %q", got, want)
 	}
 }

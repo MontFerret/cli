@@ -12,7 +12,10 @@ import (
 
 func renderMigrationStatus(output io.Writer, result *migration.Result, mode migration.Mode) {
 	fmt.Fprintln(output, "Ferret v1 → v2 compatibility migration")
-	fmt.Fprintln(output, "✓ Found go.mod")
+	if result.GoModPath != "" {
+		fmt.Fprintln(output, "✓ Found go.mod")
+	}
+
 	fmt.Fprintf(output, "✓ Scanned %d Go %s\n", result.ScannedFiles, migrationNoun(result.ScannedFiles, "file", "files"))
 	fmt.Fprintf(output, "✓ Scanned %d FQL %s\n", result.ScannedFQLFiles, migrationNoun(result.ScannedFQLFiles, "file", "files"))
 
@@ -100,8 +103,10 @@ func renderMigrationStatus(output io.Writer, result *migration.Result, mode migr
 	}
 
 	fmt.Fprintln(output, "Migration completed.")
-	fmt.Fprintln(output, "Your project now uses the Ferret v2 compatibility API.")
-	fmt.Fprintln(output, "You can migrate to the native v2 API incrementally.")
+	if result.UpdatedImports > 0 {
+		fmt.Fprintln(output, "Migrated Go source now uses the Ferret v2 compatibility API.")
+		fmt.Fprintln(output, "You can migrate to the native v2 API incrementally.")
+	}
 }
 
 func renderMigrationWarnings(output io.Writer, result *migration.Result) {
@@ -120,7 +125,7 @@ func renderMigrationWarnings(output io.Writer, result *migration.Result) {
 	}
 
 	if result.VendorDetected && len(result.Changes) > 0 {
-		fmt.Fprintln(output, "Vendor directory was not modified; run go mod vendor after reviewing the migration.")
+		fmt.Fprintln(output, "Project uses vendoring; run go mod vendor after reviewing the migration.")
 	}
 }
 
