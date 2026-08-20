@@ -20,10 +20,10 @@ type (
 	// Mode controls whether a migration plan is applied or only inspected.
 	Mode uint8
 
-	// Options selects the project directory and mutation mode.
+	// Options selects the migration target and mutation mode.
 	Options struct {
-		Directory string
-		Mode      Mode
+		Path string
+		Mode Mode
 	}
 
 	// CompatibilityOptions selects standalone FQL source and its original Ferret version.

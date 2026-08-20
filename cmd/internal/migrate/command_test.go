@@ -15,7 +15,7 @@ import (
 	"github.com/MontFerret/cli/v2/pkg/config"
 )
 
-func TestMigrateCommandAppliesAndRendersMigration(t *testing.T) {
+func TestMigrateRunAppliesAndRendersMigration(t *testing.T) {
 	service := &fakeMigrationService{result: &migration.Result{
 		ScannedFiles:        4,
 		ScannedFQLFiles:     2,
@@ -30,7 +30,7 @@ func TestMigrateCommandAppliesAndRendersMigration(t *testing.T) {
 		},
 	}}
 
-	stdout, stderr, err := executeMigrateCommand(t, service)
+	stdout, stderr, err := executeMigrateCommand(t, service, "run")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,12 +54,24 @@ func TestMigrateCommandAppliesAndRendersMigration(t *testing.T) {
 	if stderr != "" {
 		t.Fatalf("unexpected stderr: %s", stderr)
 	}
-	if service.calls != 1 || service.options.Mode != migration.ModeApply || service.options.Directory != "." {
+	if service.calls != 1 || service.options.Mode != migration.ModeApply || service.options.Path != "." {
 		t.Fatalf("unexpected service call: calls=%d options=%#v", service.calls, service.options)
 	}
 }
 
-func TestMigrateCommandDryRunListsFilesWithoutApplying(t *testing.T) {
+func TestMigrateRunPassesExplicitTarget(t *testing.T) {
+	service := new(fakeMigrationService)
+
+	if _, _, err := executeMigrateCommand(t, service, "run", "scripts/query.fql"); err != nil {
+		t.Fatal(err)
+	}
+
+	if service.calls != 1 || service.options.Path != "scripts/query.fql" || service.options.Mode != migration.ModeApply {
+		t.Fatalf("unexpected service call: calls=%d options=%#v", service.calls, service.options)
+	}
+}
+
+func TestMigrateRunDryRunListsFilesWithoutApplying(t *testing.T) {
 	service := &fakeMigrationService{result: &migration.Result{
 		ScannedFiles:     3,
 		ScannedFQLFiles:  1,
@@ -70,7 +82,7 @@ func TestMigrateCommandDryRunListsFilesWithoutApplying(t *testing.T) {
 		},
 	}}
 
-	stdout, stderr, err := executeMigrateCommand(t, service, "--dry-run")
+	stdout, stderr, err := executeMigrateCommand(t, service, "run", "--dry-run")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +107,7 @@ func TestMigrateCommandDryRunListsFilesWithoutApplying(t *testing.T) {
 	}
 }
 
-func TestMigrateCommandPrintsDeterministicUnifiedDiffOnlyOnStdout(t *testing.T) {
+func TestMigrateRunPrintsDeterministicUnifiedDiffOnlyOnStdout(t *testing.T) {
 	service := &fakeMigrationService{result: &migration.Result{
 		ScannedFQLFiles:  1,
 		MigratedFQLFiles: 1,
@@ -109,7 +121,7 @@ func TestMigrateCommandPrintsDeterministicUnifiedDiffOnlyOnStdout(t *testing.T) 
 		},
 	}}
 
-	stdout, stderr, err := executeMigrateCommand(t, service, "--print")
+	stdout, stderr, err := executeMigrateCommand(t, service, "run", "--print")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +148,7 @@ func TestMigrateCommandPrintsDeterministicUnifiedDiffOnlyOnStdout(t *testing.T) 
 	}
 }
 
-func TestMigrateCommandRendersManualAndVendorWarnings(t *testing.T) {
+func TestMigrateRunRendersManualAndVendorWarnings(t *testing.T) {
 	service := &fakeMigrationService{result: &migration.Result{
 		ScannedFiles:   2,
 		VendorDetected: true,
@@ -151,7 +163,7 @@ func TestMigrateCommandRendersManualAndVendorWarnings(t *testing.T) {
 		},
 	}}
 
-	stdout, stderr, err := executeMigrateCommand(t, service)
+	stdout, stderr, err := executeMigrateCommand(t, service, "run")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,9 +182,9 @@ func TestMigrateCommandRendersManualAndVendorWarnings(t *testing.T) {
 	}
 }
 
-func TestMigrateCommandRejectsConflictingModesBeforeService(t *testing.T) {
+func TestMigrateRunRejectsConflictingModesBeforeService(t *testing.T) {
 	service := new(fakeMigrationService)
-	_, _, err := executeMigrateCommand(t, service, "--dry-run", "--print")
+	_, _, err := executeMigrateCommand(t, service, "run", "--dry-run", "--print")
 	if err == nil || !strings.Contains(err.Error(), "cannot be used together") {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -181,9 +193,9 @@ func TestMigrateCommandRejectsConflictingModesBeforeService(t *testing.T) {
 	}
 }
 
-func TestMigrateCommandRejectsArgumentsAndPropagatesServiceErrors(t *testing.T) {
+func TestMigrateRunRejectsExtraArgumentsAndPropagatesServiceErrors(t *testing.T) {
 	service := new(fakeMigrationService)
-	if _, _, err := executeMigrateCommand(t, service, "v1"); err == nil {
+	if _, _, err := executeMigrateCommand(t, service, "run", "one", "two"); err == nil {
 		t.Fatal("expected positional argument error")
 	}
 	if service.calls != 0 {
@@ -192,9 +204,61 @@ func TestMigrateCommandRejectsArgumentsAndPropagatesServiceErrors(t *testing.T) 
 
 	want := errors.New("migration failed")
 	service.err = want
-	_, _, err := executeMigrateCommand(t, service)
+	_, _, err := executeMigrateCommand(t, service, "run")
 	if !errors.Is(err, want) {
 		t.Fatalf("expected service error, got %v", err)
+	}
+}
+
+func TestMigrateCommandShowsHelpWithoutRunningMigration(t *testing.T) {
+	service := new(fakeMigrationService)
+
+	stdout, stderr, err := executeMigrateCommand(t, service)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, expected := range []string{"Available Commands:", "check", "run"} {
+		if !strings.Contains(stdout, expected) {
+			t.Fatalf("expected help to contain %q:\n%s", expected, stdout)
+		}
+	}
+
+	if stderr != "" || service.calls != 0 || service.checkCalls != 0 {
+		t.Fatalf("unexpected help side effects: stderr=%q migrate=%d check=%d", stderr, service.calls, service.checkCalls)
+	}
+
+	if _, _, err := executeMigrateCommand(t, service, "--dry-run"); err == nil {
+		t.Fatal("expected the old parent-level --dry-run flag to be rejected")
+	}
+
+	if service.calls != 0 {
+		t.Fatalf("migration service was called %d times", service.calls)
+	}
+}
+
+func TestMigrateRunHelpDocumentsTargetsAndMutationBoundaries(t *testing.T) {
+	service := new(fakeMigrationService)
+
+	stdout, stderr, err := executeMigrateCommand(t, service, "run", "--help")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, expected := range []string{
+		"migrate run [path]",
+		"standalone FQL file or project directory",
+		"do not require a Go module or Go toolchain",
+		"skips vendor, testdata, node_modules, hidden and underscore-prefixed directories",
+		"nested Go modules",
+	} {
+		if !strings.Contains(stdout, expected) {
+			t.Fatalf("expected help to contain %q:\n%s", expected, stdout)
+		}
+	}
+
+	if stderr != "" || service.calls != 0 {
+		t.Fatalf("unexpected help side effects: stderr=%q calls=%d", stderr, service.calls)
 	}
 }
 

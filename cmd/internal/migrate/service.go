@@ -7,7 +7,7 @@ import (
 )
 
 type (
-	// Service performs the project migration independently of command rendering.
+	// Service performs target migration independently of command rendering.
 	Service interface {
 		Migrate(context.Context, migration.Options) (*migration.Result, error)
 	}

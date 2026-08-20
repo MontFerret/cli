@@ -101,7 +101,7 @@ ferret fmt script.fql       # Format source
 ferret build script.fql     # Compile to a bytecode artifact
 ferret inspect script.fql   # Print compiled program details
 ferret debug script.fql     # Start the interactive debugger
-ferret migrate              # Migrate supported Ferret v1 Go and FQL source behavior
+ferret migrate run .        # Migrate supported Ferret v1 Go and FQL source behavior
 ferret migrate check .      # Check FQL source for v1 compatibility issues
 ferret browser open         # Start a managed browser
 ferret config list          # Show configuration
@@ -113,19 +113,26 @@ ferret version              # Show version information
 
 Run `ferret [command] --help` for command-specific options.
 
-## Migrating embedded Ferret applications
+## Migrating Ferret v1 projects
 
-Run `ferret migrate` from anywhere inside a Go module that embeds Ferret v1:
+Run `ferret migrate run` with a standalone lowercase `.fql` file or a project
+directory. The path defaults to the current directory:
 
 ```bash
-ferret migrate
+ferret migrate run
+ferret migrate run path/to/project
+ferret migrate run scripts/query.fql
 ```
 
-The command rewrites documented Ferret v1 imports to their Ferret v2
-compatibility packages and updates `go.mod` and `go.sum` only when an import was
-rewritten. It also finds lowercase `.fql` files in the containing Go module and
-preserves v1's implicit result for a final top-level `FOR` by returning it
-explicitly:
+For directories inside a Go module, the command migrates the containing module.
+It rewrites documented Ferret v1 imports to their Ferret v2 compatibility
+packages and updates `go.mod` and `go.sum` only when an import was rewritten. A
+directory without a containing `go.mod` is accepted when it has no eligible Go
+source; it is migrated as an FQL-only project rooted at that directory. A
+standalone file migration changes only that file.
+
+The command finds lowercase `.fql` files and preserves v1's implicit result for
+a final top-level `FOR` by returning it explicitly:
 
 ```fql
 // Before
@@ -144,22 +151,25 @@ Only a structurally recognized final top-level `FOR` without an explicit
 terminal `return` is changed. Nested, assigned, expression-contained,
 function-contained, non-final, and already-returned loops remain untouched.
 Changed FQL is canonically formatted; files needing only formatting remain
-byte-for-byte unchanged. A project with only FQL migrations does not run
-`go get` or change Go module dependencies.
+byte-for-byte unchanged. FQL-only targets do not require a Go module or Go
+toolchain and do not change Go dependencies. A directory containing eligible Go
+source still requires a containing Go module so import and dependency changes
+remain one safe migration.
 
 Preview the affected paths without changing the project, or print a unified
 diff for review:
 
 ```bash
-ferret migrate --dry-run
-ferret migrate --print
+ferret migrate run --dry-run
+ferret migrate run --print path/to/project
 ```
 
 The source scan excludes `vendor`, `testdata`, `node_modules`, hidden and
 underscore-prefixed directories, and nested Go modules. Malformed FQL is left
 unchanged and reported with its first useful diagnostic and line while other
 files continue to migrate. Unsupported and generated-file imports are also
-reported as manual follow-up.
+reported as manual follow-up. Symlink targets are rejected, and directory
+symlinks are not followed.
 
 Migration is intentionally limited to documented mechanical changes. It does
 not translate arbitrary v1 APIs or application logic, rewrite generated Go
@@ -167,6 +177,10 @@ files or files under excluded directories, or guess replacements for
 unsupported v1 packages such as the former drivers packages. If a project
 vendors dependencies, run `go mod vendor` after reviewing and applying the
 migration.
+
+Migration execution is available only through `ferret migrate run`. Bare
+`ferret migrate` displays the `check` and `run` subcommands and does not modify
+files.
 
 ### Checking FQL compatibility
 
