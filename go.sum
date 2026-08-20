@@ -38,8 +38,8 @@ github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.21 h1:43m9TrqE4l9z4PBy3
 github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.21/go.mod h1:TD0GRnqgI4/dqXOgDdAHUYWFQpMe/6IWK4Rnd9JDY3s=
 github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.14 h1:rCQul9gpksYoHTeJ5UIn6TunBHYx9KFmTUqXmCrkfUY=
 github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.14/go.mod h1:FYiv25ZJUsaaAT8zJ61BGsu62+mLjWUvo8Lr6kg16E0=
-github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.14 h1:M3UIjE85ImpCTHORjwnURbHlCLr9bVk4tJC2I7l7dtw=
-github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.14/go.mod h1:Y3l2+zqGtJuqYCW7uS07GMxb7yNJaHfZEDrDsZnG+Hc=
+github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.15 h1:53iC3yiqxFLz65aJT7Z5K1VOGuR3po9mU5kZqN0Zvzw=
+github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.15/go.mod h1:Y3l2+zqGtJuqYCW7uS07GMxb7yNJaHfZEDrDsZnG+Hc=
 github.com/MontFerret/contrib/modules/xml v1.0.0-rc.15 h1:NlvLP4fObaj7dNvn3B2j+JkEYmDbdwKui+jayBBI7K0=
 github.com/MontFerret/contrib/modules/xml v1.0.0-rc.15/go.mod h1:RCuSflR388JCE9GDCtRTSyMEb93RlBCescphFNpoeIo=
 github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.14 h1:qXtvp7EWMEY/IjbIFV68K++Oi5c+WOUKLUu7vGstSlI=
