@@ -52,3 +52,15 @@ func (migrator *Migrator) Migrate(ctx context.Context, options Options) (*Result
 
 	return &plan.result, nil
 }
+
+// CheckCompatibility reports supported v1 FQL behavior changes without modifying source files.
+func (migrator *Migrator) CheckCompatibility(
+	ctx context.Context,
+	options CompatibilityOptions,
+) (*CompatibilityResult, error) {
+	if migrator == nil {
+		return nil, fmt.Errorf("compatibility checker is not configured")
+	}
+
+	return checkFQLCompatibility(ctx, options)
+}

@@ -57,7 +57,7 @@ func InspectCommand(store *config.Store) *cobra.Command {
 	return inspectcmd.New(store)
 }
 
-// MigrateCommand creates the Ferret v1-to-v2 compatibility migration command.
+// MigrateCommand creates the Ferret compatibility migration command group.
 func MigrateCommand(store *config.Store, service migrationService) *cobra.Command {
 	return migratecmd.New(store, service)
 }

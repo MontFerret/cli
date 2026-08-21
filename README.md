@@ -101,7 +101,8 @@ ferret fmt script.fql       # Format source
 ferret build script.fql     # Compile to a bytecode artifact
 ferret inspect script.fql   # Print compiled program details
 ferret debug script.fql     # Start the interactive debugger
-ferret migrate              # Migrate supported Ferret v1 Go and FQL source behavior
+ferret migrate run .        # Migrate supported Ferret v1 Go and FQL source behavior
+ferret migrate check .      # Check FQL source for v1 compatibility issues
 ferret browser open         # Start a managed browser
 ferret config list          # Show configuration
 ferret mod search sqlite    # Search the Ferret module registry
@@ -112,19 +113,28 @@ ferret version              # Show version information
 
 Run `ferret [command] --help` for command-specific options.
 
-## Migrating embedded Ferret applications
+## Migrating Ferret v1 projects
 
-Run `ferret migrate` from anywhere inside a Go module that embeds Ferret v1:
+Run `ferret migrate run` with a standalone lowercase `.fql` file or a project
+directory. The path defaults to the current directory:
 
 ```bash
-ferret migrate
+ferret migrate run
+ferret migrate run path/to/project
+ferret migrate run scripts/query.fql
 ```
 
-The command rewrites documented Ferret v1 imports to their Ferret v2
-compatibility packages and updates `go.mod` and `go.sum` only when an import was
-rewritten. It also finds lowercase `.fql` files in the containing Go module and
-preserves v1's implicit result for a final top-level `FOR` by returning it
-explicitly:
+The selected directory is the migration boundary, including when the path is
+omitted and defaults to `.`. When selected Go source belongs to a containing Go
+module, the command uses that module for metadata and dependency updates without
+scanning source outside the selected directory. It rewrites documented Ferret
+v1 imports to their Ferret v2 compatibility packages and updates `go.mod` and
+`go.sum` only when a selected import was rewritten. A selected directory with no
+eligible Go source is treated as FQL-only even when a containing `go.mod` exists.
+A standalone file migration changes only that file.
+
+The command finds lowercase `.fql` files and preserves v1's implicit result for
+a final top-level `FOR` by returning it explicitly:
 
 ```fql
 // Before
@@ -143,29 +153,75 @@ Only a structurally recognized final top-level `FOR` without an explicit
 terminal `return` is changed. Nested, assigned, expression-contained,
 function-contained, non-final, and already-returned loops remain untouched.
 Changed FQL is canonically formatted; files needing only formatting remain
-byte-for-byte unchanged. A project with only FQL migrations does not run
-`go get` or change Go module dependencies.
+byte-for-byte unchanged. FQL-only targets do not require a Go module or Go
+toolchain and do not change Go dependencies. A directory containing eligible Go
+source still requires a containing Go module so import and dependency changes
+remain one safe migration.
 
 Preview the affected paths without changing the project, or print a unified
 diff for review:
 
 ```bash
-ferret migrate --dry-run
-ferret migrate --print
+ferret migrate run --dry-run
+ferret migrate run --print path/to/project
 ```
 
-The source scan excludes `vendor`, `testdata`, `node_modules`, hidden and
-underscore-prefixed directories, and nested Go modules. Malformed FQL is left
-unchanged and reported with its first useful diagnostic and line while other
-files continue to migrate. Unsupported and generated-file imports are also
-reported as manual follow-up.
+Within the selected directory, the source scan excludes descendant `vendor`,
+`testdata`, `node_modules`, hidden and underscore-prefixed directories, and
+nested Go modules. The selected directory itself is scanned even when its name
+would be excluded as a descendant, such as `.tmp` or `testdata`. Malformed FQL
+is left unchanged and reported with its first useful diagnostic and line while
+other files continue to migrate. Unsupported and generated-file imports are
+also reported as manual follow-up. Symlink targets are rejected, and directory
+symlinks are not followed.
+
+When the selected directory covers only part of a Go module, migration retains
+the existing Ferret v1 dependency because source outside the selected directory
+is not inspected. Run the migration from the module root when the entire module
+is ready to remove that dependency.
 
 Migration is intentionally limited to documented mechanical changes. It does
 not translate arbitrary v1 APIs or application logic, rewrite generated Go
-files or files under excluded directories, or guess replacements for
+files or source in excluded descendant directories, or guess replacements for
 unsupported v1 packages such as the former drivers packages. If a project
 vendors dependencies, run `go mod vendor` after reviewing and applying the
 migration.
+
+Migration execution is available only through `ferret migrate run`. Bare
+`ferret migrate` displays the `check` and `run` subcommands and does not modify
+files.
+
+### Checking FQL compatibility
+
+Check a standalone FQL file or recursively inspect a directory without
+modifying source files:
+
+```bash
+ferret migrate check --from v1 .
+ferret migrate check scripts/query.fql
+```
+
+The path defaults to the current directory, and `--from` currently defaults to
+and accepts only `v1`. The check does not require a Go module, run Go tooling,
+resolve dependencies, or format source. Directory scans include lowercase
+`.fql` files in test fixtures, hidden or underscore-prefixed directories, and
+nested Go modules. They skip `.git`, `.hg`, `.svn`, `vendor`, and
+`node_modules`, and do not follow directory symlinks.
+
+Compatibility findings use editor-friendly locations and include a suggested
+manual fix:
+
+```text
+1_hackernews.fql:2:1: Final collecting FOR no longer becomes the script result in Ferret v2.
+  help: Add `return` before this loop.
+
+Found 1 v1 compatibility issue in 1 of 12 FQL files.
+```
+
+The command exits nonzero when it finds a compatibility issue or cannot parse
+an FQL file. Malformed files are reported while the remaining files continue
+to be checked. Filesystem, cancellation, and internal failures stop the check
+immediately.
 
 ## Module lifecycle
 

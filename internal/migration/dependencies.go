@@ -97,7 +97,9 @@ func planDependencyChanges(
 		}
 	}
 
-	setMigrationRequirements(parsed, targetVersion, !sources.RemainingV1)
+	// A subtree scan cannot prove that Ferret v1 imports are absent elsewhere in the module.
+	dropV1 := project.ModuleWide && !sources.RemainingV1
+	setMigrationRequirements(parsed, targetVersion, dropV1)
 	parsed.Cleanup()
 
 	updatedMod, err := parsed.Format()

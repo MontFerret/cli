@@ -18,12 +18,12 @@ func newV1ToV2Planner(runner Runner, version ferretVersionProvider) *v1ToV2Plann
 }
 
 func (planner *v1ToV2Planner) Plan(ctx context.Context, options Options) (*migrationPlan, error) {
-	directory := options.Directory
-	if directory == "" {
-		directory = defaultDirectory
+	target := options.Path
+	if target == "" {
+		target = defaultDirectory
 	}
 
-	project, err := discoverMigrationProject(ctx, planner.runner, directory)
+	project, err := discoverMigrationProject(ctx, planner.runner, target)
 	if err != nil {
 		return nil, err
 	}
@@ -66,10 +66,12 @@ func (planner *v1ToV2Planner) Plan(ctx context.Context, options Options) (*migra
 	sortManualActions(manualActions)
 
 	vendorDetected := false
-	if info, statErr := os.Stat(filepath.Join(project.Root, "vendor")); statErr == nil {
-		vendorDetected = info.IsDir()
-	} else if !os.IsNotExist(statErr) {
-		return nil, fmt.Errorf("stat project vendor directory: %w", statErr)
+	if project.GoModPath != "" {
+		if info, statErr := os.Stat(filepath.Join(project.Root, "vendor")); statErr == nil {
+			vendorDetected = info.IsDir()
+		} else if !os.IsNotExist(statErr) {
+			return nil, fmt.Errorf("stat project vendor directory: %w", statErr)
+		}
 	}
 
 	return &migrationPlan{

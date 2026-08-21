@@ -20,10 +20,35 @@ type (
 	// Mode controls whether a migration plan is applied or only inspected.
 	Mode uint8
 
-	// Options selects the project directory and mutation mode.
+	// Options selects the migration target and mutation mode.
 	Options struct {
-		Directory string
-		Mode      Mode
+		Path string
+		Mode Mode
+	}
+
+	// CompatibilityOptions selects standalone FQL source and its original Ferret version.
+	CompatibilityOptions struct {
+		Path string
+		From string
+	}
+
+	// CompatibilityDiagnosticKind distinguishes migration findings from sources that could not be checked.
+	CompatibilityDiagnosticKind uint8
+
+	// CompatibilityDiagnostic describes one deterministic, source-located check result.
+	CompatibilityDiagnostic struct {
+		Path    string
+		Message string
+		Help    string
+		Line    int
+		Column  int
+		Kind    CompatibilityDiagnosticKind
+	}
+
+	// CompatibilityResult describes a read-only compatibility check.
+	CompatibilityResult struct {
+		Diagnostics  []CompatibilityDiagnostic
+		ScannedFiles int
 	}
 
 	// Change contains one deterministic planned file replacement.
@@ -76,6 +101,7 @@ type (
 		FQLFiles   []string
 		GoMod      fileSnapshot
 		GoSum      fileSnapshot
+		ModuleWide bool
 	}
 
 	migrationPlan struct {
@@ -151,4 +177,16 @@ const (
 	ModeDryRun
 	// ModePrint calculates the plan for unified-diff rendering without modifying project files.
 	ModePrint
+)
+
+// CompatibilityVersionV1 identifies Ferret v1 source input.
+const CompatibilityVersionV1 = "v1"
+
+const (
+	// CompatibilityDiagnosticUnknown is the zero value for an unspecified diagnostic kind.
+	CompatibilityDiagnosticUnknown CompatibilityDiagnosticKind = iota
+	// CompatibilityDiagnosticIssue identifies source whose v1 behavior changes in v2.
+	CompatibilityDiagnosticIssue
+	// CompatibilityDiagnosticFailure identifies source that could not be checked.
+	CompatibilityDiagnosticFailure
 )

@@ -425,6 +425,18 @@ type (
 )
 ```
 
+or 
+
+```go
+type Type1 struct {
+    // ...
+}
+
+type Type2 struct {
+    // ...
+}
+```
+
 Rationale:
 
 - One method-bearing type per file keeps behavioral ownership obvious.

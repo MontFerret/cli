@@ -72,6 +72,15 @@ return for x in 1..3 {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			loop, err := finalTopLevelFQLFor(source.New("query.fql", test.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if loop == nil {
+				t.Fatal("expected compatibility detector to find the final loop")
+			}
+
 			result, err := migrateFQLSource(source.New("query.fql", test.input))
 			if err != nil {
 				t.Fatal(err)
@@ -145,6 +154,15 @@ RETURN values()`,
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			loop, err := finalTopLevelFQLFor(source.New("query.fql", test.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if loop != nil {
+				t.Fatal("compatibility detector found an excluded loop")
+			}
+
 			result, err := migrateFQLSource(source.New("query.fql", test.input))
 			if err != nil {
 				t.Fatal(err)

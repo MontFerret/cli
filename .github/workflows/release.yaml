@@ -31,3 +31,16 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify-website:
+    name: Notify website
+    needs: goreleaser
+    if: ${{ needs.goreleaser.result == 'success' && startsWith(github.ref_name, 'v2.') }}
+    uses: MontFerret/.github/.github/workflows/notify-website-release.yml@main
+    with:
+      tag: ${{ github.ref_name }}
+      release-url: ${{ format('https://github.com/{0}/releases/tag/{1}', github.repository, github.ref_name) }}
+      commit-sha: ${{ github.sha }}
+    secrets:
+      FERRET_RELEASE_APP_CLIENT_ID: ${{ secrets.FERRET_RELEASE_APP_CLIENT_ID }}
+      FERRET_RELEASE_APP_PRIVATE_KEY: ${{ secrets.FERRET_RELEASE_APP_PRIVATE_KEY }}

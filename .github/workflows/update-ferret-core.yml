@@ -8,41 +8,31 @@ permissions:
   contents: read
 
 jobs:
-  update:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      base-sha: ${{ steps.base.outputs.sha }}
+      changed: ${{ steps.dependency.outputs.changed }}
     env:
-      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       FERRET_VERSION: ${{ github.event.client_payload.version }}
     steps:
       - name: Validate dispatch payload
-        id: metadata
+        shell: bash
         run: |
+          set -euo pipefail
+
           semver_pattern='^v2\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
           if [[ ! "$FERRET_VERSION" =~ $semver_pattern ]]; then
             echo "::error title=Invalid Ferret release version::Expected a v2 SemVer tag, got '$FERRET_VERSION'."
             exit 1
           fi
 
-          update_branch="deps/ferret-core-${FERRET_VERSION#v}"
-          git check-ref-format --branch "$update_branch"
-          echo "branch=$update_branch" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ secrets.FERRET_RELEASE_APP_CLIENT_ID }}
-          private-key: ${{ secrets.FERRET_RELEASE_APP_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
-
       - name: Checkout default branch
         uses: actions/checkout@v7
         with:
-          token: ${{ steps.app-token.outputs.token }}
           ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -50,9 +40,26 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
+      - name: Record validated base commit
+        id: base
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base_sha="$(git rev-parse HEAD)"
+          if [[ ! "$base_sha" =~ ^([0-9A-Fa-f]{40}|[0-9A-Fa-f]{64})$ ]]; then
+            echo "::error title=Invalid base commit::Expected a 40- or 64-character commit ID."
+            exit 1
+          fi
+
+          echo "sha=$base_sha" >> "$GITHUB_OUTPUT"
+
       - name: Update Ferret Core dependency
         id: dependency
+        shell: bash
         run: |
+          set -euo pipefail
+
           go get "github.com/MontFerret/ferret/v2@${FERRET_VERSION}"
           go mod tidy
           git add -- go.mod go.sum
@@ -72,40 +79,56 @@ jobs:
         if: steps.dependency.outputs.changed == 'true'
         run: make compile
 
-      - name: Commit and push update branch
+      - name: Validate prepared dependency update
         if: steps.dependency.outputs.changed == 'true'
-        env:
-          UPDATE_BRANCH: ${{ steps.metadata.outputs.branch }}
+        shell: bash
         run: |
+          set -euo pipefail
+
+          staged_files="$(git diff --cached --name-only)"
+          if [[ -z "$staged_files" ]]; then
+            echo "::error title=Missing dependency update::Expected go.mod or go.sum to be staged."
+            exit 1
+          fi
+
+          while IFS= read -r staged_file; do
+            case "$staged_file" in
+              go.mod | go.sum)
+                ;;
+              *)
+                echo "::error title=Unexpected dependency update::Only go.mod and go.sum may be staged."
+                exit 1
+                ;;
+            esac
+          done <<< "$staged_files"
+
           if ! git diff --quiet; then
             echo "::error title=Unexpected generated changes::Validation modified tracked files outside the staged dependency update."
             git status --short
             exit 1
           fi
 
-          git config user.name "ferret-release[bot]"
-          git config user.email "ferret-release[bot]@users.noreply.github.com"
-          git switch -c "$UPDATE_BRANCH"
-          git commit -m "chore(deps): update Ferret Core to ${FERRET_VERSION}"
+          git diff --cached --check
 
-          remote_ref="refs/heads/${UPDATE_BRANCH}"
-          tracking_ref="refs/remotes/origin/${UPDATE_BRANCH}"
-          if git ls-remote --exit-code --heads origin "$remote_ref" >/dev/null; then
-            git fetch origin "${remote_ref}:${tracking_ref}"
-          fi
-
-          git push --force-with-lease --set-upstream origin "HEAD:${remote_ref}"
-
-      - name: Create or reuse pull request
+      - name: Upload validated dependency files
         if: steps.dependency.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          UPDATE_BRANCH: ${{ steps.metadata.outputs.branch }}
-        run: |
-          existing_pr="$(gh pr list --state open --head "$UPDATE_BRANCH" --json url --jq '.[0].url // empty')"
-          if [[ -n "$existing_pr" ]]; then
-            echo "Updated existing pull request: $existing_pr"
-            exit 0
-          fi
+        uses: actions/upload-artifact@v7
+        with:
+          name: ferret-core-dependency-update
+          path: |
+            go.mod
+            go.sum
+          if-no-files-found: error
+          retention-days: 1
 
-          gh pr create --base "$DEFAULT_BRANCH" --head "$UPDATE_BRANCH" --title "chore(deps): update Ferret Core to ${FERRET_VERSION}" --body "Automated Ferret Core dependency update triggered by Ferret Core release ${FERRET_VERSION}."
+  publish:
+    name: Publish Ferret Core update
+    needs: prepare
+    if: ${{ needs.prepare.outputs.changed == 'true' }}
+    uses: MontFerret/.github/.github/workflows/publish-ferret-core-update.yml@main
+    with:
+      version: ${{ github.event.client_payload.version }}
+      base-sha: ${{ needs.prepare.outputs.base-sha }}
+    secrets:
+      FERRET_RELEASE_APP_CLIENT_ID: ${{ secrets.FERRET_RELEASE_APP_CLIENT_ID }}
+      FERRET_RELEASE_APP_PRIVATE_KEY: ${{ secrets.FERRET_RELEASE_APP_PRIVATE_KEY }}

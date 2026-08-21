@@ -43,7 +43,7 @@ var _ = fmt.Sprintf
 	})
 
 	migrator, runner := newFixtureMigrator()
-	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	result, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ var _ = legacy.New
 	})
 
 	migrator, _ := newFixtureMigrator()
-	if _, err := migrator.Migrate(context.Background(), Options{Directory: root}); err != nil {
+	if _, err := migrator.Migrate(context.Background(), Options{Path: root}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -132,7 +132,7 @@ func generatedButMalformed(
 
 	generatedBefore := readMigrationFixture(t, filepath.Join(root, "generated.go"))
 	migrator, _ := newFixtureMigrator()
-	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	result, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ import "github.com/MontFerret/ferret/pkg/drivers/http"
 	before := snapshotMigrationFixture(t, root)
 	migrator, runner := newFixtureMigrator()
 
-	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	result, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +209,7 @@ import "github.com/MontFerret/ferret"
 	nestedBefore := readMigrationFixture(t, nestedPath)
 
 	migrator, _ := newFixtureMigrator()
-	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	result, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +246,7 @@ import "github.com/MontFerret/ferret/pkg/compiler"
 	})
 
 	migrator, _ := newFixtureMigrator()
-	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	result, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +302,7 @@ var _ = ferret.New
 			before := snapshotMigrationFixture(t, root)
 			migrator, runner := newFixtureMigrator()
 
-			result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+			result, err := migrator.Migrate(context.Background(), Options{Path: root})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -335,7 +335,7 @@ var _ = ferret.New
 	before := snapshotMigrationFixture(t, root)
 	migrator, runner := newFixtureMigrator()
 
-	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	result, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -402,7 +402,7 @@ var _ = ferret.New
 			})
 
 			migrator, runner := newFixtureMigrator()
-			result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+			result, err := migrator.Migrate(context.Background(), Options{Path: root})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -441,7 +441,7 @@ import "github.com/MontFerret/ferret"
 			before := snapshotMigrationFixture(t, root)
 			migrator, _ := newFixtureMigrator()
 
-			result, err := migrator.Migrate(context.Background(), Options{Directory: root, Mode: mode})
+			result, err := migrator.Migrate(context.Background(), Options{Path: root, Mode: mode})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -467,7 +467,7 @@ import "github.com/MontFerret/ferret"
 	})
 
 	migrator, runner := newFixtureMigrator()
-	first, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	first, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -476,7 +476,7 @@ import "github.com/MontFerret/ferret"
 	}
 
 	afterFirst := snapshotMigrationFixture(t, root)
-	second, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	second, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -506,7 +506,7 @@ import "github.com/MontFerret/ferret"
 	}
 
 	migrator, _ := newFixtureMigrator()
-	if _, err := migrator.Migrate(context.Background(), Options{Directory: root}); err != nil {
+	if _, err := migrator.Migrate(context.Background(), Options{Path: root}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -539,7 +539,7 @@ import "github.com/MontFerret/ferret"
 		return fixtureFerretVersion, nil
 	})}
 
-	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	result, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -547,7 +547,7 @@ import "github.com/MontFerret/ferret"
 		t.Fatalf("unexpected result: %#v", result)
 	}
 
-	second, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	second, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -568,7 +568,7 @@ go 1.25.0
 	goModBefore := readMigrationFixture(t, filepath.Join(root, "go.mod"))
 	migrator, runner := newFixtureMigrator()
 
-	first, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	first, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -588,7 +588,7 @@ go 1.25.0
 		t.Fatalf("pure FQL migration changed go.mod:\n%s", got)
 	}
 
-	second, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	second, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -614,7 +614,7 @@ FOR value IN values
 	})
 	migrator, runner := newFixtureMigrator()
 
-	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	result, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -666,7 +666,7 @@ go 1.25.0
 	}
 
 	migrator, _ := newFixtureMigrator()
-	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	result, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -696,7 +696,7 @@ FOR x IN
 	brokenBefore := readMigrationFixture(t, filepath.Join(root, "broken.fql"))
 	migrator, _ := newFixtureMigrator()
 
-	result, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	result, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -735,7 +735,7 @@ go 1.25.0
 	before := readMigrationFixture(t, path)
 	migrator, _ := newFixtureMigrator()
 
-	preview, err := migrator.Migrate(context.Background(), Options{Directory: root, Mode: ModeDryRun})
+	preview, err := migrator.Migrate(context.Background(), Options{Path: root, Mode: ModeDryRun})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -744,7 +744,7 @@ go 1.25.0
 		t.Fatalf("dry run mutated FQL: %#v", preview)
 	}
 
-	applied, err := migrator.Migrate(context.Background(), Options{Directory: root})
+	applied, err := migrator.Migrate(context.Background(), Options{Path: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -763,21 +763,13 @@ go 1.25.0
 	}
 }
 
-func TestMigratorRejectsMissingOrMalformedProjects(t *testing.T) {
-	t.Run("missing go.mod", func(t *testing.T) {
-		migrator, _ := newFixtureMigrator()
-		_, err := migrator.Migrate(context.Background(), Options{Directory: t.TempDir()})
-		if err == nil || !strings.Contains(err.Error(), "not inside a Go module") {
-			t.Fatalf("unexpected error: %v", err)
-		}
-	})
-
+func TestMigratorRejectsMalformedGoProjects(t *testing.T) {
 	t.Run("malformed go.mod", func(t *testing.T) {
 		root := writeMigrationFixture(t, "module [\n", map[string]string{
 			"main.go": "package app\n",
 		})
 		migrator, _ := newFixtureMigrator()
-		if _, err := migrator.Migrate(context.Background(), Options{Directory: root}); err == nil {
+		if _, err := migrator.Migrate(context.Background(), Options{Path: root}); err == nil {
 			t.Fatal("expected malformed go.mod error")
 		}
 	})
@@ -790,7 +782,7 @@ go 1.25.0
 			"main.go": "package app\nfunc broken(\n",
 		})
 		migrator, _ := newFixtureMigrator()
-		_, err := migrator.Migrate(context.Background(), Options{Directory: root})
+		_, err := migrator.Migrate(context.Background(), Options{Path: root})
 		if err == nil || !strings.Contains(err.Error(), "parse") || !strings.Contains(err.Error(), "main.go") {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -799,7 +791,12 @@ go 1.25.0
 
 func TestListMigrationFilesDoesNotHideEnumerationFailures(t *testing.T) {
 	runner := &fixtureGoRunner{packageError: "cache unavailable"}
-	_, err := listMigrationFiles(context.Background(), runner, t.TempDir())
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte("package app\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := listMigrationFiles(context.Background(), runner, root)
 	if err == nil || !strings.Contains(err.Error(), "cache unavailable") {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -920,10 +917,13 @@ FOR value IN 1..100 {
 
 type fixtureGoRunner struct {
 	packageError string
+	runCalls     int
 	getCalls     int
 }
 
 func (runner *fixtureGoRunner) Run(ctx context.Context, directory string, args ...string) ([]byte, error) {
+	runner.runCalls++
+
 	if runner.packageError != "" && len(args) > 0 && args[0] == "list" {
 		return []byte(fmt.Sprintf(
 			`{"ImportPath":"example.com/app","Incomplete":true,"Error":{"Err":%q}}`,

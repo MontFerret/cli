@@ -18,12 +18,139 @@ import (
 )
 
 func discoverMigrationProject(ctx context.Context, runner Runner, directory string) (*migrationProject, error) {
+	target, info, err := inspectMigrationTarget(directory)
+	if err != nil {
+		return nil, err
+	}
+
+	if info.Mode().IsRegular() {
+		if filepath.Ext(target) != ".fql" {
+			return nil, fmt.Errorf("migration file must use the .fql extension: %s", directory)
+		}
+
+		return &migrationProject{
+			Root:     filepath.Dir(target),
+			FQLFiles: []string{target},
+		}, nil
+	}
+
+	if !info.IsDir() {
+		return nil, fmt.Errorf("migration path is not a regular FQL file or directory: %s", directory)
+	}
+
+	files, err := scanMigrationFiles(ctx, target)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(files.Go) == 0 {
+		return &migrationProject{Root: target, FQLFiles: files.FQL}, nil
+	}
+
+	goModPath, hasGoModule, err := findContainingMigrationGoMod(ctx, target)
+	if err != nil {
+		return nil, err
+	}
+
+	if !hasGoModule {
+		return nil, fmt.Errorf(
+			"%w; Go source was found under %s, so run ferret migrate run from inside a Go module",
+			goproject.ErrNoModule,
+			target,
+		)
+	}
+
+	return discoverGoMigrationProject(ctx, runner, target, goModPath, files)
+}
+
+func inspectMigrationTarget(target string) (string, os.FileInfo, error) {
+	if strings.TrimSpace(target) == "" {
+		target = defaultDirectory
+	}
+
+	absolute, err := filepath.Abs(target)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve migration path %s: %w", target, err)
+	}
+
+	info, err := os.Lstat(absolute)
+	if err != nil {
+		return "", nil, fmt.Errorf("inspect migration path %s: %w", target, err)
+	}
+
+	if info.Mode()&os.ModeSymlink != 0 {
+		return "", nil, fmt.Errorf("refusing to migrate symlink target %s", target)
+	}
+
+	resolved, err := filepath.EvalSymlinks(absolute)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve migration path %s: %w", target, err)
+	}
+
+	return filepath.Clean(resolved), info, nil
+}
+
+func findContainingMigrationGoMod(ctx context.Context, directory string) (string, bool, error) {
+	current := directory
+	for {
+		if err := ctx.Err(); err != nil {
+			return "", false, err
+		}
+
+		candidate := filepath.Join(current, "go.mod")
+		info, err := os.Lstat(candidate)
+		if err == nil {
+			if !info.Mode().IsRegular() {
+				return "", false, fmt.Errorf("project go.mod is not a regular file: %s", candidate)
+			}
+
+			return candidate, true, nil
+		}
+
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", false, fmt.Errorf("inspect project go.mod %s: %w", candidate, err)
+		}
+
+		parent := filepath.Dir(current)
+		if parent == current {
+			return "", false, nil
+		}
+
+		current = parent
+	}
+}
+
+func discoverGoMigrationProject(
+	ctx context.Context,
+	runner Runner,
+	directory string,
+	goModPath string,
+	files migrationFiles,
+) (*migrationProject, error) {
 	discovered, err := goproject.Discover(ctx, runner, directory)
 	if err != nil {
 		if errors.Is(err, goproject.ErrNoModule) {
-			return nil, fmt.Errorf("%w; run ferret migrate from inside the project to migrate", err)
+			return nil, fmt.Errorf("%w; run ferret migrate run from inside the project to migrate", err)
 		}
 
+		return nil, err
+	}
+
+	sameGoMod, err := sameMigrationFile(goModPath, discovered.GoModPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if !sameGoMod {
+		return nil, fmt.Errorf(
+			"project root changed while discovering the project: found %s, Go reported %s",
+			goModPath,
+			discovered.GoModPath,
+		)
+	}
+
+	moduleWide, err := sameMigrationDirectory(directory, discovered.Root)
+	if err != nil {
 		return nil, err
 	}
 
@@ -54,7 +181,7 @@ func discoverMigrationProject(ctx context.Context, runner Runner, directory stri
 		return nil, err
 	}
 
-	files, err := listMigrationFiles(ctx, runner, discovered.Root)
+	files, err = listMigrationGoFiles(ctx, runner, directory, files)
 	if err != nil {
 		return nil, err
 	}
@@ -69,17 +196,89 @@ func discoverMigrationProject(ctx context.Context, runner Runner, directory stri
 		FQLFiles:   files.FQL,
 		GoMod:      goMod,
 		GoSum:      goSum,
+		ModuleWide: moduleWide,
 	}, nil
 }
 
+func sameMigrationFile(left, right string) (bool, error) {
+	leftInfo, err := os.Stat(left)
+	if err != nil {
+		return false, fmt.Errorf("stat discovered project file %s: %w", left, err)
+	}
+
+	rightInfo, err := os.Stat(right)
+	if err != nil {
+		return false, fmt.Errorf("stat Go-reported project file %s: %w", right, err)
+	}
+
+	return os.SameFile(leftInfo, rightInfo), nil
+}
+
+func sameMigrationDirectory(left, right string) (bool, error) {
+	leftInfo, err := os.Stat(left)
+	if err != nil {
+		return false, fmt.Errorf("stat selected migration directory %s: %w", left, err)
+	}
+
+	rightInfo, err := os.Stat(right)
+	if err != nil {
+		return false, fmt.Errorf("stat discovered module root %s: %w", right, err)
+	}
+
+	return os.SameFile(leftInfo, rightInfo), nil
+}
+
 func listMigrationFiles(ctx context.Context, runner Runner, root string) (migrationFiles, error) {
-	output, err := runner.Run(ctx, root, "list", "-e", "-json", "-mod=readonly", "./...")
+	files, err := scanMigrationFiles(ctx, root)
+	if err != nil || len(files.Go) == 0 {
+		return files, err
+	}
+
+	return listMigrationGoFiles(ctx, runner, root, files)
+}
+
+func scanMigrationFiles(ctx context.Context, root string) (migrationFiles, error) {
+	goFiles := make(map[string]struct{})
+	fqlFiles := make(map[string]struct{})
+	if err := walkMigrationFiles(ctx, root, goFiles, fqlFiles); err != nil {
+		return migrationFiles{}, err
+	}
+
+	result := migrationFiles{
+		Go:  make([]string, 0, len(goFiles)),
+		FQL: make([]string, 0, len(fqlFiles)),
+	}
+
+	for filename := range goFiles {
+		result.Go = append(result.Go, filename)
+	}
+
+	for filename := range fqlFiles {
+		result.FQL = append(result.FQL, filename)
+	}
+
+	sort.Strings(result.Go)
+	sort.Strings(result.FQL)
+
+	return result, nil
+}
+
+func listMigrationGoFiles(
+	ctx context.Context,
+	runner Runner,
+	directory string,
+	files migrationFiles,
+) (migrationFiles, error) {
+	output, err := runner.Run(ctx, directory, "list", "-e", "-json", "-mod=readonly", "./...")
 	if err != nil {
 		return migrationFiles{}, fmt.Errorf("enumerate project Go files: %w", err)
 	}
 
-	goFiles := make(map[string]struct{})
-	fqlFiles := make(map[string]struct{})
+	goFiles := make(map[string]struct{}, len(files.Go))
+	for _, filename := range files.Go {
+		goFiles[filename] = struct{}{}
+	}
+
 	decoder := json.NewDecoder(bytes.NewReader(output))
 
 	for {
@@ -117,25 +316,13 @@ func listMigrationFiles(ctx context.Context, runner Runner, root string) (migrat
 		}
 	}
 
-	if err := walkMigrationFiles(ctx, root, goFiles, fqlFiles); err != nil {
-		return migrationFiles{}, err
-	}
-
-	result := migrationFiles{
-		Go:  make([]string, 0, len(goFiles)),
-		FQL: make([]string, 0, len(fqlFiles)),
-	}
+	result := migrationFiles{Go: make([]string, 0, len(goFiles)), FQL: files.FQL}
 
 	for filename := range goFiles {
 		result.Go = append(result.Go, filename)
 	}
 
-	for filename := range fqlFiles {
-		result.FQL = append(result.FQL, filename)
-	}
-
 	sort.Strings(result.Go)
-	sort.Strings(result.FQL)
 
 	return result, nil
 }
