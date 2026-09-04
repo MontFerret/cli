@@ -1,8 +1,6 @@
 package runtime
 
 import (
-	"fmt"
-
 	"github.com/MontFerret/contrib/modules/ai/llm"
 	"github.com/MontFerret/contrib/modules/archive"
 	"github.com/MontFerret/contrib/modules/csv"
@@ -25,7 +23,7 @@ import (
 	"github.com/MontFerret/ferret/v2/pkg/module"
 )
 
-type namespaceInitializer func(opts Options) ([]module.Module, error)
+type namespaceInitializer func(opts Options) []module.Module
 
 func newModules(opts Options) ([]module.Module, error) {
 	return initModules(
@@ -45,82 +43,70 @@ func initModules(opts Options, initializers ...namespaceInitializer) ([]module.M
 	var merged []module.Module
 
 	for _, r := range initializers {
-		modules, err := r(opts)
-
-		if err != nil {
-			return nil, err
-		}
-
-		merged = append(merged, modules...)
+		merged = append(merged, r(opts)...)
 	}
 
 	return merged, nil
 }
 
-func webMods(opts Options) ([]module.Module, error) {
-	htmlmod, err := html.New(
-		html.WithDefaultDriver(memory.New(opts.ToInMemory()...)),
-		html.WithDrivers(
-			cdp.New(opts.ToCDP()...),
-		),
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("initialize html module: %w", err)
-	}
-
+func webMods(opts Options) []module.Module {
 	return []module.Module{
-		htmlmod,
+		html.New(
+			html.WithDefaultDriver(memory.New(opts.ToInMemory()...)),
+			html.WithDrivers(
+				cdp.New(opts.ToCDP()...),
+			),
+		),
 		sitemap.New(),
 		article.New(),
 		robots.New(),
-	}, nil
+	}
 }
 
-func dataMods(_ Options) ([]module.Module, error) {
+func dataMods(_ Options) []module.Module {
 	return []module.Module{
 		csv.New(),
 		toml.New(),
 		xml.New(),
 		yaml.New(),
-	}, nil
+	}
 }
 
-func dbMods(_ Options) ([]module.Module, error) {
+func dbMods(_ Options) []module.Module {
 	return []module.Module{
 		postgres.New(),
 		sqlite.New(),
-	}, nil
+	}
 }
 
-func securityMods(_ Options) ([]module.Module, error) {
+func securityMods(_ Options) []module.Module {
 	return []module.Module{
 		jwt.New(),
 		oauth2.New(),
-	}, nil
+	}
 }
 
-func networkMods(_ Options) ([]module.Module, error) {
+func networkMods(_ Options) []module.Module {
 	return []module.Module{
 		rest.New(),
-	}, nil
+	}
 }
 
-func documentMods(_ Options) ([]module.Module, error) {
+func documentMods(_ Options) []module.Module {
 	return []module.Module{
 		pdf.New(),
 		xlsx.New(),
-	}, nil
+	}
 }
 
-func aiMods(_ Options) ([]module.Module, error) {
+func aiMods(_ Options) []module.Module {
 	return []module.Module{
 		llm.New(),
-	}, nil
+	}
 }
 
-func archiveMods(_ Options) ([]module.Module, error) {
+func archiveMods(_ Options) []module.Module {
 	return []module.Module{
 		archive.New(),
-	}, nil
+	}
 }

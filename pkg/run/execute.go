@@ -17,8 +17,8 @@ func Execute(ctx context.Context, opts cliruntime.Options, params map[string]any
 		return cliruntime.RunArtifact(ctx, opts, input.Artifact, params)
 	}
 
-	if input.Source == nil {
-		return nil, fmt.Errorf("run source is nil")
+	if input.Source.Empty() {
+		return nil, fmt.Errorf("run source is empty")
 	}
 
 	return cliruntime.Run(ctx, opts, input.Source, params)

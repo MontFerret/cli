@@ -16,7 +16,6 @@ import (
 	"github.com/MontFerret/cli/v2/pkg/config"
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
-	"github.com/MontFerret/ferret/v2/pkg/compiler"
 	ferrethttp "github.com/MontFerret/ferret/v2/pkg/net/http"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 )
@@ -28,7 +27,7 @@ func TestExecuteRun_ArtifactRemoteRuntimeRejected(t *testing.T) {
 
 	testutil.WriteQuery(t, input, "RETURN 42")
 
-	if err := build.WriteArtifact(compiler.New(), source.New(input, "RETURN 42"), artifactPath); err != nil {
+	if err := build.WriteArtifact(testutil.NewCompiler(t), source.New(input, "RETURN 42"), artifactPath); err != nil {
 		t.Fatalf("build artifact: %v", err)
 	}
 
@@ -59,7 +58,7 @@ func TestExecuteRun_ArtifactStdinRemoteRuntimeRejected(t *testing.T) {
 
 	testutil.WriteQuery(t, input, "RETURN 42")
 
-	if err := build.WriteArtifact(compiler.New(), source.New(input, "RETURN 42"), artifactPath); err != nil {
+	if err := build.WriteArtifact(testutil.NewCompiler(t), source.New(input, "RETURN 42"), artifactPath); err != nil {
 		t.Fatalf("build artifact: %v", err)
 	}
 

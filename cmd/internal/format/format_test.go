@@ -2,6 +2,7 @@ package format
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/MontFerret/cli/v2/cmd/internal/testutil"
@@ -60,5 +61,29 @@ func TestFormatterCaseModeDefault(t *testing.T) {
 	}
 	if flag.DefValue != "lower" {
 		t.Fatalf("unexpected case-mode default: got %q, want %q", flag.DefValue, "lower")
+	}
+}
+
+func TestFormatterRejectsInvalidWidths(t *testing.T) {
+	tests := map[string]string{
+		"print width": "print-width",
+		"tab width":   "tab-width",
+	}
+
+	for name, flag := range tests {
+		t.Run(name, func(t *testing.T) {
+			input := filepath.Join(t.TempDir(), "query.fql")
+			testutil.WriteQuery(t, input, "RETURN 1")
+
+			cmd := New(nil)
+			if err := cmd.Flags().Set(flag, "0"); err != nil {
+				t.Fatal(err)
+			}
+
+			err := cmd.RunE(cmd, []string{input})
+			if err == nil || !strings.Contains(err.Error(), "initialize formatter") || !strings.Contains(err.Error(), name) {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
 	}
 }

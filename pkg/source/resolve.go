@@ -16,9 +16,9 @@ type Input struct {
 
 // Resolve returns file sources from eval, stdin, or file paths.
 // Returns nil, nil when no input is available (caller should show help).
-func Resolve(input Input) ([]*source.Source, error) {
+func Resolve(input Input) ([]source.Source, error) {
 	if input.Eval != "" {
-		return []*source.Source{source.New("<eval>", input.Eval)}, nil
+		return []source.Source{source.New("<eval>", input.Eval)}, nil
 	}
 
 	if len(input.Args) == 0 {
@@ -31,13 +31,13 @@ func Resolve(input Input) ([]*source.Source, error) {
 				return nil, err
 			}
 
-			return []*source.Source{source.New("stdin", string(content))}, nil
+			return []source.Source{source.New("stdin", string(content))}, nil
 		}
 
 		return nil, nil
 	}
 
-	sources := make([]*source.Source, 0, len(input.Args))
+	sources := make([]source.Source, 0, len(input.Args))
 
 	for _, path := range input.Args {
 		content, err := os.ReadFile(path)

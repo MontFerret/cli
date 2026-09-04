@@ -212,7 +212,7 @@ func compatibilityDisplayPath(workingDirectory, filename string) (string, error)
 	return filepath.ToSlash(relative), nil
 }
 
-func fqlForLocation(src *source.Source, loop fql.IForExpressionContext) (int, int, error) {
+func fqlForLocation(src source.Source, loop fql.IForExpressionContext) (int, int, error) {
 	token := loop.GetStart()
 	if token == nil {
 		return 0, 0, fmt.Errorf("final top-level FOR has no source token")
@@ -228,10 +228,10 @@ func fqlForLocation(src *source.Source, loop fql.IForExpressionContext) (int, in
 		return 0, 0, fmt.Errorf("resolve final top-level FOR span")
 	}
 
-	line, column := src.LocationAt(source.Span{Start: start, End: end})
-	if line == 0 || column == 0 {
+	position := src.PositionAt(source.Span{Start: start, End: end})
+	if position.Line == 0 || position.Column == 0 {
 		return 0, 0, fmt.Errorf("resolve final top-level FOR location")
 	}
 
-	return line, column, nil
+	return position.Line, position.Column, nil
 }

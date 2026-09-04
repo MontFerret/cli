@@ -66,7 +66,7 @@ func (rt *Remote) Version(ctx context.Context) (string, error) {
 	return info.Version.Ferret, nil
 }
 
-func (rt *Remote) Run(ctx context.Context, query *source.Source, params map[string]any) (io.ReadCloser, error) {
+func (rt *Remote) Run(ctx context.Context, query source.Source, params map[string]any) (io.ReadCloser, error) {
 	body, err := json.Marshal(&remoteQuery{
 		Text:   query.Content(),
 		Params: params,

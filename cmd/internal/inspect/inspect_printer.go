@@ -11,7 +11,7 @@ import (
 func printSummary(p *bytecode.Program) {
 	name := "<anonymous>"
 
-	if p.Source != nil {
+	if !p.Source.Empty() {
 		name = p.Source.Name()
 	}
 

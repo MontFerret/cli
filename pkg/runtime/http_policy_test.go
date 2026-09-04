@@ -66,7 +66,10 @@ func TestBuiltinHTTPPolicyRejectsInvalidConfiguration(t *testing.T) {
 	opts.HTTPPolicy = []ferrethttp.PolicyOption{ferrethttp.WithAllowedHosts("bad host")}
 
 	_, err := NewBuiltin(opts)
-	if err == nil || !strings.Contains(err.Error(), "WithAllowedHosts") {
+	if !errors.Is(err, ferrethttp.ErrInvalidPolicyConfiguration) ||
+		!strings.Contains(err.Error(), "initialize HTTP policy") ||
+		!strings.Contains(err.Error(), "allowed hosts") ||
+		!strings.Contains(err.Error(), "must be a valid DNS name") {
 		t.Fatalf("expected allowed-host policy error, got %v", err)
 	}
 }

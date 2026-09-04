@@ -22,7 +22,7 @@ type DebugSession struct {
 
 // NewDebugSession compiles source for debugging and creates a retained-state
 // debugger session through the builtin Ferret runtime.
-func NewDebugSession(ctx context.Context, opts Options, params map[string]any, src *source.Source) (*DebugSession, error) {
+func NewDebugSession(ctx context.Context, opts Options, params map[string]any, src source.Source) (*DebugSession, error) {
 	opts = NormalizeOptions(opts)
 
 	if err := ValidateOptions(opts); err != nil {

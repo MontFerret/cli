@@ -8,7 +8,6 @@ import (
 
 	"github.com/MontFerret/cli/v2/cmd/internal/execution"
 	"github.com/MontFerret/cli/v2/cmd/internal/testutil"
-	"github.com/MontFerret/ferret/v2/pkg/compiler"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 
 	"github.com/MontFerret/cli/v2/pkg/browser"
@@ -55,7 +54,7 @@ func TestExecuteDebugRejectsArtifact(t *testing.T) {
 	sourcePath := filepath.Join(dir, "query.fql")
 	artifactPath := filepath.Join(dir, "query.fqlc")
 	testutil.WriteQuery(t, sourcePath, "RETURN 1")
-	if err := build.WriteArtifact(compiler.New(), source.New(sourcePath, "RETURN 1"), artifactPath); err != nil {
+	if err := build.WriteArtifact(testutil.NewCompiler(t), source.New(sourcePath, "RETURN 1"), artifactPath); err != nil {
 		t.Fatal(err)
 	}
 

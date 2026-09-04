@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+
+	"github.com/MontFerret/ferret/v2/pkg/compiler"
 )
 
 func WriteQuery(t *testing.T, path, content string) {
@@ -133,4 +135,15 @@ func NewCommand() *cobra.Command {
 	cmd.SetContext(context.Background())
 
 	return cmd
+}
+
+func NewCompiler(t *testing.T) *compiler.Compiler {
+	t.Helper()
+
+	c, err := compiler.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return c
 }

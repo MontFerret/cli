@@ -197,7 +197,7 @@ func TestWriteArtifact_RejectsOverwritingSource(t *testing.T) {
 
 	writeQuery(t, input, query)
 
-	err := WriteArtifact(compiler.New(), source.New(input, query), input)
+	err := WriteArtifact(newCompiler(t), source.New(input, query), input)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -224,7 +224,7 @@ func TestWriteArtifact_InvalidQueryDoesNotCreateArtifact(t *testing.T) {
 
 	writeQuery(t, input, "FOR item IN")
 
-	err := WriteArtifact(compiler.New(), source.New(input, "FOR item IN"), output)
+	err := WriteArtifact(newCompiler(t), source.New(input, "FOR item IN"), output)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -242,7 +242,7 @@ func TestWriteArtifact_CreatesMissingParentDirectory(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 42")
 
-	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 42"), output); err != nil {
+	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 42"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -256,7 +256,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFile(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 1")
 
-	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 1"), output); err != nil {
+	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 1"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -264,7 +264,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFile(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 2")
 
-	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 2"), output); err != nil {
+	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 2"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -278,7 +278,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFileInNestedDirectory(t *testi
 
 	writeQuery(t, input, "RETURN 1")
 
-	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 1"), output); err != nil {
+	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 1"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -286,7 +286,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFileInNestedDirectory(t *testi
 
 	writeQuery(t, input, "RETURN 2")
 
-	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 2"), output); err != nil {
+	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 2"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -300,7 +300,7 @@ func TestWriteArtifact_RenameFailurePreservesExistingDestinationAndCleansTemp(t 
 
 	writeQuery(t, input, "RETURN 1")
 
-	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 1"), output); err != nil {
+	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 1"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -311,7 +311,7 @@ func TestWriteArtifact_RenameFailurePreservesExistingDestinationAndCleansTemp(t 
 	})
 	defer restore()
 
-	err := WriteArtifact(compiler.New(), source.New(input, "RETURN 2"), output)
+	err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 2"), output)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -337,7 +337,7 @@ func TestWriteArtifact_RenameFailureDoesNotCreateDestinationAndCleansTemp(t *tes
 	})
 	defer restore()
 
-	err := WriteArtifact(compiler.New(), source.New(input, "RETURN 42"), output)
+	err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 42"), output)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -357,7 +357,7 @@ func TestWriteArtifact_ArtifactRoundTrip(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 42")
 
-	if err := WriteArtifact(compiler.New(), source.New(input, "RETURN 42"), output); err != nil {
+	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 42"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -371,7 +371,7 @@ func TestWriteArtifact_InvalidQueryDoesNotCreateArtifactInMissingParentDirectory
 
 	writeQuery(t, input, "FOR item IN")
 
-	err := WriteArtifact(compiler.New(), source.New(input, "FOR item IN"), output)
+	err := WriteArtifact(newCompiler(t), source.New(input, "FOR item IN"), output)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -407,13 +407,24 @@ func assertArtifactSource(t *testing.T, path, expected string) {
 		t.Fatalf("unmarshal artifact: %v", err)
 	}
 
-	if program.Source == nil {
+	if program.Source.Empty() {
 		t.Fatal("expected serialized source")
 	}
 
 	if program.Source.Content() != expected {
 		t.Fatalf("expected source %q, got %q", expected, program.Source.Content())
 	}
+}
+
+func newCompiler(t *testing.T) *compiler.Compiler {
+	t.Helper()
+
+	c, err := compiler.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return c
 }
 
 func assertNoTempArtifacts(t *testing.T, dir, outputPath string) {

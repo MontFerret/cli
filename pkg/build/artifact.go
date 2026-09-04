@@ -12,7 +12,7 @@ import (
 
 var renameArtifactFile = os.Rename
 
-func WriteArtifact(c *compiler.Compiler, src *source.Source, outputPath string) error {
+func WriteArtifact(c *compiler.Compiler, src source.Source, outputPath string) error {
 	same, err := samePath(src.Name(), outputPath)
 
 	if err != nil {

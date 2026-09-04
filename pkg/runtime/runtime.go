@@ -14,7 +14,7 @@ import (
 type Runtime interface {
 	Version(ctx context.Context) (string, error)
 
-	Run(ctx context.Context, query *source.Source, params map[string]any) (io.ReadCloser, error)
+	Run(ctx context.Context, query source.Source, params map[string]any) (io.ReadCloser, error)
 	RunArtifact(ctx context.Context, data []byte, params map[string]any) (io.ReadCloser, error)
 	Close() error
 }
@@ -41,7 +41,7 @@ func New(opts Options) (Runtime, error) {
 	return NewRemote(*u, opts), nil
 }
 
-func Run(ctx context.Context, opts Options, query *source.Source, params map[string]any) (out io.ReadCloser, err error) {
+func Run(ctx context.Context, opts Options, query source.Source, params map[string]any) (out io.ReadCloser, err error) {
 	rt, err := New(opts)
 
 	if err != nil {

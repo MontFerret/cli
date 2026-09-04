@@ -18,7 +18,7 @@ func TestRendererEventPauseAndCompletion(t *testing.T) {
 
 	renderer.Event(&ferret.DebugEvent{
 		Reason:           ferret.DebugReasonBreakpoint,
-		Location:         ferret.DebugLocation{File: "demo.fql", Line: 2, Column: 1, Span: source.Span{Start: 10, End: 16}},
+		Location:         debugLocation("demo.fql", 2, 1, source.Span{Start: 10, End: 16}),
 		HitBreakpointIDs: []ferret.DebugBreakpointID{3},
 	})
 
@@ -41,13 +41,23 @@ func TestRendererEventPauseAndCompletion(t *testing.T) {
 
 func TestRendererCollectionsAndErrors(t *testing.T) {
 	var out bytes.Buffer
-	renderer := NewRenderer(&out, nil)
+	renderer := NewRenderer(&out, source.Source{})
 
 	renderer.Breakpoints([]ferret.DebugBreakpoint{
-		{ID: 1, File: "demo.fql", RequestedLine: 4, RequestedColumn: 3, Line: 7, Column: 5, BindingMode: ferret.DebugBreakpointBindNextExecutableInFile, Bound: true},
-		{ID: 2, File: "other.fql", RequestedLine: 9, BindingMode: ferret.DebugBreakpointBindExact},
+		{
+			ID:                1,
+			RequestedLocation: debugSourceLocation("demo.fql", 4, 3),
+			Location:          debugLocation("demo.fql", 7, 5, source.Span{}),
+			BindingMode:       ferret.DebugBreakpointBindNextExecutableInFile,
+			Bound:             true,
+		},
+		{
+			ID:                2,
+			RequestedLocation: debugSourceLocation("other.fql", 9, 0),
+			BindingMode:       ferret.DebugBreakpointBindExact,
+		},
 	})
-	renderer.Frames([]ferret.DebugFrame{{Name: "normalize", Location: ferret.DebugLocation{File: "demo.fql", Line: 7, Column: 3}}})
+	renderer.Frames([]ferret.DebugFrame{{Name: "normalize", Location: debugSourceLocation("demo.fql", 7, 3)}})
 	renderer.Locals([]ferret.DebugVariable{
 		{Name: "user", Value: ferret.DebugValue{Display: `{"name": "Ada"}`}},
 		{Name: "@limit", Param: true, Value: ferret.DebugValue{Display: "10"}},
@@ -72,36 +82,32 @@ func TestRendererCollectionsAndErrors(t *testing.T) {
 
 func TestRendererBreakpointHitsAndSetMessages(t *testing.T) {
 	var out bytes.Buffer
-	renderer := NewRenderer(&out, nil)
+	renderer := NewRenderer(&out, source.Source{})
 
 	renderer.Event(&ferret.DebugEvent{
 		Reason:           ferret.DebugReasonBreakpoint,
-		Location:         ferret.DebugLocation{File: "demo.fql", Line: 12, Column: 4},
+		Location:         debugLocation("demo.fql", 12, 4, source.Span{}),
 		HitBreakpointIDs: []ferret.DebugBreakpointID{3, 7},
 	})
 	renderer.Event(&ferret.DebugEvent{
 		Reason:   ferret.DebugReasonPause,
-		Location: ferret.DebugLocation{File: "demo.fql", Line: 13, Column: 1},
+		Location: debugLocation("demo.fql", 13, 1, source.Span{}),
 	})
 	renderer.Event(&ferret.DebugEvent{
 		Reason:   ferret.DebugReasonStep,
-		Location: ferret.DebugLocation{File: "demo.fql", Line: 14, Column: 2},
+		Location: debugLocation("demo.fql", 14, 2, source.Span{}),
 	})
 	renderer.BreakpointSet(ferret.DebugBreakpoint{
-		ID:              8,
-		File:            "demo.fql",
-		RequestedLine:   10,
-		RequestedColumn: 2,
-		Line:            12,
-		Column:          4,
-		BindingMode:     ferret.DebugBreakpointBindNextExecutableInFunction,
-		Bound:           true,
+		ID:                8,
+		RequestedLocation: debugSourceLocation("demo.fql", 10, 2),
+		Location:          debugLocation("demo.fql", 12, 4, source.Span{}),
+		BindingMode:       ferret.DebugBreakpointBindNextExecutableInFunction,
+		Bound:             true,
 	})
 	renderer.BreakpointSet(ferret.DebugBreakpoint{
-		ID:            9,
-		File:          "demo.fql",
-		RequestedLine: 20,
-		BindingMode:   ferret.DebugBreakpointBindExact,
+		ID:                9,
+		RequestedLocation: debugSourceLocation("demo.fql", 20, 0),
+		BindingMode:       ferret.DebugBreakpointBindExact,
 	})
 
 	got := out.String()
@@ -120,7 +126,7 @@ func TestRendererBreakpointHitsAndSetMessages(t *testing.T) {
 
 func TestRendererEmptyCollections(t *testing.T) {
 	var out bytes.Buffer
-	renderer := NewRenderer(&out, nil)
+	renderer := NewRenderer(&out, source.Source{})
 
 	renderer.Breakpoints(nil)
 	renderer.Frames(nil)
@@ -136,7 +142,7 @@ func TestRendererEmptyCollections(t *testing.T) {
 
 func TestRendererHelpIncludesAliasesAndPauseBehavior(t *testing.T) {
 	var out bytes.Buffer
-	renderer := NewRenderer(&out, nil)
+	renderer := NewRenderer(&out, source.Source{})
 
 	renderer.Help()
 
@@ -153,5 +159,22 @@ func TestRendererHelpIncludesAliasesAndPauseBehavior(t *testing.T) {
 		if !strings.Contains(got, expected) {
 			t.Fatalf("expected %q in %q", expected, got)
 		}
+	}
+}
+
+func debugSourceLocation(file string, line, column int) ferret.DebugSourceLocation {
+	return ferret.DebugSourceLocation{
+		File: file,
+		Position: ferret.Position{
+			Line:   line,
+			Column: column,
+		},
+	}
+}
+
+func debugLocation(file string, line, column int, span source.Span) ferret.DebugLocation {
+	return ferret.DebugLocation{
+		Location: debugSourceLocation(file, line, column),
+		Span:     span,
 	}
 }

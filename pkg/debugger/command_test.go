@@ -21,7 +21,7 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "12",
-				Location:          ferret.DebugSourceLocation{Line: 12},
+				Location:          ferret.DebugSourceLocation{Position: ferret.Position{Line: 12}},
 				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFile},
 			},
 		},
@@ -31,7 +31,7 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "12:4",
-				Location:          ferret.DebugSourceLocation{Line: 12, Column: 4},
+				Location:          ferret.DebugSourceLocation{Position: ferret.Position{Line: 12, Column: 4}},
 				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFile},
 			},
 		},
@@ -41,7 +41,7 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "examples/demo.fql:12",
-				Location:          ferret.DebugSourceLocation{File: "examples/demo.fql", Line: 12},
+				Location:          ferret.DebugSourceLocation{File: "examples/demo.fql", Position: ferret.Position{Line: 12}},
 				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFile},
 			},
 		},
@@ -51,7 +51,7 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "examples/demo.fql:12:4",
-				Location:          ferret.DebugSourceLocation{File: "examples/demo.fql", Line: 12, Column: 4},
+				Location:          ferret.DebugSourceLocation{File: "examples/demo.fql", Position: ferret.Position{Line: 12, Column: 4}},
 				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFile},
 			},
 		},
@@ -61,7 +61,7 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          `C:\work\demo.fql:12:4`,
-				Location:          ferret.DebugSourceLocation{File: `C:\work\demo.fql`, Line: 12, Column: 4},
+				Location:          ferret.DebugSourceLocation{File: `C:\work\demo.fql`, Position: ferret.Position{Line: 12, Column: 4}},
 				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFile},
 			},
 		},
@@ -71,7 +71,7 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "--exact 12:4",
-				Location:          ferret.DebugSourceLocation{Line: 12, Column: 4},
+				Location:          ferret.DebugSourceLocation{Position: ferret.Position{Line: 12, Column: 4}},
 				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindExact},
 			},
 		},
@@ -81,7 +81,7 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "12 --next",
-				Location:          ferret.DebugSourceLocation{Line: 12},
+				Location:          ferret.DebugSourceLocation{Position: ferret.Position{Line: 12}},
 				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFile},
 			},
 		},
@@ -91,7 +91,7 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "--in-function demo.fql:12",
-				Location:          ferret.DebugSourceLocation{File: "demo.fql", Line: 12},
+				Location:          ferret.DebugSourceLocation{File: "demo.fql", Position: ferret.Position{Line: 12}},
 				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFunction},
 			},
 		},
@@ -114,7 +114,7 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "4",
-				Location:          ferret.DebugSourceLocation{Line: 4},
+				Location:          ferret.DebugSourceLocation{Position: ferret.Position{Line: 4}},
 				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFile},
 			},
 		},

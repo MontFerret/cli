@@ -23,7 +23,7 @@ const (
 	replStateTerminated
 )
 
-func Start(ctx context.Context, session Session, src *source.Source) error {
+func Start(ctx context.Context, session Session, src source.Source) error {
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:          "(fdb) ",
 		InterruptPrompt: "^C",
@@ -41,7 +41,7 @@ func Start(ctx context.Context, session Session, src *source.Source) error {
 	return Run(ctx, session, src, rl, rl.Stdout())
 }
 
-func Run(ctx context.Context, session Session, src *source.Source, input LineReader, out io.Writer) (err error) {
+func Run(ctx context.Context, session Session, src source.Source, input LineReader, out io.Writer) (err error) {
 	defer func() {
 		err = errors.Join(err, session.Close())
 	}()

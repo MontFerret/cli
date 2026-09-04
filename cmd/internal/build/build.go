@@ -51,13 +51,17 @@ func runBuild(args []string, output string) error {
 		return err
 	}
 
+	c, err := compiler.New()
+	if err != nil {
+		return fmt.Errorf("initialize compiler: %w", err)
+	}
+
 	if plan.OutputDir != "" {
 		if err := os.MkdirAll(plan.OutputDir, 0o755); err != nil {
 			return fmt.Errorf("create output directory %s: %w", plan.OutputDir, err)
 		}
 	}
 
-	c := compiler.New()
 	failed := 0
 
 	for i, src := range sources {
