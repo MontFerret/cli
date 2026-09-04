@@ -22,6 +22,7 @@ func TestInstallerResolvesPublishedArtifactThroughBarnClient(t *testing.T) {
 	documents := map[string]any{
 		"/index.json": &registryartifact.RootIndex{
 			SchemaVersion: registryartifact.SchemaVersion,
+			Source:        registryartifact.RootSource{Commit: commit},
 			Artifacts: map[string]string{
 				registryartifact.ArtifactKeyCategories: "/categories.json",
 				registryartifact.ArtifactKeyModules:    "/modules/index.json",

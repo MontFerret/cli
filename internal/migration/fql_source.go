@@ -68,7 +68,7 @@ func planFQLSourceChanges(ctx context.Context, project *migrationProject) (*fqlS
 	return result, nil
 }
 
-func migrateFQLSource(src *source.Source) (fqlMigrationResult, error) {
+func migrateFQLSource(src source.Source) (fqlMigrationResult, error) {
 	loop, err := finalTopLevelFQLFor(src)
 	if err != nil {
 		return fqlMigrationResult{}, err
@@ -91,7 +91,7 @@ func migrateFQLSource(src *source.Source) (fqlMigrationResult, error) {
 	return fqlMigrationResult{Data: formatted, Changed: true}, nil
 }
 
-func finalTopLevelFQLFor(src *source.Source) (fql.IForExpressionContext, error) {
+func finalTopLevelFQLFor(src source.Source) (fql.IForExpressionContext, error) {
 	if !utf8.ValidString(src.Content()) {
 		return nil, fmt.Errorf("parse Ferret source: source is not valid UTF-8")
 	}
@@ -154,7 +154,7 @@ func rewriteFinalFQLFor(content string, loop fql.IForExpressionContext) (string,
 		content[headerEnd:loopEnd] + "\n}" + content[loopEnd:], nil
 }
 
-func parseFQLSource(src *source.Source) (program *fql.ProgramContext, err error) {
+func parseFQLSource(src source.Source) (program *fql.ProgramContext, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			program = nil
@@ -178,7 +178,7 @@ func parseFQLSource(src *source.Source) (program *fql.ProgramContext, err error)
 	return program, nil
 }
 
-func formatMigratedFQLSource(src *source.Source) (data []byte, err error) {
+func formatMigratedFQLSource(src source.Source) (data []byte, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			data = nil
@@ -190,8 +190,13 @@ func formatMigratedFQLSource(src *source.Source) (data []byte, err error) {
 	// those positions byte-safe; the exact runes are restored before the formatted source is validated.
 	protected, replacements := protectFQLNonASCII(src.Content())
 
+	f, err := formatter.New()
+	if err != nil {
+		return nil, fmt.Errorf("format migrated Ferret source: %w", err)
+	}
+
 	var output bytes.Buffer
-	if err := formatter.New().Format(&output, source.New(src.Name(), protected)); err != nil {
+	if err := f.Format(&output, source.New(src.Name(), protected)); err != nil {
 		return nil, fmt.Errorf("format migrated Ferret source: %w", err)
 	}
 
@@ -268,7 +273,7 @@ func nonASCIISequence(content string) []rune {
 	return result
 }
 
-func fqlManualAction(path string, src *source.Source, err error) ManualAction {
+func fqlManualAction(path string, src source.Source, err error) ManualAction {
 	detail, line, _ := fqlDiagnosticDetails(src, err)
 
 	return ManualAction{
@@ -279,7 +284,7 @@ func fqlManualAction(path string, src *source.Source, err error) ManualAction {
 	}
 }
 
-func fqlDiagnosticDetails(src *source.Source, err error) (detail string, line, column int) {
+func fqlDiagnosticDetails(src source.Source, err error) (detail string, line, column int) {
 	detail = err.Error()
 	line = 1
 	column = 1
@@ -300,13 +305,13 @@ func fqlDiagnosticDetails(src *source.Source, err error) (detail string, line, c
 			return detail, line, column
 		}
 
-		spanLine, spanColumn := src.LocationAt(byteSpan)
-		if spanLine > 0 {
-			line = spanLine
+		position := src.PositionAt(byteSpan)
+		if position.Line > 0 {
+			line = position.Line
 		}
 
-		if spanColumn > 0 {
-			column = spanColumn
+		if position.Column > 0 {
+			column = position.Column
 		}
 
 		return detail, line, column

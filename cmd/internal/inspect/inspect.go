@@ -43,7 +43,10 @@ func New(store *config.Store) *cobra.Command {
 				return cmd.Help()
 			}
 
-			c := compiler.New()
+			c, err := compiler.New()
+			if err != nil {
+				return fmt.Errorf("initialize compiler: %w", err)
+			}
 
 			program, err := c.Compile(sources[0])
 

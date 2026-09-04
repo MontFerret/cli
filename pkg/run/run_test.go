@@ -26,7 +26,7 @@ func TestResolveInput_SourceFile(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if resolved == nil || resolved.Source == nil {
+	if resolved == nil || resolved.Source.ID() == (source.ID{}) {
 		t.Fatal("expected source input")
 	}
 
@@ -59,7 +59,7 @@ func TestResolveInput_StdinSource(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		if resolved == nil || resolved.Source == nil {
+		if resolved == nil || resolved.Source.ID() == (source.ID{}) {
 			t.Fatal("expected source input")
 		}
 
@@ -201,7 +201,7 @@ func TestResolveInput_PlainTextFQLCIsSource(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if resolved == nil || resolved.Source == nil {
+	if resolved == nil || resolved.Source.ID() == (source.ID{}) {
 		t.Fatal("expected source input")
 	}
 
@@ -269,6 +269,25 @@ func TestResolveInput_NoStdinReturnsNil(t *testing.T) {
 	})
 }
 
+func TestExecute_RejectsUnsetSource(t *testing.T) {
+	_, err := Execute(context.Background(), cliruntime.NewDefaultOptions(), nil, &Input{})
+	if err == nil || err.Error() != "run source is not set" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestExecute_EmptyNamedSourceUsesCoreDiagnostic(t *testing.T) {
+	_, err := Execute(
+		context.Background(),
+		cliruntime.NewDefaultOptions(),
+		nil,
+		&Input{Source: source.New("empty.fql", "")},
+	)
+	if err == nil || !strings.Contains(err.Error(), "Query is empty") {
+		t.Fatalf("expected empty-query diagnostic, got %v", err)
+	}
+}
+
 func writeQuery(t *testing.T, path, content string) {
 	t.Helper()
 
@@ -332,12 +351,12 @@ func buildArtifact(t *testing.T, inputPath, outputPath string) {
 
 	src := readSource(t, inputPath)
 
-	if err := build.WriteArtifact(nilCompiler(), src, outputPath); err != nil {
+	if err := build.WriteArtifact(newCompiler(t), src, outputPath); err != nil {
 		t.Fatalf("build artifact: %v", err)
 	}
 }
 
-func readSource(t *testing.T, path string) *source.Source {
+func readSource(t *testing.T, path string) source.Source {
 	t.Helper()
 
 	data, err := os.ReadFile(path)
@@ -374,6 +393,13 @@ func assertOutput(t *testing.T, output io.ReadCloser, expected string) {
 	}
 }
 
-func nilCompiler() *compiler.Compiler {
-	return compiler.New()
+func newCompiler(t *testing.T) *compiler.Compiler {
+	t.Helper()
+
+	c, err := compiler.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return c
 }

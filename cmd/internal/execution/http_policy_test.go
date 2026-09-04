@@ -3,6 +3,7 @@ package execution_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,7 @@ import (
 	versioncmd "github.com/MontFerret/cli/v2/cmd/internal/version"
 	"github.com/MontFerret/cli/v2/pkg/config"
 	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
+	ferrethttp "github.com/MontFerret/ferret/v2/pkg/net/http"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
@@ -98,28 +100,31 @@ func TestHTTPPolicyFlagDefaultsDoNotOverrideFerretDefaults(t *testing.T) {
 
 func TestHTTPPolicyFlagsRejectInvalidFerretPolicy(t *testing.T) {
 	tests := []struct {
-		name string
-		arg  string
-		want string
+		name       string
+		arg        string
+		wantTarget string
+		wantReason string
 	}{
-		{name: "allowed scheme", arg: "--policy-http-allowed-schemes=not a scheme", want: "WithAllowedSchemes"},
-		{name: "allowed method", arg: "--policy-http-allowed-methods=bad method", want: "WithAllowedMethods"},
-		{name: "allowed host", arg: "--policy-http-allowed-hosts=bad host", want: "WithAllowedHosts"},
-		{name: "blocked host", arg: "--policy-http-blocked-hosts=bad host", want: "WithBlockedHosts"},
-		{name: "default header", arg: `--policy-http-default-headers={"Host":"example.test"}`, want: "WithDefaultHeaders"},
-		{name: "blocked header", arg: "--policy-http-blocked-request-headers=bad header", want: "WithBlockedRequestHeaders"},
-		{name: "timeout", arg: "--policy-http-timeout=-1s", want: "WithTimeout"},
-		{name: "request size", arg: "--policy-http-max-request-size=-1", want: "WithMaxRequestSize"},
-		{name: "response size", arg: "--policy-http-max-response-size=-1", want: "WithMaxResponseSize"},
-		{name: "response header size", arg: "--policy-http-max-response-header-size=-1", want: "WithMaxResponseHeaderSize"},
-		{name: "redirect count", arg: "--policy-http-max-redirects=-1", want: "WithMaxRedirects"},
+		{name: "allowed scheme", arg: "--policy-http-allowed-schemes=not a scheme", wantTarget: "allowed schemes", wantReason: "must be a valid URL scheme"},
+		{name: "allowed method", arg: "--policy-http-allowed-methods=bad method", wantTarget: "allowed methods", wantReason: "must be a non-empty HTTP method token"},
+		{name: "allowed host", arg: "--policy-http-allowed-hosts=bad host", wantTarget: "allowed hosts", wantReason: "must be a valid DNS name"},
+		{name: "blocked host", arg: "--policy-http-blocked-hosts=bad host", wantTarget: "blocked hosts", wantReason: "must be a valid DNS name"},
+		{name: "default header", arg: `--policy-http-default-headers={"Host":"example.test"}`, wantTarget: "default headers", wantReason: "request header is reserved for the transport"},
+		{name: "blocked header", arg: "--policy-http-blocked-request-headers=bad header", wantTarget: "blocked request headers", wantReason: "name is not a valid HTTP field-name token"},
+		{name: "timeout", arg: "--policy-http-timeout=-1s", wantTarget: "timeout", wantReason: "must be non-negative"},
+		{name: "request size", arg: "--policy-http-max-request-size=-1", wantTarget: "max request size", wantReason: "must be non-negative"},
+		{name: "response size", arg: "--policy-http-max-response-size=-1", wantTarget: "max response size", wantReason: "must be non-negative"},
+		{name: "response header size", arg: "--policy-http-max-response-header-size=-1", wantTarget: "max response header size", wantReason: "must be non-negative"},
+		{name: "redirect count", arg: "--policy-http-max-redirects=-1", wantTarget: "max redirects", wantReason: "must be non-negative"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateHTTPPolicyArguments(t, tt.arg)
-			if err == nil || !strings.Contains(err.Error(), tt.want) {
-				t.Fatalf("expected %s error, got %v", tt.want, err)
+			if !errors.Is(err, ferrethttp.ErrInvalidPolicyConfiguration) ||
+				!strings.Contains(err.Error(), tt.wantTarget) ||
+				!strings.Contains(err.Error(), tt.wantReason) {
+				t.Fatalf("expected %s validation error, got %v", tt.wantTarget, err)
 			}
 		})
 	}

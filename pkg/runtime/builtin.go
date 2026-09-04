@@ -120,7 +120,7 @@ func (rt *Builtin) Version(_ context.Context) (string, error) {
 	return version, nil
 }
 
-func (rt *Builtin) Run(ctx context.Context, query *source.Source, params map[string]any) (io.ReadCloser, error) {
+func (rt *Builtin) Run(ctx context.Context, query source.Source, params map[string]any) (io.ReadCloser, error) {
 	res, err := rt.engine.Run(ctx, query, ferret.WithSessionParams(params))
 
 	if err != nil {

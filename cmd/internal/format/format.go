@@ -29,7 +29,10 @@ func New(store *config.Store) *cobra.Command {
 				return err
 			}
 
-			f := formatter.New(opts...)
+			f, err := formatter.New(opts...)
+			if err != nil {
+				return fmt.Errorf("initialize formatter: %w", err)
+			}
 
 			dryRun, err := cmd.Flags().GetBool("dry-run")
 

@@ -33,10 +33,10 @@ Locations: 12, 12:4, file.fql:12, file.fql:12:4`
 
 type Renderer struct {
 	out    io.Writer
-	source *source.Source
+	source source.Source
 }
 
-func NewRenderer(out io.Writer, src *source.Source) *Renderer {
+func NewRenderer(out io.Writer, src source.Source) *Renderer {
 	return &Renderer{out: out, source: src}
 }
 
@@ -52,24 +52,24 @@ func (r *Renderer) Event(event *ferret.DebugEvent) {
 
 	switch event.Reason {
 	case ferret.DebugReasonEntry:
-		fmt.Fprintf(r.out, "Paused at %s\n", formatLocation(event.Location))
+		fmt.Fprintf(r.out, "Paused at %s\n", formatLocation(event.Location.Location))
 		r.snippet(event.Location)
 	case ferret.DebugReasonBreakpoint:
 		switch len(event.HitBreakpointIDs) {
 		case 0:
-			fmt.Fprintf(r.out, "Paused on breakpoint at %s\n", formatLocation(event.Location))
+			fmt.Fprintf(r.out, "Paused on breakpoint at %s\n", formatLocation(event.Location.Location))
 		case 1:
-			fmt.Fprintf(r.out, "Paused on breakpoint %d at %s\n", event.HitBreakpointIDs[0], formatLocation(event.Location))
+			fmt.Fprintf(r.out, "Paused on breakpoint %d at %s\n", event.HitBreakpointIDs[0], formatLocation(event.Location.Location))
 		default:
-			fmt.Fprintf(r.out, "Paused on breakpoints %s at %s\n", formatBreakpointIDs(event.HitBreakpointIDs), formatLocation(event.Location))
+			fmt.Fprintf(r.out, "Paused on breakpoints %s at %s\n", formatBreakpointIDs(event.HitBreakpointIDs), formatLocation(event.Location.Location))
 		}
 
 		r.snippet(event.Location)
 	case ferret.DebugReasonStep:
-		fmt.Fprintf(r.out, "Paused after step at %s\n", formatLocation(event.Location))
+		fmt.Fprintf(r.out, "Paused after step at %s\n", formatLocation(event.Location.Location))
 		r.snippet(event.Location)
 	case ferret.DebugReasonPause:
-		fmt.Fprintf(r.out, "Paused on pause request at %s\n", formatLocation(event.Location))
+		fmt.Fprintf(r.out, "Paused on pause request at %s\n", formatLocation(event.Location.Location))
 		r.snippet(event.Location)
 	case ferret.DebugReasonRuntimeError:
 		fmt.Fprintln(r.out, "Paused on runtime error.")
@@ -89,7 +89,7 @@ func (r *Renderer) Event(event *ferret.DebugEvent) {
 }
 
 func (r *Renderer) BreakpointSet(breakpoint ferret.DebugBreakpoint) {
-	requested := formatSourceLocation(breakpoint.File, breakpoint.RequestedLine, breakpoint.RequestedColumn)
+	requested := formatLocation(breakpoint.RequestedLocation)
 	mode := formatBindingMode(breakpoint.BindingMode)
 
 	if !breakpoint.Bound {
@@ -97,7 +97,7 @@ func (r *Renderer) BreakpointSet(breakpoint ferret.DebugBreakpoint) {
 		return
 	}
 
-	bound := formatSourceLocation(breakpoint.File, breakpoint.Line, breakpoint.Column)
+	bound := formatLocation(breakpoint.Location.Location)
 	if requested == bound {
 		fmt.Fprintf(r.out, "Breakpoint %d set at %s (%s).\n", breakpoint.ID, bound, mode)
 		return
@@ -116,12 +116,12 @@ func (r *Renderer) Breakpoints(breakpoints []ferret.DebugBreakpoint) {
 	fmt.Fprintln(table, "ID\tRequested\tBound\tMode\tState")
 
 	for _, breakpoint := range breakpoints {
-		requested := formatSourceLocation(breakpoint.File, breakpoint.RequestedLine, breakpoint.RequestedColumn)
+		requested := formatLocation(breakpoint.RequestedLocation)
 		bound := "-"
 		state := "unbound"
 
 		if breakpoint.Bound {
-			bound = formatSourceLocation(breakpoint.File, breakpoint.Line, breakpoint.Column)
+			bound = formatLocation(breakpoint.Location.Location)
 			state = "bound"
 		}
 
@@ -189,7 +189,7 @@ func (r *Renderer) error(err error) {
 }
 
 func (r *Renderer) snippet(location ferret.DebugLocation) {
-	if r.source == nil || location.File != r.source.Name() || location.Line <= 0 {
+	if location.File != r.source.Name() || location.Line <= 0 {
 		return
 	}
 
@@ -236,11 +236,7 @@ func formatBindingMode(mode ferret.DebugBreakpointBindingMode) string {
 	}
 }
 
-func formatSourceLocation(file string, line, column int) string {
-	return formatLocation(ferret.DebugLocation{File: file, Line: line, Column: column})
-}
-
-func formatLocation(location ferret.DebugLocation) string {
+func formatLocation(location source.Location) string {
 	if location.Column > 0 {
 		return fmt.Sprintf("%s:%d:%d", location.File, location.Line, location.Column)
 	}

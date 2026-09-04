@@ -21,7 +21,7 @@ func TestRunDispatchesCommandsAndClosesSession(t *testing.T) {
 		startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 3}),
 		continueEvent: debugEvent(ferret.DebugReasonPause, "demo.fql", 2, source.Span{Start: 10, End: 16}),
 		locals:        []ferret.DebugVariable{{Name: "x", Value: ferret.DebugValue{Display: "1"}}},
-		frames:        []ferret.DebugFrame{{Name: "<main>", Location: ferret.DebugLocation{File: "demo.fql", Line: 1}}},
+		frames:        []ferret.DebugFrame{{Name: "<main>", Location: debugSourceLocation("demo.fql", 1, 0)}},
 		evaluation:    ferret.DebugValue{Display: "2"},
 	}
 	input := &fakeLineReader{results: []lineResult{
@@ -51,7 +51,7 @@ func TestRunDispatchesCommandsAndClosesSession(t *testing.T) {
 		session.nextCalls != 1 || session.outCalls != 1 || session.closeCalls != 1 {
 		t.Fatalf("unexpected session calls: %#v", session)
 	}
-	if session.breakpointLocation != (ferret.DebugSourceLocation{File: "demo.fql", Line: 2, Column: 1}) {
+	if session.breakpointLocation != debugSourceLocation("demo.fql", 2, 1) {
 		t.Fatalf("unexpected breakpoint location: %#v", session.breakpointLocation)
 	}
 	if session.breakpointOptions.BindingMode != ferret.DebugBreakpointBindExact {
@@ -465,14 +465,11 @@ func (f *fakeSession) SetBreakpointAt(location ferret.DebugSourceLocation, optio
 	f.breakpointLocation = location
 	f.breakpointOptions = options
 	breakpoint := ferret.DebugBreakpoint{
-		ID:              ferret.DebugBreakpointID(len(f.breakpoints) + 1),
-		File:            location.File,
-		RequestedLine:   location.Line,
-		RequestedColumn: location.Column,
-		Line:            location.Line,
-		Column:          location.Column,
-		BindingMode:     options.BindingMode,
-		Bound:           true,
+		ID:                ferret.DebugBreakpointID(len(f.breakpoints) + 1),
+		RequestedLocation: location,
+		Location:          debugLocation(location.File, location.Line, location.Column, source.Span{}),
+		BindingMode:       options.BindingMode,
+		Bound:             true,
 	}
 	f.breakpoints = append(f.breakpoints, breakpoint)
 	return breakpoint, nil
@@ -518,6 +515,6 @@ func (f *fakeSession) Close() error {
 func debugEvent(reason ferret.DebugReason, file string, line int, span source.Span) *ferret.DebugEvent {
 	return &ferret.DebugEvent{
 		Reason:   reason,
-		Location: ferret.DebugLocation{File: file, Line: line, Column: 1, Span: span},
+		Location: debugLocation(file, line, 1, span),
 	}
 }
