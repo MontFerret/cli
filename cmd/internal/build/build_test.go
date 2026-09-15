@@ -1,12 +1,46 @@
 package build
 
 import (
+	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/MontFerret/cli/v2/cmd/internal/testutil"
 )
+
+func TestBuildCommandCanceledContext(t *testing.T) {
+	dir := t.TempDir()
+	inputs := []string{filepath.Join(dir, "first.fql"), filepath.Join(dir, "second.fql")}
+
+	for _, input := range inputs {
+		testutil.WriteQuery(t, input, "RETURN 1")
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	command := New(nil)
+	command.SetContext(ctx)
+
+	stderr, err := testutil.CaptureStderr(t, func() error {
+		return command.RunE(command, inputs)
+	})
+	if err == nil || err.Error() != "2 of 2 scripts failed to build" {
+		t.Fatalf("expected aggregated compilation failures, got %v", err)
+	}
+
+	if strings.Count(stderr, context.Canceled.Error()) != len(inputs) {
+		t.Fatalf("expected cancellation diagnostics for both scripts, got %q", stderr)
+	}
+
+	for _, name := range []string{"first.fqlc", "second.fqlc"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); !os.IsNotExist(err) {
+			t.Fatalf("expected %s to be absent, got %v", name, err)
+		}
+	}
+}
 
 func TestRunBuild_MixedMultiFileBuildContinues(t *testing.T) {
 	dir := t.TempDir()
@@ -18,7 +52,7 @@ func TestRunBuild_MixedMultiFileBuildContinues(t *testing.T) {
 	testutil.WriteQuery(t, invalid, "FOR item IN")
 
 	_, err := testutil.CaptureStderr(t, func() error {
-		return runBuild([]string{valid, invalid}, outputDir)
+		return runBuild(t.Context(), []string{valid, invalid}, outputDir)
 	})
 
 	if err == nil {
@@ -41,7 +75,7 @@ func TestRunBuild_PlanErrorReturned(t *testing.T) {
 	testutil.WriteQuery(t, output, "not a directory")
 
 	_, err := testutil.CaptureStderr(t, func() error {
-		return runBuild([]string{inputA, inputB}, output)
+		return runBuild(t.Context(), []string{inputA, inputB}, output)
 	})
 
 	if err == nil {

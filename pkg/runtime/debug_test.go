@@ -26,7 +26,7 @@ func TestNewDebugSessionIntegration(t *testing.T) {
 
 	nextBreakpoint, err := session.SetBreakpointAt(
 		ferret.DebugSourceLocation{Position: ferret.Position{Line: 3}},
-		ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFile},
+		ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -128,7 +128,7 @@ func TestNewDebugSessionDocumentSurvivesResume(t *testing.T) {
 		t.Fatalf("unexpected start event: %#v", event)
 	}
 
-	event, err = session.Next(ctx)
+	event, err = session.StepOver(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

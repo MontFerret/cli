@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/MontFerret/ferret/v2/pkg/source"
+
 	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
 )
 
@@ -17,8 +19,8 @@ func Execute(ctx context.Context, opts cliruntime.Options, params map[string]any
 		return cliruntime.RunArtifact(ctx, opts, input.Artifact, params)
 	}
 
-	if input.Source.Empty() {
-		return nil, fmt.Errorf("run source is empty")
+	if input.Source.ID() == (source.ID{}) {
+		return nil, fmt.Errorf("run source is not set")
 	}
 
 	return cliruntime.Run(ctx, opts, input.Source, params)

@@ -351,7 +351,7 @@ func buildArtifact(t *testing.T, inputPath, outputPath string) {
 
 	src := readSource(t, inputPath)
 
-	if err := build.WriteArtifact(newCompiler(t), src, outputPath); err != nil {
+	if err := build.WriteArtifact(t.Context(), newCompiler(t), src, outputPath); err != nil {
 		t.Fatalf("build artifact: %v", err)
 	}
 }

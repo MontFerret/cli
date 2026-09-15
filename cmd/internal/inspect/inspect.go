@@ -48,8 +48,7 @@ func New(store *config.Store) *cobra.Command {
 				return fmt.Errorf("initialize compiler: %w", err)
 			}
 
-			program, err := c.Compile(sources[0])
-
+			program, err := c.Compile(cmd.Context(), sources[0])
 			if err != nil {
 				diagnostics.PrintError(err)
 				return fmt.Errorf("compilation failed")

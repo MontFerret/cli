@@ -1,6 +1,8 @@
 package build
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -197,7 +199,7 @@ func TestWriteArtifact_RejectsOverwritingSource(t *testing.T) {
 
 	writeQuery(t, input, query)
 
-	err := WriteArtifact(newCompiler(t), source.New(input, query), input)
+	err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, query), input)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -224,7 +226,7 @@ func TestWriteArtifact_InvalidQueryDoesNotCreateArtifact(t *testing.T) {
 
 	writeQuery(t, input, "FOR item IN")
 
-	err := WriteArtifact(newCompiler(t), source.New(input, "FOR item IN"), output)
+	err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, "FOR item IN"), output)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -242,7 +244,7 @@ func TestWriteArtifact_CreatesMissingParentDirectory(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 42")
 
-	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 42"), output); err != nil {
+	if err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, "RETURN 42"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -256,7 +258,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFile(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 1")
 
-	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 1"), output); err != nil {
+	if err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, "RETURN 1"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -264,7 +266,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFile(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 2")
 
-	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 2"), output); err != nil {
+	if err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, "RETURN 2"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -278,7 +280,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFileInNestedDirectory(t *testi
 
 	writeQuery(t, input, "RETURN 1")
 
-	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 1"), output); err != nil {
+	if err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, "RETURN 1"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -286,7 +288,7 @@ func TestWriteArtifact_ReplacesExistingDestinationFileInNestedDirectory(t *testi
 
 	writeQuery(t, input, "RETURN 2")
 
-	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 2"), output); err != nil {
+	if err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, "RETURN 2"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -300,7 +302,7 @@ func TestWriteArtifact_RenameFailurePreservesExistingDestinationAndCleansTemp(t 
 
 	writeQuery(t, input, "RETURN 1")
 
-	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 1"), output); err != nil {
+	if err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, "RETURN 1"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -311,7 +313,7 @@ func TestWriteArtifact_RenameFailurePreservesExistingDestinationAndCleansTemp(t 
 	})
 	defer restore()
 
-	err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 2"), output)
+	err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, "RETURN 2"), output)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -337,7 +339,7 @@ func TestWriteArtifact_RenameFailureDoesNotCreateDestinationAndCleansTemp(t *tes
 	})
 	defer restore()
 
-	err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 42"), output)
+	err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, "RETURN 42"), output)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -357,7 +359,7 @@ func TestWriteArtifact_ArtifactRoundTrip(t *testing.T) {
 
 	writeQuery(t, input, "RETURN 42")
 
-	if err := WriteArtifact(newCompiler(t), source.New(input, "RETURN 42"), output); err != nil {
+	if err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, "RETURN 42"), output); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -371,7 +373,7 @@ func TestWriteArtifact_InvalidQueryDoesNotCreateArtifactInMissingParentDirectory
 
 	writeQuery(t, input, "FOR item IN")
 
-	err := WriteArtifact(newCompiler(t), source.New(input, "FOR item IN"), output)
+	err := WriteArtifact(t.Context(), newCompiler(t), source.New(input, "FOR item IN"), output)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -379,6 +381,78 @@ func TestWriteArtifact_InvalidQueryDoesNotCreateArtifactInMissingParentDirectory
 
 	if _, statErr := os.Stat(output); !os.IsNotExist(statErr) {
 		t.Fatalf("expected artifact to be absent, stat err=%v", statErr)
+	}
+}
+
+func TestWriteArtifact_CanceledContextLeavesDestinationUntouched(t *testing.T) {
+	tests := []struct {
+		name          string
+		missingParent bool
+		existing      bool
+	}{
+		{name: "missing destination"},
+		{name: "missing parent", missingParent: true},
+		{name: "existing destination", existing: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			dir := t.TempDir()
+			input := filepath.Join(dir, "query.fql")
+			output := filepath.Join(dir, "dist", "query.fqlc")
+			c := newCompiler(t)
+
+			writeQuery(t, input, "RETURN 2")
+
+			if !test.missingParent {
+				if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			var original []byte
+
+			if test.existing {
+				if err := WriteArtifact(t.Context(), c, source.New(input, "RETURN 1"), output); err != nil {
+					t.Fatal(err)
+				}
+
+				var err error
+				original, err = os.ReadFile(output)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+
+			err := WriteArtifact(ctx, c, source.New(input, "RETURN 2"), output)
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("expected cancellation, got %v", err)
+			}
+
+			if test.existing {
+				content, err := os.ReadFile(output)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if !bytes.Equal(content, original) {
+					t.Fatal("canceled compilation replaced the existing artifact")
+				}
+			} else if _, err := os.Stat(output); !os.IsNotExist(err) {
+				t.Fatalf("expected artifact to be absent, got %v", err)
+			}
+
+			if test.missingParent {
+				if _, err := os.Stat(filepath.Dir(output)); !os.IsNotExist(err) {
+					t.Fatalf("expected parent directory to be absent, got %v", err)
+				}
+			}
+
+			assertNoTempArtifacts(t, filepath.Dir(output), output)
+		})
 	}
 }
 

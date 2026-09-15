@@ -1,6 +1,7 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +13,9 @@ import (
 
 var renameArtifactFile = os.Rename
 
-func WriteArtifact(c *compiler.Compiler, src source.Source, outputPath string) error {
+// WriteArtifact compiles src with a non-nil context and atomically replaces the
+// output artifact. Compilation errors leave the destination untouched.
+func WriteArtifact(ctx context.Context, c *compiler.Compiler, src source.Source, outputPath string) error {
 	same, err := samePath(src.Name(), outputPath)
 
 	if err != nil {
@@ -23,8 +26,7 @@ func WriteArtifact(c *compiler.Compiler, src source.Source, outputPath string) e
 		return fmt.Errorf("output path %s would overwrite source file %s", outputPath, src.Name())
 	}
 
-	program, err := c.Compile(src)
-
+	program, err := c.Compile(ctx, src)
 	if err != nil {
 		return err
 	}

@@ -189,7 +189,7 @@ func (r *Renderer) error(err error) {
 }
 
 func (r *Renderer) snippet(location ferret.DebugLocation) {
-	if location.File != r.source.Name() || location.Line <= 0 {
+	if location.SourceName != r.source.Name() || location.Line <= 0 {
 		return
 	}
 
@@ -238,12 +238,12 @@ func formatBindingMode(mode ferret.DebugBreakpointBindingMode) string {
 
 func formatLocation(location source.Location) string {
 	if location.Column > 0 {
-		return fmt.Sprintf("%s:%d:%d", location.File, location.Line, location.Column)
+		return fmt.Sprintf("%s:%d:%d", location.SourceName, location.Line, location.Column)
 	}
 
 	if location.Line > 0 {
-		return fmt.Sprintf("%s:%d", location.File, location.Line)
+		return fmt.Sprintf("%s:%d", location.SourceName, location.Line)
 	}
 
-	return location.File
+	return location.SourceName
 }

@@ -7,12 +7,14 @@ import (
 )
 
 type (
+	// Session is the core debugger contract consumed by the CLI. Run closes the
+	// session when the interactive loop exits.
 	Session interface {
 		Start(context.Context) (*ferret.DebugEvent, error)
 		Continue(context.Context) (*ferret.DebugEvent, error)
-		Step(context.Context) (*ferret.DebugEvent, error)
-		Next(context.Context) (*ferret.DebugEvent, error)
-		Out(context.Context) (*ferret.DebugEvent, error)
+		StepIn(context.Context) (*ferret.DebugEvent, error)
+		StepOver(context.Context) (*ferret.DebugEvent, error)
+		StepOut(context.Context) (*ferret.DebugEvent, error)
 		Pause() error
 		SetBreakpointAt(ferret.DebugSourceLocation, ferret.DebugBreakpointOptions) (ferret.DebugBreakpoint, error)
 		DeleteBreakpoint(ferret.DebugBreakpointID) error
