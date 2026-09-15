@@ -40,13 +40,13 @@ func planFQLSourceChanges(ctx context.Context, project *migrationProject) (*fqlS
 
 		src := source.New(relative, string(snapshot.Data))
 		migration, err := migrateFQLSource(src)
+		result.ManualActions = append(result.ManualActions, migration.ManualActions...)
+
 		if err != nil {
 			result.ManualActions = append(result.ManualActions, fqlManualAction(relative, src, err))
 
 			continue
 		}
-
-		result.ManualActions = append(result.ManualActions, migration.ManualActions...)
 
 		if !migration.Changed {
 			continue
@@ -86,22 +86,27 @@ func migrateFQLSource(src source.Source) (fqlMigrationResult, error) {
 		return fqlMigrationResult{}, err
 	}
 
+	result := fqlMigrationResult{ManualActions: actions}
+
 	edits = append(edits, stdlibEdits...)
 	if len(edits) == 0 {
-		return fqlMigrationResult{ManualActions: actions}, nil
+		return result, nil
 	}
 
 	migrated, err := applyFQLEdits(src.Content(), edits)
 	if err != nil {
-		return fqlMigrationResult{}, err
+		return result, err
 	}
 
 	formatted, err := formatMigratedFQLSource(source.New(src.Name(), migrated), fqlComments(program))
 	if err != nil {
-		return fqlMigrationResult{}, err
+		return result, err
 	}
 
-	return fqlMigrationResult{Data: formatted, ManualActions: actions, Changed: true}, nil
+	result.Data = formatted
+	result.Changed = true
+
+	return result, nil
 }
 
 func finalTopLevelFQLFor(src source.Source) (fql.IForExpressionContext, error) {

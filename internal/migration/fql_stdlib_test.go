@@ -390,6 +390,50 @@ func TestMigrateFQLStdlibCanonicalCallsExecute(t *testing.T) {
 	}
 }
 
+func TestMigrateFQLSourcePreservesManualActionsOnFormattingFailure(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		calls []string
+	}{
+		{
+			name:  "one deferred call",
+			input: "let value = average(items)\nreturn sha1 /* preserve me */ (value)",
+			calls: []string{"average(...)"},
+		},
+		{
+			name: "multiple deferred calls",
+			input: "let a = average(items)\nlet b = date_compare(left, right, \"day\")\n" +
+				"return sha1 /* preserve me */ (a)",
+			calls: []string{"average(...)", "date_compare(...)"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := migrateFQLSource(source.New("query.fql", test.input))
+			if err == nil || !strings.Contains(err.Error(), "formatter did not preserve comments") {
+				t.Fatalf("expected comment-preservation failure, got %v", err)
+			}
+
+			if result.Data != nil || result.Changed {
+				t.Fatalf("failed migration returned transformed source: %#v", result)
+			}
+
+			if len(result.ManualActions) != len(test.calls) {
+				t.Fatalf("manual actions = %#v, want %v", result.ManualActions, test.calls)
+			}
+
+			for i, call := range test.calls {
+				action := result.ManualActions[i]
+				if action.Path != "query.fql" || action.Line != i+1 || action.Detail != call || action.Reason == "" {
+					t.Fatalf("manual action %d lost its original details: %#v", i, action)
+				}
+			}
+		})
+	}
+}
+
 func assertFQLStdlibMigration(t *testing.T, input, want string, manualCount int) fqlMigrationResult {
 	t.Helper()
 

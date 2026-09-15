@@ -133,6 +133,72 @@ func TestMigratorStdlibDirectoryReportingAndExclusions(t *testing.T) {
 	}
 }
 
+func TestMigratorPreservesManualActionsOnFormattingFailure(t *testing.T) {
+	for _, multiple := range []bool{false, true} {
+		for _, mode := range []Mode{ModeApply, ModeDryRun, ModePrint} {
+			t.Run(fmt.Sprintf("multiple=%t/mode=%d", multiple, mode), func(t *testing.T) {
+				root := t.TempDir()
+				path := filepath.Join(root, "query.fql")
+				before := "let value = average(items)\n"
+				if multiple {
+					before += "let comparison = date_compare(left, right, \"day\")\n"
+				}
+
+				before += "return sha1 /* preserve me */ (value)"
+				writeMigrationTargetFile(t, root, "query.fql", before)
+				migrator, _ := newFixtureMigrator()
+				var previous []ManualAction
+
+				for attempt := 0; attempt < 2; attempt++ {
+					result, err := migrator.Migrate(context.Background(), Options{Path: path, Mode: mode})
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					if result.Applied || result.MigratedFQLFiles != 0 || len(result.Changes) != 0 || result.ScannedFQLFiles != 1 {
+						t.Fatalf("failed file produced source changes: %#v", result)
+					}
+
+					if got := readMigrationFixture(t, path); got != before {
+						t.Fatalf("attempt %d modified rejected source: %q", attempt, got)
+					}
+
+					wantCounts := map[string]int{
+						"average(...)": 1,
+						"format migrated Ferret source: formatter did not preserve comments": 1,
+					}
+					if multiple {
+						wantCounts["date_compare(...)"] = 1
+					}
+
+					counts := make(map[string]int)
+					for _, action := range result.ManualActions {
+						counts[action.Detail]++
+						line := 1
+						if action.Detail == "date_compare(...)" {
+							line = 2
+						}
+
+						if action.Path != "query.fql" || action.Line != line || action.Reason == "" {
+							t.Fatalf("unexpected diagnostic location or reason: %#v", action)
+						}
+					}
+
+					if !reflect.DeepEqual(counts, wantCounts) {
+						t.Fatalf("diagnostic counts = %#v, want %#v", counts, wantCounts)
+					}
+
+					if attempt > 0 && !reflect.DeepEqual(result.ManualActions, previous) {
+						t.Fatalf("retry changed diagnostics: before=%#v after=%#v", previous, result.ManualActions)
+					}
+
+					previous = result.ManualActions
+				}
+			})
+		}
+	}
+}
+
 func TestMigratorStdlibRollsBackOnCommitFailure(t *testing.T) {
 	root := t.TempDir()
 	writeMigrationTargetFile(t, root, "a.fql", "return abs(-1)")
