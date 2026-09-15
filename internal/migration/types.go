@@ -139,8 +139,9 @@ type (
 	}
 
 	fqlMigrationResult struct {
-		Data    []byte
-		Changed bool
+		Data          []byte
+		ManualActions []ManualAction
+		Changed       bool
 	}
 
 	migrationFiles struct {

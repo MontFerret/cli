@@ -46,6 +46,8 @@ func planFQLSourceChanges(ctx context.Context, project *migrationProject) (*fqlS
 			continue
 		}
 
+		result.ManualActions = append(result.ManualActions, migration.ManualActions...)
+
 		if !migration.Changed {
 			continue
 		}
@@ -69,64 +71,80 @@ func planFQLSourceChanges(ctx context.Context, project *migrationProject) (*fqlS
 }
 
 func migrateFQLSource(src source.Source) (fqlMigrationResult, error) {
-	loop, err := finalTopLevelFQLFor(src)
+	program, err := parseFQLSource(src)
 	if err != nil {
 		return fqlMigrationResult{}, err
 	}
 
-	if loop == nil {
-		return fqlMigrationResult{}, nil
-	}
-
-	migrated, err := rewriteFinalFQLFor(src.Content(), loop)
+	edits, err := finalFQLForEdits(src.Content(), finalFQLFor(program))
 	if err != nil {
 		return fqlMigrationResult{}, err
 	}
 
-	formatted, err := formatMigratedFQLSource(source.New(src.Name(), migrated))
+	stdlibEdits, actions, err := planFQLStdlib(src, program)
 	if err != nil {
 		return fqlMigrationResult{}, err
 	}
 
-	return fqlMigrationResult{Data: formatted, Changed: true}, nil
+	edits = append(edits, stdlibEdits...)
+	if len(edits) == 0 {
+		return fqlMigrationResult{ManualActions: actions}, nil
+	}
+
+	migrated, err := applyFQLEdits(src.Content(), edits)
+	if err != nil {
+		return fqlMigrationResult{}, err
+	}
+
+	formatted, err := formatMigratedFQLSource(source.New(src.Name(), migrated), fqlComments(program))
+	if err != nil {
+		return fqlMigrationResult{}, err
+	}
+
+	return fqlMigrationResult{Data: formatted, ManualActions: actions, Changed: true}, nil
 }
 
 func finalTopLevelFQLFor(src source.Source) (fql.IForExpressionContext, error) {
-	if !utf8.ValidString(src.Content()) {
-		return nil, fmt.Errorf("parse Ferret source: source is not valid UTF-8")
-	}
-
 	program, err := parseFQLSource(src)
 	if err != nil {
 		return nil, err
 	}
 
+	return finalFQLFor(program), nil
+}
+
+func finalFQLFor(program *fql.ProgramContext) fql.IForExpressionContext {
 	body := program.Body()
 	if body == nil || body.BodyExpression() != nil {
-		return nil, nil
+		return nil
 	}
 
 	statements := body.AllBodyStatement()
 	if len(statements) == 0 {
-		return nil, nil
+		return nil
 	}
 
 	loop := statements[len(statements)-1].ForExpression()
 	if loop == nil || loop.GetStart() == nil {
+		return nil
+	}
+
+	return loop
+}
+
+func finalFQLForEdits(content string, loop fql.IForExpressionContext) ([]fqlSourceEdit, error) {
+	if loop == nil {
 		return nil, nil
 	}
 
-	return loop, nil
-}
-
-func rewriteFinalFQLFor(content string, loop fql.IForExpressionContext) (string, error) {
 	start, ok := fqlByteOffset(content, loop.GetStart().GetStart())
 	if !ok {
-		return "", fmt.Errorf("locate final top-level FOR in Ferret source")
+		return nil, fmt.Errorf("locate final top-level FOR in Ferret source")
 	}
 
+	edits := []fqlSourceEdit{{start: start, end: start, text: "return "}}
 	if loop.OpenBrace() != nil {
-		return content[:start] + "return " + content[start:], nil
+		return edits, nil
 	}
 
 	headerStop := -1
@@ -137,24 +155,30 @@ func rewriteFinalFQLFor(content string, loop fql.IForExpressionContext) (string,
 	}
 
 	if headerStop < 0 || loop.GetStop() == nil {
-		return "", fmt.Errorf("locate final top-level FOR boundaries in Ferret source")
+		return nil, fmt.Errorf("locate final top-level FOR boundaries in Ferret source")
 	}
 
 	headerEnd, ok := fqlByteOffset(content, headerStop+1)
 	if !ok {
-		return "", fmt.Errorf("locate final top-level FOR header in Ferret source")
+		return nil, fmt.Errorf("locate final top-level FOR header in Ferret source")
 	}
 
 	loopEnd, ok := fqlByteOffset(content, loop.GetStop().GetStop()+1)
 	if !ok || headerEnd > loopEnd {
-		return "", fmt.Errorf("locate final top-level FOR body in Ferret source")
+		return nil, fmt.Errorf("locate final top-level FOR body in Ferret source")
 	}
 
-	return content[:start] + "return " + content[start:headerEnd] + " {" +
-		content[headerEnd:loopEnd] + "\n}" + content[loopEnd:], nil
+	return append(edits,
+		fqlSourceEdit{start: headerEnd, end: headerEnd, text: " {"},
+		fqlSourceEdit{start: loopEnd, end: loopEnd, text: "\n}"},
+	), nil
 }
 
 func parseFQLSource(src source.Source) (program *fql.ProgramContext, err error) {
+	if !utf8.ValidString(src.Content()) {
+		return nil, fmt.Errorf("parse Ferret source: source is not valid UTF-8")
+	}
+
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			program = nil
@@ -178,7 +202,7 @@ func parseFQLSource(src source.Source) (program *fql.ProgramContext, err error) 
 	return program, nil
 }
 
-func formatMigratedFQLSource(src source.Source) (data []byte, err error) {
+func formatMigratedFQLSource(src source.Source, comments []string) (data []byte, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			data = nil
@@ -210,11 +234,32 @@ func formatMigratedFQLSource(src source.Source) (data []byte, err error) {
 		return nil, fmt.Errorf("format migrated Ferret source: formatter did not preserve non-ASCII source text")
 	}
 
-	if _, err := parseFQLSource(source.New(src.Name(), string(formatted))); err != nil {
+	program, err := parseFQLSource(source.New(src.Name(), string(formatted)))
+	if err != nil {
 		return nil, fmt.Errorf("validate formatted Ferret source: %w", err)
 	}
 
+	if !slices.Equal(comments, fqlComments(program)) {
+		return nil, fmt.Errorf("format migrated Ferret source: formatter did not preserve comments")
+	}
+
 	return formatted, nil
+}
+
+// Hidden-channel comment tokens retain their exact text. Comparing them prevents
+// formatter limitations from silently discarding comments after a safe rewrite.
+func fqlComments(program *fql.ProgramContext) []string {
+	stream := program.GetParser().GetTokenStream()
+	var comments []string
+	for i := 0; i < stream.Size(); i++ {
+		token := stream.Get(i)
+		switch token.GetTokenType() {
+		case fql.FqlLexerMultiLineComment, fql.FqlLexerSingleLineComment:
+			comments = append(comments, token.GetText())
+		}
+	}
+
+	return comments
 }
 
 type fqlNonASCIIReplacement struct {
