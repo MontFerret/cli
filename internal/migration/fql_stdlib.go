@@ -22,6 +22,12 @@ type (
 		locals  map[string]bool
 		aliases map[string]string
 	}
+
+	fqlStdlibFinding struct {
+		name   fql.IFunctionNameContext
+		target string
+		reason string
+	}
 )
 
 const fqlAggregateReason = "legacy aggregate behavior is permissive for heterogeneous collections; " +
@@ -127,11 +133,43 @@ func migrateFQLKeys(call fql.IFunctionCallContext) (string, string) {
 }
 
 func planFQLStdlib(src source.Source, program *fql.ProgramContext) ([]fqlSourceEdit, []ManualAction, error) {
+	var edits []fqlSourceEdit
+	var actions []ManualAction
+	for _, finding := range analyzeFQLStdlib(program) {
+		name := finding.name
+		spelling := name.GetText()
+		if finding.reason != "" {
+			actions = append(actions, ManualAction{
+				Path:   src.Name(),
+				Detail: spelling + "(...)",
+				Reason: finding.reason,
+				Line:   name.GetStart().GetLine(),
+			})
+
+			continue
+		}
+
+		span, ok := fqlByteSpan(src.Content(), source.Span{
+			Start: name.GetStart().GetStart(),
+			End:   name.GetStop().GetStop() + 1,
+		})
+		if !ok || span.End <= span.Start {
+			return nil, nil, fmt.Errorf("locate stdlib call %s in Ferret source", spelling)
+		}
+
+		edits = append(edits, fqlSourceEdit{start: span.Start, end: span.End, text: finding.target})
+	}
+
+	return edits, actions, nil
+}
+
+// Share rule selection and resolution guards between read-only checks and edits.
+// A reason takes precedence over the proposed target and requires manual review.
+func analyzeFQLStdlib(program *fql.ProgramContext) []fqlStdlibFinding {
 	info := fqlStdlibCalls{locals: make(map[string]bool), aliases: make(map[string]string)}
 	collectFQLStdlibCalls(program, &info)
 
-	var edits []fqlSourceEdit
-	var actions []ManualAction
+	var findings []fqlStdlibFinding
 	for _, call := range info.calls {
 		if namespace := call.Namespace(); namespace != nil && namespace.GetText() != "" {
 			continue
@@ -157,29 +195,10 @@ func planFQLStdlib(src source.Source, program *fql.ProgramContext) ([]fqlSourceE
 			}
 		}
 
-		if reason != "" {
-			actions = append(actions, ManualAction{
-				Path:   src.Name(),
-				Detail: spelling + "(...)",
-				Reason: reason,
-				Line:   name.GetStart().GetLine(),
-			})
-
-			continue
-		}
-
-		span, ok := fqlByteSpan(src.Content(), source.Span{
-			Start: name.GetStart().GetStart(),
-			End:   name.GetStop().GetStop() + 1,
-		})
-		if !ok || span.End <= span.Start {
-			return nil, nil, fmt.Errorf("locate stdlib call %s in Ferret source", spelling)
-		}
-
-		edits = append(edits, fqlSourceEdit{start: span.Start, end: span.End, text: target})
+		findings = append(findings, fqlStdlibFinding{name: name, target: target, reason: reason})
 	}
 
-	return edits, actions, nil
+	return findings
 }
 
 // File-wide guards deliberately sacrifice some migrations to avoid implementing

@@ -227,19 +227,6 @@ func TestMigratorStdlibRollsBackOnCommitFailure(t *testing.T) {
 	}
 }
 
-func TestCheckFQLCompatibilityDoesNotIncludeStdlibRules(t *testing.T) {
-	root := t.TempDir()
-	writeMigrationTargetFile(t, root, "query.fql", "return [abs(-1), average(xs), join(a, b)]")
-	result, err := new(Migrator).CheckCompatibility(context.Background(), CompatibilityOptions{Path: root})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if result.ScannedFiles != 1 || len(result.Diagnostics) != 0 {
-		t.Fatalf("stdlib migration expanded check scope: %#v", result)
-	}
-}
-
 func BenchmarkPlanFQLStdlibSourceChanges(b *testing.B) {
 	for _, canonical := range []bool{false, true} {
 		name := "legacy"

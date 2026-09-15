@@ -234,8 +234,13 @@ files.
 
 ### Checking FQL compatibility
 
-`migrate check` currently checks final collecting `FOR` compatibility only.
-Stdlib migration findings are reported by `migrate run`, including its preview modes.
+`migrate check` reports final collecting `FOR` compatibility and the same legacy
+stdlib findings as `migrate run`: encoding, crypto, path, immutable object,
+datetime, and scalar math replacements, plus calls requiring manual review.
+It uses the same conservative declaration and alias guards described above.
+Already-qualified calls are left alone; arrays and `rand`/`range` remain outside
+this pass. A clean check covers these supported rules, not all v1 application
+semantics.
 
 Check a standalone FQL file or recursively inspect a directory without
 modifying source files:
@@ -253,19 +258,24 @@ nested Go modules. They skip `.git`, `.hg`, `.svn`, `vendor`, and
 `node_modules`, and do not follow directory symlinks.
 
 Compatibility findings use editor-friendly locations and include a suggested
-manual fix:
+replacement or a manual-review explanation:
 
 ```text
 1_hackernews.fql:2:1: Final collecting FOR no longer becomes the script result in Ferret v2.
   help: Add `return` before this loop.
 
-Found 1 v1 compatibility issue in 1 of 12 FQL files.
+query.fql:1:8: Legacy stdlib call `has` should use `object::has_key`.
+  help: Preview automatic replacements with `ferret migrate run --print`.
+
+Found 2 v1 compatibility issues in 2 of 12 FQL files.
 ```
 
-The command exits nonzero when it finds a compatibility issue or cannot parse
-an FQL file. Malformed files are reported while the remaining files continue
-to be checked. Filesystem, cancellation, and internal failures stop the check
-immediately.
+The command exits nonzero for automatic replacement suggestions, manual-review
+findings, or FQL parse failures. Use `ferret migrate run --print path/to/source`
+to preview edits; the check does not verify whether the formatter can preserve
+the source during rewriting. Malformed files are reported while the remaining
+files continue to be checked. Filesystem, cancellation, and internal failures
+stop the check immediately.
 
 ## Module lifecycle
 

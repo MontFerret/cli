@@ -80,3 +80,67 @@ func TestMigrateRunStdlibHelp(t *testing.T) {
 		}
 	}
 }
+
+func TestMigrateCheckStdlibReportsFindingsWithoutWriting(t *testing.T) {
+	tests := []struct {
+		name, input, diagnostic string
+	}{
+		{
+			name:  "has replacement",
+			input: `return has({ foo: "bar" }, "baz")`,
+			diagnostic: ":1:8: Legacy stdlib call `has` should use `object::has_key`.\n" +
+				"  help: Preview automatic replacements with `ferret migrate run --print`.\n\n",
+		},
+		{
+			name:  "manual review only",
+			input: "return average(xs)",
+			diagnostic: ":1:8: Stdlib call `average` needs manual review.\n" +
+				"  help: legacy aggregate behavior is permissive for heterogeneous collections; " +
+				"the strict math API requires a separate semantic migration\n\n",
+		},
+		{
+			name:  "canonical source",
+			input: `return object::has_key({ foo: "bar" }, "baz")`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "query.fql")
+			if err := os.WriteFile(path, []byte(test.input), 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			workingDirectory, err := os.Getwd()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			displayPath, err := filepath.Rel(workingDirectory, path)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for range 2 {
+				stdout, stderr, err := executeMigrateCommand(t, migration.New(nil), "check", path)
+				if test.diagnostic == "" {
+					if err != nil || stderr != "" || stdout != "✓ No v1 compatibility issues found in 1 FQL file.\n" {
+						t.Fatalf("unexpected clean check: stdout=%q stderr=%q err=%v", stdout, stderr, err)
+					}
+				} else if err == nil || err.Error() != "Found 1 v1 compatibility issue in 1 of 1 FQL file." ||
+					stdout != "" || stderr != filepath.ToSlash(displayPath)+test.diagnostic {
+					t.Fatalf("unexpected check finding: stdout=%q stderr=%q err=%v", stdout, stderr, err)
+				}
+
+				contents, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if string(contents) != test.input {
+					t.Fatalf("check changed source: %q", contents)
+				}
+			}
+		})
+	}
+}
