@@ -59,7 +59,7 @@ func checkFQLCompatibility(ctx context.Context, options CompatibilityOptions) (*
 		}
 
 		src := source.New(displayPath, string(data))
-		loop, err := finalTopLevelFQLFor(src)
+		program, err := parseFQLSource(src)
 		if err != nil {
 			detail, line, column := fqlDiagnosticDetails(src, err)
 			result.Diagnostics = append(result.Diagnostics, CompatibilityDiagnostic{
@@ -74,6 +74,14 @@ func checkFQLCompatibility(ctx context.Context, options CompatibilityOptions) (*
 			continue
 		}
 
+		stdlib, err := checkFQLStdlib(src, program)
+		if err != nil {
+			return nil, fmt.Errorf("locate compatibility issue in %s: %w", displayPath, err)
+		}
+
+		result.Diagnostics = append(result.Diagnostics, stdlib...)
+
+		loop := finalFQLFor(program)
 		if loop == nil {
 			continue
 		}

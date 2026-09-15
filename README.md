@@ -149,9 +149,50 @@ return for item in 1..3 {
 }
 ```
 
-Only a structurally recognized final top-level `FOR` without an explicit
-terminal `return` is changed. Nested, assigned, expression-contained,
-function-contained, non-final, and already-returned loops remain untouched.
+For loop migration, only a structurally recognized final top-level `FOR` without
+an explicit terminal `return` is changed. Nested, assigned, expression-contained,
+function-contained, non-final, and already-returned loops retain their structure.
+
+The command also migrates safe unqualified legacy stdlib calls to canonical
+lowercase names. For example, `JSON_PARSE(body)` becomes
+`encoding::json_parse(body)`, `has(obj, key)` becomes `object::has_key(obj, key)`,
+and `abs(value)` becomes `math::abs(value)`. Supported mappings include:
+
+| Namespace | Legacy calls migrated automatically |
+| --- | --- |
+| `encoding::` | `json_parse`, `json_stringify`, `encode_uri_component` → `query_escape`, `decode_uri_component` → `query_unescape`, `to_base64` → `base64_encode`, `from_base64` → `base64_decode`, `escape_html` → `html_escape`, `unescape_html` → `html_unescape` |
+| `crypto::` | `md5`, `sha1`, `sha512`, `random_token` |
+| `path::` | `base`, `clean`, `dir`, `ext`, `is_abs`, `separate`, `match` |
+| `object::` | `values`, `has` → `has_key`, `zip`, `keep_keys`, `merge`, `merge_recursive` → `merge_deep`, and one-argument `keys(obj)` |
+| `datetime::` | `now`, `date` → `parse`, `date_dayofweek` → `day_of_week`, `date_dayofyear` → `day_of_year`, `date_leapyear` → `is_leap_year`; `date_year`, `date_month`, `date_day`, `date_hour`, `date_minute`, `date_second`, `date_millisecond`, `date_quarter`, `date_days_in_month`, `date_format`, `date_add`, `date_subtract` lose their `date_` prefix |
+| `math::` | `pi`, `abs`, `acos`, `asin`, `atan`, `atan2`, `ceil`, `cos`, `degrees`, `exp`, `exp2`, `floor`, `log`, `log2`, `log10`, `pow`, `radians`, `round`, `sin`, `sqrt`, `tan` |
+
+Only parsed call targets are replaced; arguments retain their meaning, and
+strings, comments, object keys, and variable names are not matched. Nested calls
+are migrated independently, and already-qualified targets are preserved. Object
+replacements use immutable operations, never `object::mut`.
+
+Manual follow-up includes the original path and line and explains why a call
+was preserved:
+
+- `join` is ambiguous between legacy path joining and modern global string joining.
+- `keys` with any arity other than one needs argument-aware review.
+- `date_compare` has component-range semantics that differ from `datetime::same`;
+  legacy `date_diff` integer/floating behavior differs from `datetime::diff`.
+- `average`, `sum`, `min`, `max`, `median`, `percentile`, `stddev_population`,
+  `stddev_sample`, `variance_population`, and `variance_sample` have permissive
+  legacy behavior that differs from strict canonical math.
+- A matching function declaration or function alias anywhere in the file may
+  change call resolution. These checks are deliberately conservative, including
+  case variants and declarations in nested scopes. A namespace alias blocks a
+  replacement only when it would redirect that canonical target.
+
+Other safe calls in the same file still migrate. Array migrations and
+`rand`/`range` are deferred and receive no new diagnostics in this pass.
+Rerunning migration produces no further edits; unresolved manual actions remain.
+If the formatter cannot preserve comments, the entire file is left unchanged
+and reported for manual follow-up.
+
 Changed FQL is canonically formatted; files needing only formatting remain
 byte-for-byte unchanged. FQL-only targets do not require a Go module or Go
 toolchain and do not change Go dependencies. A directory containing eligible Go
@@ -193,6 +234,14 @@ files.
 
 ### Checking FQL compatibility
 
+`migrate check` reports final collecting `FOR` compatibility and the same legacy
+stdlib findings as `migrate run`: encoding, crypto, path, immutable object,
+datetime, and scalar math replacements, plus calls requiring manual review.
+It uses the same conservative declaration and alias guards described above.
+Already-qualified calls are left alone; arrays and `rand`/`range` remain outside
+this pass. A clean check covers these supported rules, not all v1 application
+semantics.
+
 Check a standalone FQL file or recursively inspect a directory without
 modifying source files:
 
@@ -209,19 +258,24 @@ nested Go modules. They skip `.git`, `.hg`, `.svn`, `vendor`, and
 `node_modules`, and do not follow directory symlinks.
 
 Compatibility findings use editor-friendly locations and include a suggested
-manual fix:
+replacement or a manual-review explanation:
 
 ```text
 1_hackernews.fql:2:1: Final collecting FOR no longer becomes the script result in Ferret v2.
   help: Add `return` before this loop.
 
-Found 1 v1 compatibility issue in 1 of 12 FQL files.
+query.fql:1:8: Legacy stdlib call `has` should use `object::has_key`.
+  help: Preview automatic replacements with `ferret migrate run --print`.
+
+Found 2 v1 compatibility issues in 2 of 12 FQL files.
 ```
 
-The command exits nonzero when it finds a compatibility issue or cannot parse
-an FQL file. Malformed files are reported while the remaining files continue
-to be checked. Filesystem, cancellation, and internal failures stop the check
-immediately.
+The command exits nonzero for automatic replacement suggestions, manual-review
+findings, or FQL parse failures. Use `ferret migrate run --print path/to/source`
+to preview edits; the check does not verify whether the formatter can preserve
+the source during rewriting. Malformed files are reported while the remaining
+files continue to be checked. Filesystem, cancellation, and internal failures
+stop the check immediately.
 
 ## Module lifecycle
 

@@ -26,6 +26,10 @@ func newRunCommand(store *config.Store, service Service) *cobra.Command {
 			"directories, and nested Go modules. The selected directory itself is scanned regardless of its name. " +
 			"Directory symlinks are not followed.\n\n" +
 			"FQL migration returns and canonically formats a structurally recognized final top-level FOR. " +
+			"It also migrates safe legacy stdlib calls to encoding, crypto, path, object, datetime, and math namespaces. " +
+			"Ambiguous join, non-unary keys, date_compare, date_diff, aggregate math, and calls affected by " +
+			"local function or use alias collisions are left for manual follow-up. " +
+			"Arrays and rand/range are outside this pass. Already-qualified calls are preserved. " +
 			"Malformed FQL is left unchanged and reported for manual follow-up.\n\n" +
 			"The command performs only documented mechanical import, dependency, and source changes. " +
 			"It does not convert application logic or arbitrary APIs to native Ferret v2 equivalents.",

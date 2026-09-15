@@ -138,9 +138,12 @@ type (
 		MigratedFiles int
 	}
 
+	// fqlMigrationResult retains original-source manual actions on late errors.
+	// Data and Changed are populated only after all rewrite validation succeeds.
 	fqlMigrationResult struct {
-		Data    []byte
-		Changed bool
+		Data          []byte
+		ManualActions []ManualAction
+		Changed       bool
 	}
 
 	migrationFiles struct {
