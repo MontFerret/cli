@@ -48,7 +48,7 @@ func TestRendererCollectionsAndErrors(t *testing.T) {
 			ID:                1,
 			RequestedLocation: debugSourceLocation("demo.fql", 4, 3),
 			Location:          debugLocation("demo.fql", 7, 5, source.Span{}),
-			BindingMode:       ferret.DebugBreakpointBindNextExecutableInFile,
+			BindingMode:       ferret.DebugBreakpointBindNextExecutableInSource,
 			Bound:             true,
 		},
 		{
@@ -164,7 +164,7 @@ func TestRendererHelpIncludesAliasesAndPauseBehavior(t *testing.T) {
 
 func debugSourceLocation(file string, line, column int) ferret.DebugSourceLocation {
 	return ferret.DebugSourceLocation{
-		File: file,
+		SourceName: file,
 		Position: ferret.Position{
 			Line:   line,
 			Column: column,

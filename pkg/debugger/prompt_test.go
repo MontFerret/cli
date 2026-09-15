@@ -440,17 +440,17 @@ func (f *fakeSession) Continue(context.Context) (*ferret.DebugEvent, error) {
 	return f.continueEvent, f.continueErr
 }
 
-func (f *fakeSession) Step(context.Context) (*ferret.DebugEvent, error) {
+func (f *fakeSession) StepIn(context.Context) (*ferret.DebugEvent, error) {
 	f.stepCalls++
 	return f.continueEvent, nil
 }
 
-func (f *fakeSession) Next(context.Context) (*ferret.DebugEvent, error) {
+func (f *fakeSession) StepOver(context.Context) (*ferret.DebugEvent, error) {
 	f.nextCalls++
 	return f.continueEvent, nil
 }
 
-func (f *fakeSession) Out(context.Context) (*ferret.DebugEvent, error) {
+func (f *fakeSession) StepOut(context.Context) (*ferret.DebugEvent, error) {
 	f.outCalls++
 	return f.continueEvent, nil
 }
@@ -467,7 +467,7 @@ func (f *fakeSession) SetBreakpointAt(location ferret.DebugSourceLocation, optio
 	breakpoint := ferret.DebugBreakpoint{
 		ID:                ferret.DebugBreakpointID(len(f.breakpoints) + 1),
 		RequestedLocation: location,
-		Location:          debugLocation(location.File, location.Line, location.Column, source.Span{}),
+		Location:          debugLocation(location.SourceName, location.Line, location.Column, source.Span{}),
 		BindingMode:       options.BindingMode,
 		Bound:             true,
 	}

@@ -39,8 +39,7 @@ func New(store *config.Store) *cobra.Command {
 			failed := 0
 
 			for _, src := range sources {
-				_, err := c.Compile(src)
-
+				_, err := c.Compile(cmd.Context(), src)
 				if err != nil {
 					diagnostics.PrintError(err)
 					failed++

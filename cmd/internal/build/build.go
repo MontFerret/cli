@@ -1,6 +1,7 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -29,7 +30,7 @@ func New(store *config.Store) *cobra.Command {
 				return err
 			}
 
-			return runBuild(args, output)
+			return runBuild(cmd.Context(), args, output)
 		},
 	}
 
@@ -38,7 +39,7 @@ func New(store *config.Store) *cobra.Command {
 	return cmd
 }
 
-func runBuild(args []string, output string) error {
+func runBuild(ctx context.Context, args []string, output string) error {
 	plan, err := clibuild.PlanOutputs(args, output)
 
 	if err != nil {
@@ -65,7 +66,7 @@ func runBuild(args []string, output string) error {
 	failed := 0
 
 	for i, src := range sources {
-		if err := clibuild.WriteArtifact(c, src, plan.Targets[i].OutputPath); err != nil {
+		if err := clibuild.WriteArtifact(ctx, c, src, plan.Targets[i].OutputPath); err != nil {
 			diagnostics.PrintError(err)
 			failed++
 		}

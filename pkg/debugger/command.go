@@ -109,7 +109,7 @@ const breakpointUsage = "usage: break [--exact|--next|--in-function] <line>[:<co
 
 func parseBreakpoint(argument string) (ferret.DebugSourceLocation, ferret.DebugBreakpointOptions, error) {
 	var location ferret.DebugSourceLocation
-	options := ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFile}
+	options := ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource}
 	tokens := strings.Fields(argument)
 
 	if len(tokens) == 0 {
@@ -125,7 +125,7 @@ func parseBreakpoint(argument string) (ferret.DebugSourceLocation, ferret.DebugB
 		case "--exact":
 			mode = ferret.DebugBreakpointBindExact
 		case "--next":
-			mode = ferret.DebugBreakpointBindNextExecutableInFile
+			mode = ferret.DebugBreakpointBindNextExecutableInSource
 		case "--in-function":
 			mode = ferret.DebugBreakpointBindNextExecutableInFunction
 		default:
@@ -203,9 +203,9 @@ func parseBreakpointLocation(value string) (ferret.DebugSourceLocation, error) {
 		location.Column = last
 
 		if previousColon >= 0 {
-			location.File = prefix[:previousColon]
+			location.SourceName = prefix[:previousColon]
 
-			if location.File == "" {
+			if location.SourceName == "" {
 				return ferret.DebugSourceLocation{}, errors.New(breakpointUsage)
 			}
 		}
@@ -213,7 +213,7 @@ func parseBreakpointLocation(value string) (ferret.DebugSourceLocation, error) {
 		return location, nil
 	}
 
-	location.File = prefix
+	location.SourceName = prefix
 	location.Line = last
 
 	return location, nil

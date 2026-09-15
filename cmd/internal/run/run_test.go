@@ -27,7 +27,7 @@ func TestExecuteRun_ArtifactRemoteRuntimeRejected(t *testing.T) {
 
 	testutil.WriteQuery(t, input, "RETURN 42")
 
-	if err := build.WriteArtifact(testutil.NewCompiler(t), source.New(input, "RETURN 42"), artifactPath); err != nil {
+	if err := build.WriteArtifact(t.Context(), testutil.NewCompiler(t), source.New(input, "RETURN 42"), artifactPath); err != nil {
 		t.Fatalf("build artifact: %v", err)
 	}
 
@@ -58,7 +58,7 @@ func TestExecuteRun_ArtifactStdinRemoteRuntimeRejected(t *testing.T) {
 
 	testutil.WriteQuery(t, input, "RETURN 42")
 
-	if err := build.WriteArtifact(testutil.NewCompiler(t), source.New(input, "RETURN 42"), artifactPath); err != nil {
+	if err := build.WriteArtifact(t.Context(), testutil.NewCompiler(t), source.New(input, "RETURN 42"), artifactPath); err != nil {
 		t.Fatalf("build artifact: %v", err)
 	}
 

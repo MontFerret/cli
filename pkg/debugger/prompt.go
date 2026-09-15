@@ -111,15 +111,15 @@ func Run(ctx context.Context, session Session, src source.Source, input LineRead
 	}
 }
 
-func executeCommand(ctx context.Context, session Session, mainFile string, renderer *Renderer, command Command) (bool, *ferret.DebugEvent) {
+func executeCommand(ctx context.Context, session Session, mainSourceName string, renderer *Renderer, command Command) (bool, *ferret.DebugEvent) {
 	switch command.Name {
 	case CommandHelp:
 		renderer.Help()
 	case CommandBreak:
 		location := command.Location
 
-		if location.File == "" {
-			location.File = mainFile
+		if location.SourceName == "" {
+			location.SourceName = mainSourceName
 		}
 
 		breakpoint, err := session.SetBreakpointAt(location, command.BreakpointOptions)
@@ -145,13 +145,13 @@ func executeCommand(ctx context.Context, session Session, mainFile string, rende
 		event, err := session.Continue(ctx)
 		return false, renderResume(event, err, renderer)
 	case CommandStep:
-		event, err := session.Step(ctx)
+		event, err := session.StepIn(ctx)
 		return false, renderResume(event, err, renderer)
 	case CommandNext:
-		event, err := session.Next(ctx)
+		event, err := session.StepOver(ctx)
 		return false, renderResume(event, err, renderer)
 	case CommandOut:
-		event, err := session.Out(ctx)
+		event, err := session.StepOut(ctx)
 		return false, renderResume(event, err, renderer)
 	case CommandPause:
 		if err := session.Pause(); err != nil {
