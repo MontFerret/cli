@@ -51,13 +51,11 @@ func TestCheckFQLStdlibManualReview(t *testing.T) {
 	tests := []struct{ call, reason string }{
 		{`join("a", "b")`, "legacy path::join"},
 		{`join(["a", "b"], ",")`, "modern global string joining"},
-		{"keys()", "only keys(obj)"},
-		{"keys(obj, true)", "argument-aware"},
-		{"keys(obj, false)", "argument-aware"},
-		{"keys(obj, option)", "argument-aware"},
-		{"keys(obj, true, extra)", "argument-aware"},
+		{"keys()", "arity"},
+		{"keys(obj, option)", "dynamic sort mode"},
+		{"keys(obj, true, extra)", "arity"},
 		{`date_compare(a, b, "year")`, "component-range"},
-		{`date_diff(a, b, "day")`, "integer/floating"},
+		{`date_diff(a, b, "day")`, "truncates toward zero"},
 		{"average(xs)", "heterogeneous"},
 		{"sum(xs)", "heterogeneous"},
 		{"min(xs)", "heterogeneous"},
@@ -138,7 +136,7 @@ func TestCheckFQLStdlibIgnoresUnrelatedSource(t *testing.T) {
 let has = "json_parse()"
 return { has, abs: "date_diff()", values: [
     math::abs(-1), CUSTOM::HAS(obj, "key"), object::keys(obj),
-    union(a, b), push(a, 1), nth(a, 0), rand(), range(1, 10)
+    arrays::concat(a, b), arrays::append(a, 1), arrays::at(a, 0), random::float(), arrays::range(1, 10)
 ] }`
 	if diagnostics := checkStdlibTestSource(t, input); len(diagnostics) != 0 {
 		t.Fatalf("unrelated source has findings: %#v", diagnostics)
@@ -228,6 +226,8 @@ func BenchmarkCheckFQLStdlibCompatibility(b *testing.B) {
 		name, input string
 		findings    int
 	}{
+		{"structural", "return [keys(json_parse(body), true), shift(union(a, b)), position(a, v, false)]", 500},
+		{"structural_canonical", "return [arrays::sorted(object::keys(encoding::json_parse(body))), arrays::slice(arrays::concat(a, b), 1), arrays::contains(a, v)]", 0},
 		{"legacy", "return [json_parse(text), sha1(text), base(path), has(obj, key), date_year(dt), abs(-1), average(xs)]", 700},
 		{"canonical", "return [encoding::json_parse(text), crypto::sha1(text), path::base(path), object::has_key(obj, key), datetime::year(dt), math::abs(-1)]", 0},
 	} {

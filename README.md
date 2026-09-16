@@ -163,32 +163,63 @@ and `abs(value)` becomes `math::abs(value)`. Supported mappings include:
 | `encoding::` | `json_parse`, `json_stringify`, `encode_uri_component` → `query_escape`, `decode_uri_component` → `query_unescape`, `to_base64` → `base64_encode`, `from_base64` → `base64_decode`, `escape_html` → `html_escape`, `unescape_html` → `html_unescape` |
 | `crypto::` | `md5`, `sha1`, `sha512`, `random_token` |
 | `path::` | `base`, `clean`, `dir`, `ext`, `is_abs`, `separate`, `match` |
+| `arrays::` | `first`, `flatten`, `last`, `sorted`, `unique`, `slice`, `intersection`, `nth` → `at`, `remove_values` → `remove_any`, `minus` → `difference`, `union` → `concat`, `union_distinct` → `union`, `range` |
+| `random::` | Zero-argument `rand()` → `float()` |
 | `object::` | `values`, `has` → `has_key`, `zip`, `keep_keys`, `merge`, `merge_recursive` → `merge_deep`, and one-argument `keys(obj)` |
 | `datetime::` | `now`, `date` → `parse`, `date_dayofweek` → `day_of_week`, `date_dayofyear` → `day_of_year`, `date_leapyear` → `is_leap_year`; `date_year`, `date_month`, `date_day`, `date_hour`, `date_minute`, `date_second`, `date_millisecond`, `date_quarter`, `date_days_in_month`, `date_format`, `date_add`, `date_subtract` lose their `date_` prefix |
 | `math::` | `pi`, `abs`, `acos`, `asin`, `atan`, `atan2`, `ceil`, `cos`, `degrees`, `exp`, `exp2`, `floor`, `log`, `log2`, `log10`, `pow`, `radians`, `round`, `sin`, `sqrt`, `tan` |
 
-Only parsed call targets are replaced; arguments retain their meaning, and
-strings, comments, object keys, and variable names are not matched. Nested calls
-are migrated independently, and already-qualified targets are preserved. Object
-replacements use immutable operations, never `object::mut`.
+Argument-aware replacements also include:
+
+| Legacy call | Replacement |
+| --- | --- |
+| `position(a, v)` or `position(a, v, false)` | `arrays::contains(a, v)` |
+| `position(a, v, true)` | `arrays::index_of(a, v)` |
+| `append(a, v)` / `push(a, v)`, optionally with `false` | `arrays::append(a, v)` |
+| `remove_value(a, v)`, optionally with a negative integer literal | `arrays::remove(a, v)` |
+| `sorted_unique(a)` | `arrays::sorted(arrays::unique(a))` |
+| `shift(a)` | `arrays::slice(a, 1)` |
+| `outersection(a, b)` | `arrays::symmetric_difference(a, b)` |
+| `keys(o, false)` | `object::keys(o)` |
+| `keys(o, true)` | `arrays::sorted(object::keys(o))` |
+| `date_diff(a, b, unit, true)` | `datetime::diff(a, b, unit)` |
+
+Boolean modes and negative integer limits may be parenthesized; arbitrary
+constant expressions are not evaluated. Retained arguments preserve their
+evaluation order and count. Strings, comments, object keys, and variable names
+are not matched. Nested calls migrate independently, including inside composed
+replacements and calls requiring manual review. Already-qualified targets are
+preserved. Array and object replacements use immutable operations, never
+`arrays::mut` or `object::mut`.
 
 Manual follow-up includes the original path and line and explains why a call
 was preserved:
 
 - `join` is ambiguous between legacy path joining and modern global string joining.
-- `keys` with any arity other than one needs argument-aware review.
+- Dynamic modes in `position`, `keys`, `append`, and `push` need manual review.
+- Unique `append`/`push` suppresses only the incoming duplicate; applying
+  `arrays::unique` would also remove existing duplicates.
+- Zero, positive, and dynamic `remove_value` limits have no canonical limit mode.
+- `outersection` with three or more arrays uses exactly-one-input semantics;
+  canonical symmetric difference uses odd-number-of-inputs semantics.
+- `pop` needs an evaluation-count-preserving replacement; `unshift` must retain
+  argument evaluation order; `remove_nth` retains host-list removal semantics.
+- Parameterized `rand` uses historical rounded/floored calculations rather than
+  canonical continuous or integer bounds.
+- Unsupported arities of argument-aware rules require manual review.
 - `date_compare` has component-range semantics that differ from `datetime::same`;
-  legacy `date_diff` integer/floating behavior differs from `datetime::diff`.
+  `date_diff` without a literal `true` floating flag may truncate toward zero,
+  whereas `datetime::diff` always returns a Float.
 - `average`, `sum`, `min`, `max`, `median`, `percentile`, `stddev_population`,
   `stddev_sample`, `variance_population`, and `variance_sample` have permissive
   legacy behavior that differs from strict canonical math.
 - A matching function declaration or function alias anywhere in the file may
   change call resolution. These checks are deliberately conservative, including
   case variants and declarations in nested scopes. A namespace alias blocks a
-  replacement only when it would redirect that canonical target.
+  replacement when it would redirect any introduced namespace, including both
+  `arrays` and `object` for sorted keys.
 
-Other safe calls in the same file still migrate. Array migrations and
-`rand`/`range` are deferred and receive no new diagnostics in this pass.
+Other safe calls in the same file still migrate.
 Rerunning migration produces no further edits; unresolved manual actions remain.
 If the formatter cannot preserve comments, the entire file is left unchanged
 and reported for manual follow-up.
@@ -235,12 +266,12 @@ files.
 ### Checking FQL compatibility
 
 `migrate check` reports final collecting `FOR` compatibility and the same legacy
-stdlib findings as `migrate run`: encoding, crypto, path, immutable object,
-datetime, and scalar math replacements, plus calls requiring manual review.
+stdlib findings as `migrate run`: encoding, crypto, path, immutable arrays and
+objects, datetime, scalar math, range, and zero-argument random replacements,
+plus calls requiring manual review.
 It uses the same conservative declaration and alias guards described above.
-Already-qualified calls are left alone; arrays and `rand`/`range` remain outside
-this pass. A clean check covers these supported rules, not all v1 application
-semantics.
+Already-qualified calls are left alone. A clean check covers these supported
+rules, not all v1 application semantics.
 
 Check a standalone FQL file or recursively inspect a directory without
 modifying source files:

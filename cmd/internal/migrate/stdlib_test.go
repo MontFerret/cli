@@ -11,8 +11,8 @@ import (
 
 func TestMigrateRunStdlibPreviewAndApply(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "query.fql")
-	before := "return [abs(-2), average(xs)]"
-	want := "return [math::abs(-2), average(xs)]"
+	before := "return [shift(union(a, b)), append(a, v, true)]"
+	want := "return [arrays::slice(arrays::concat(a, b), 1), append(a, v, true)]"
 	if err := os.WriteFile(path, []byte(before), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestMigrateRunStdlibPreviewAndApply(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if !strings.Contains(stderr, "query.fql:1: average(...)") || !strings.Contains(stderr, "heterogeneous") {
+		if !strings.Contains(stderr, "query.fql:1: append(...)") || !strings.Contains(stderr, "existing duplicates") {
 			t.Fatalf("missing manual warning in mode %s: %s", mode, stderr)
 		}
 
@@ -39,7 +39,7 @@ func TestMigrateRunStdlibPreviewAndApply(t *testing.T) {
 				strings.Contains(stdout, "Scanned") || !strings.Contains(stderr, "Scanned 1 FQL file") {
 				t.Fatalf("print mixed diff and diagnostics: stdout=%q stderr=%q", stdout, stderr)
 			}
-		} else if !strings.Contains(stdout, "query.fql") || strings.Contains(stdout, "average(...)") {
+		} else if !strings.Contains(stdout, "query.fql") || strings.Contains(stdout, "append(...)") {
 			t.Fatalf("unexpected human output: %s", stdout)
 		}
 
@@ -63,7 +63,7 @@ func TestMigrateRunStdlibPreviewAndApply(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if stdout != "" || !strings.Contains(stderr, "average(...)") || !strings.Contains(stderr, "No safe automatic changes available") {
+	if stdout != "" || !strings.Contains(stderr, "append(...)") || !strings.Contains(stderr, "No safe automatic changes available") {
 		t.Fatalf("manual-only second run: stdout=%q stderr=%q", stdout, stderr)
 	}
 }
@@ -74,7 +74,7 @@ func TestMigrateRunStdlibHelp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, text := range []string{"safe legacy stdlib", "encoding, crypto, path, object, datetime, and math", "local function or use alias", "Arrays and rand/range"} {
+	for _, text := range []string{"safe legacy stdlib", "encoding, crypto, path, arrays, object, datetime, math, and random", "local function or use alias", "Range and zero-argument rand"} {
 		if !strings.Contains(stdout, text) {
 			t.Fatalf("help does not contain %q: %s", text, stdout)
 		}
@@ -97,6 +97,18 @@ func TestMigrateCheckStdlibReportsFindingsWithoutWriting(t *testing.T) {
 			diagnostic: ":1:8: Stdlib call `average` needs manual review.\n" +
 				"  help: legacy aggregate behavior is permissive for heterogeneous collections; " +
 				"the strict math API requires a separate semantic migration\n\n",
+		},
+		{
+			name:  "composed replacement",
+			input: "return keys(obj, true)",
+			diagnostic: ":1:8: Legacy stdlib call `keys` should use `arrays::sorted(object::keys(...))`.\n" +
+				"  help: Preview automatic replacements with `ferret migrate run --print`. The final literal mode argument is removed.\n\n",
+		},
+		{
+			name:  "parameterized rand remains manual",
+			input: "return rand(10)",
+			diagnostic: ":1:8: Stdlib call `rand` needs manual review.\n" +
+				"  help: parameterized legacy rand uses a historical rounded/floored range calculation (max/2 to max*2 for one argument) and has no behavior-preserving canonical call\n\n",
 		},
 		{
 			name:  "canonical source",

@@ -422,10 +422,10 @@ func TestMigrateCheckHelpDocumentsReadOnlyScanBoundaries(t *testing.T) {
 	for _, expected := range []string{
 		"migrate check [path]",
 		"does not require a Go module and never modifies source files",
-		"final collecting FOR and legacy stdlib calls in encoding, crypto, path, object, datetime, and math",
+		"final collecting FOR and legacy stdlib calls in encoding, crypto, path, arrays, object, datetime, math, and random",
 		"manual review",
 		"local function or use alias collisions",
-		"Arrays and rand/range are outside this pass",
+		"Literal modes, composed replacements, range, and zero-argument rand are supported",
 		"migrate run --print",
 		"include testdata, hidden and underscore-prefixed directories, and nested Go modules",
 		"skip .git, .hg, .svn, vendor, and node_modules",

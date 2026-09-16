@@ -10,7 +10,7 @@ import (
 func checkFQLStdlib(src source.Source, program *fql.ProgramContext) ([]CompatibilityDiagnostic, error) {
 	var diagnostics []CompatibilityDiagnostic
 	for _, finding := range analyzeFQLStdlib(program) {
-		name := finding.name
+		name := finding.call.FunctionName()
 		spelling := name.GetText()
 
 		span, ok := fqlByteSpan(src.Content(), source.Span{
@@ -28,12 +28,16 @@ func checkFQLStdlib(src source.Source, program *fql.ProgramContext) ([]Compatibi
 
 		diagnostic := CompatibilityDiagnostic{
 			Path:    src.Name(),
-			Message: fmt.Sprintf("Legacy stdlib call `%s` should use `%s`.", spelling, finding.target),
+			Message: fmt.Sprintf("Legacy stdlib call `%s` should use `%s`.", spelling, finding.description()),
 			Help:    "Preview automatic replacements with `ferret migrate run --print`.",
 			Line:    position.Line,
 			Column:  position.Column,
 			Kind:    CompatibilityDiagnosticIssue,
 		}
+		if finding.dropLast {
+			diagnostic.Help += " The final literal mode argument is removed."
+		}
+
 		if finding.reason != "" {
 			diagnostic.Message = fmt.Sprintf("Stdlib call `%s` needs manual review.", spelling)
 			diagnostic.Help = finding.reason
