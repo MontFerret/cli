@@ -16,9 +16,9 @@ func newCompatibilityCheckCommand(service Service) *cobra.Command {
 		Short: "Check FQL source for Ferret version compatibility",
 		Long: "Check a standalone FQL file or recursively inspect a directory for supported behavior changes " +
 			"between Ferret versions. The check does not require a Go module and never modifies source files.\n\n" +
-			"Checks final collecting FOR and legacy stdlib calls in encoding, crypto, path, object, datetime, and math. " +
+			"Checks final collecting FOR and legacy stdlib calls in encoding, crypto, path, arrays, object, datetime, math, and random. " +
 			"Findings suggest canonical replacements or manual review for ambiguous calls, semantic differences, " +
-			"and local function or use alias collisions. Arrays and rand/range are outside this pass. " +
+			"and local function or use alias collisions. Literal modes, composed replacements, range, and zero-argument rand are supported. " +
 			"Preview automatic replacements with migrate run --print.\n\n" +
 			"Directory scans include testdata, hidden and underscore-prefixed directories, and nested Go modules. " +
 			"They skip .git, .hg, .svn, vendor, and node_modules and do not follow directory symlinks.\n\n" +

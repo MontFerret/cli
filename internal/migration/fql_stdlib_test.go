@@ -167,15 +167,12 @@ func TestMigrateFQLStdlibDeferredCalls(t *testing.T) {
 	tests := []struct{ call, reason string }{
 		{`join("a", "b")`, "legacy path::join"},
 		{`join(["a", "b"], ",")`, "modern global string joining"},
-		{"keys(obj, true)", "argument-aware"},
-		{"keys(obj, false)", "argument-aware"},
-		{"keys(obj, option)", "argument-aware"},
-		{"keys()", "only keys(obj)"},
-		{"keys(obj, true, extra)", "argument-aware"},
+		{"keys(obj, option)", "dynamic sort mode"},
+		{"keys()", "arity"},
+		{"keys(obj, true, extra)", "arity"},
 		{`date_compare(a, b, "year")`, "component-range"},
 		{`date_compare(a, b, "year", "day")`, "not a drop-in"},
-		{`date_diff(a, b, "day")`, "integer/floating"},
-		{`date_diff(a, b, "day", true)`, "datetime::diff"},
+		{`date_diff(a, b, "day")`, "truncates toward zero"},
 		{"average(xs)", "heterogeneous"},
 		{"sum(xs)", "heterogeneous"},
 		{"min(xs)", "heterogeneous"},
@@ -203,10 +200,10 @@ func TestMigrateFQLStdlibDeferredCalls(t *testing.T) {
 func TestMigrateFQLStdlibMixedManualActions(t *testing.T) {
 	input := `let text = "λ"
 FOR item IN values(obj)
-    RETURN [keys(item, true), average([abs(-2)]), average(item)]`
+    RETURN [keys(item, mode), average([abs(-2)]), average(item)]`
 	want := `let text = "λ"
 return for item in object::values(obj) {
-    return [keys(item, true), average([math::abs(-2)]), average(item)]
+    return [keys(item, mode), average([math::abs(-2)]), average(item)]
 }`
 	result := assertFQLStdlibMigration(t, input, want, 3)
 	for _, action := range result.ManualActions {
@@ -220,8 +217,8 @@ func TestMigrateFQLStdlibLeavesUnrelatedSourceUnchanged(t *testing.T) {
 	inputs := []string{
 		`RETURN [encoding::json_parse(body), crypto::sha1(text), path::base(path), object::merge(a, b), datetime::year(dt), math::sqrt(x)]`,
 		`RETURN [ENCODING::JSON_PARSE(body), custom::ABS(x), path::join("a", "b"), object::keys(obj)]`,
-		`RETURN [union(a, b), union_distinct(a, b), nth(a, 0), minus(a, b), push(a, 1), pop(a), shift(a), unshift(a, 1), position(a, 1), remove_nth(a, 0), outersection(a, b)]`,
-		`RETURN [rand(), rand(10, 1), range(1, 10), random::float(), arrays::at(xs, 0)]`,
+		`RETURN [arrays::concat(a, b), arrays::union(a, b), arrays::at(a, 0), arrays::difference(a, b), arrays::append(a, 1)]`,
+		`RETURN [random::float(), arrays::range(1, 10), arrays::at(xs, 0)]`,
 		`let json_parse = "abs(1)" // json_parse(body)
 RETURN { json_parse, abs: "date_diff()" }`,
 	}

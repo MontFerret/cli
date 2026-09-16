@@ -14,8 +14,8 @@ import (
 func TestMigratorStdlibStandaloneModes(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "query.fql")
-	before := "// keep location\nreturn [abs(-2), keys(obj, true)]"
-	want := "// keep location\nreturn [math::abs(-2), keys(obj, true)]"
+	before := "// keep location\nreturn [abs(-2), keys(obj, mode)]"
+	want := "// keep location\nreturn [math::abs(-2), keys(obj, mode)]"
 	if err := os.WriteFile(path, []byte(before), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestMigratorPreservesManualActionsOnFormattingFailure(t *testing.T) {
 					before += "let comparison = date_compare(left, right, \"day\")\n"
 				}
 
-				before += "return sha1 /* preserve me */ (value)"
+				before += "return sorted_unique /* preserve me */ (value)"
 				writeMigrationTargetFile(t, root, "query.fql", before)
 				migrator, _ := newFixtureMigrator()
 				var previous []ManualAction
@@ -228,20 +228,22 @@ func TestMigratorStdlibRollsBackOnCommitFailure(t *testing.T) {
 }
 
 func BenchmarkPlanFQLStdlibSourceChanges(b *testing.B) {
-	for _, canonical := range []bool{false, true} {
-		name := "legacy"
-		content := "let obj = json_parse(body)\nlet digest = sha1(json_stringify(obj))\nreturn [abs(-2), keys(obj), base(path), date_year(date(text))]"
-		if canonical {
-			name = "canonical"
-			content = "let obj = encoding::json_parse(body)\nlet digest = crypto::sha1(encoding::json_stringify(obj))\nreturn [math::abs(-2), object::keys(obj), path::base(path), datetime::year(datetime::parse(text))]"
-		}
+	for _, test := range []struct {
+		name, content string
+		canonical     bool
+	}{
+		{"legacy", "let obj = json_parse(body)\nlet digest = sha1(json_stringify(obj))\nreturn [abs(-2), keys(obj), base(path), date_year(date(text))]", false},
+		{"canonical", "let obj = encoding::json_parse(body)\nlet digest = crypto::sha1(encoding::json_stringify(obj))\nreturn [math::abs(-2), object::keys(obj), path::base(path), datetime::year(datetime::parse(text))]", true},
+		{"structural", "return [keys(json_parse(body), true), shift(union(a, b)), position(a, v, false)]", false},
+		{"structural_canonical", "return [arrays::sorted(object::keys(encoding::json_parse(body))), arrays::slice(arrays::concat(a, b), 1), arrays::contains(a, v)]", true},
+	} {
 
-		b.Run(name, func(b *testing.B) {
+		b.Run(test.name, func(b *testing.B) {
 			root := b.TempDir()
 			files := make([]string, 100)
 			for i := range files {
 				files[i] = filepath.Join(root, fmt.Sprintf("query_%03d.fql", i))
-				if err := os.WriteFile(files[i], []byte(content), 0o644); err != nil {
+				if err := os.WriteFile(files[i], []byte(test.content), 0o644); err != nil {
 					b.Fatal(err)
 				}
 			}
@@ -257,7 +259,7 @@ func BenchmarkPlanFQLStdlibSourceChanges(b *testing.B) {
 				}
 
 				want := len(files)
-				if canonical {
+				if test.canonical {
 					want = 0
 				}
 
