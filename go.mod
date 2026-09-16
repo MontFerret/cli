@@ -22,7 +22,7 @@ require (
 	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.16
 	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.16
 	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.16
-	github.com/MontFerret/ferret/v2 v2.0.0-alpha.54
+	github.com/MontFerret/ferret/v2 v2.0.0-alpha.55
 	github.com/MontFerret/specs v1.12.0
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/chzyer/readline v1.5.1
@@ -46,7 +46,7 @@ require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/JohannesKaufmann/dom v0.3.1 // indirect
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2 // indirect
-	github.com/MontFerret/api v1.0.0-alpha.16 // indirect
+	github.com/MontFerret/api v1.0.0-alpha.19 // indirect
 	github.com/MontFerret/contrib/pkg/common v0.2.0 // indirect
 	github.com/MontFerret/cssx v0.2.0 // indirect
 	github.com/PuerkitoBio/goquery v1.13.0 // indirect
