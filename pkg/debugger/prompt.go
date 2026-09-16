@@ -122,15 +122,14 @@ func executeCommand(ctx context.Context, session Session, mainSourceName string,
 			location.SourceName = mainSourceName
 		}
 
-		breakpoint, err := session.SetBreakpointAt(location, command.BreakpointOptions)
-
+		breakpoint, err := session.SetBreakpointAt(ctx, location, command.BreakpointOptions)
 		if err != nil {
 			renderer.Error("Breakpoint error", err)
 		} else {
 			renderer.BreakpointSet(breakpoint)
 		}
 	case CommandDelete:
-		if err := session.DeleteBreakpoint(command.BreakpointID); err != nil {
+		if err := session.DeleteBreakpoint(ctx, command.BreakpointID); err != nil {
 			if errors.Is(err, runtime.ErrNotFound) {
 				fmt.Fprintf(renderer.out, "Unknown breakpoint: %d\n", command.BreakpointID)
 			} else {
@@ -140,7 +139,12 @@ func executeCommand(ctx context.Context, session Session, mainSourceName string,
 			fmt.Fprintf(renderer.out, "Breakpoint %d deleted.\n", command.BreakpointID)
 		}
 	case CommandBreakpoints:
-		renderer.Breakpoints(session.Breakpoints())
+		breakpoints, err := session.Breakpoints(ctx)
+		if err != nil {
+			renderer.Error("Breakpoints error", err)
+		} else {
+			renderer.Breakpoints(breakpoints)
+		}
 	case CommandContinue:
 		event, err := session.Continue(ctx)
 		return false, renderResume(event, err, renderer)
@@ -154,22 +158,20 @@ func executeCommand(ctx context.Context, session Session, mainSourceName string,
 		event, err := session.StepOut(ctx)
 		return false, renderResume(event, err, renderer)
 	case CommandPause:
-		if err := session.Pause(); err != nil {
+		if err := session.Pause(ctx); err != nil {
 			renderer.Error("Pause error", err)
 		} else {
 			fmt.Fprintln(renderer.out, "Pause requested.")
 		}
 	case CommandWhere:
-		frames, err := session.Frames()
-
+		frames, err := session.Frames(ctx)
 		if err != nil {
 			renderer.Error("Stack error", err)
 		} else {
 			renderer.Frames(frames)
 		}
 	case CommandLocals:
-		locals, err := session.Locals()
-
+		locals, err := session.Locals(ctx)
 		if err != nil {
 			renderer.Error("Locals error", err)
 		} else {

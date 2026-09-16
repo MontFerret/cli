@@ -8,8 +8,8 @@ github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2 h1:XFJZFWESIWlUEHHjzBuv8R
 github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2/go.mod h1:BHWO8lJzttJLqwuV8Rb1B3OG2OSzLbssZDI1FRg2eAA=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
-github.com/MontFerret/api v1.0.0-alpha.16 h1:OhAyPzy3s57BHiI0mHn4HLv456985nmWCtQgSdUESXg=
-github.com/MontFerret/api v1.0.0-alpha.16/go.mod h1:wz5bfUIGYkED8Hqz9CdsW0o2jSgagotbVLOCbHHacSI=
+github.com/MontFerret/api v1.0.0-alpha.19 h1:zRAb2rAMFxhKggmVTEEQfWxfaSz6+p5D6b+C5P/RXZw=
+github.com/MontFerret/api v1.0.0-alpha.19/go.mod h1:wz5bfUIGYkED8Hqz9CdsW0o2jSgagotbVLOCbHHacSI=
 github.com/MontFerret/barn v1.4.0 h1:68L+WFVxqPKuxuAj5f8CLBDmo/xnv6q0sxl4+GrrDmc=
 github.com/MontFerret/barn v1.4.0/go.mod h1:7+5uWWREpGgGppWjiEf8qCQuZyf+QshDr8zy4XaFSlA=
 github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.6 h1:d3F2WWcGdTmYVXfNTTFVXDEonWpTSfmcde2GzOFsGgE=
@@ -50,8 +50,8 @@ github.com/MontFerret/contrib/pkg/common v0.2.0 h1:/ftEguEPPg7tGTAHUkTzu4y+nW234
 github.com/MontFerret/contrib/pkg/common v0.2.0/go.mod h1:bgwvpoX6xgEIWRQvEmftgsgbs2JER0DHqMqXqyuWq6E=
 github.com/MontFerret/cssx v0.2.0 h1:De0C6Irbg+qgFPXgWmPpVnwD4RRYUBQSbIYFTUVCNWU=
 github.com/MontFerret/cssx v0.2.0/go.mod h1:fmGtRUNVaeJYpiPSDlNIbbYzb3+K8NxmNmJOYqlHATU=
-github.com/MontFerret/ferret/v2 v2.0.0-alpha.54 h1:Csrf/CEsqmuSp0s/nDbnnkmXQtIHuWVLCuzGNNUlFu4=
-github.com/MontFerret/ferret/v2 v2.0.0-alpha.54/go.mod h1:6okTqyD30H5pCa8yXHQfpEzgRZWAsHgx68K6DTcDHek=
+github.com/MontFerret/ferret/v2 v2.0.0-alpha.55 h1:ylh5oXP8smLSo9P40a52bOQWBF9kk8EAIe6/atWWsck=
+github.com/MontFerret/ferret/v2 v2.0.0-alpha.55/go.mod h1:wjyA9O+zZHXn5+izgqOhuhkdHk9irwL8YsUKPCRRNRk=
 github.com/MontFerret/specs v1.12.0 h1:1HaElGLN+tyZIsrb3WVdulxbW5W0LXEdOH0k6F1sFzk=
 github.com/MontFerret/specs v1.12.0/go.mod h1:ENGyEPFjrWVPWOUAsBMc1acUsqpswieTrAJfhcm576E=
 github.com/PuerkitoBio/goquery v1.13.0 h1:mqHbjD7Jmnul4DTR24LKTjo1uUmHUh072kteGV+xpFM=

@@ -25,6 +25,7 @@ func TestNewDebugSessionIntegration(t *testing.T) {
 	defer session.Close()
 
 	nextBreakpoint, err := session.SetBreakpointAt(
+		ctx,
 		ferret.DebugSourceLocation{Position: ferret.Position{Line: 3}},
 		ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource},
 	)
@@ -35,6 +36,7 @@ func TestNewDebugSessionIntegration(t *testing.T) {
 		t.Fatalf("unexpected next breakpoint: %#v", nextBreakpoint)
 	}
 	exactBreakpoint, err := session.SetBreakpointAt(
+		ctx,
 		ferret.DebugSourceLocation{Position: ferret.Position{Line: 3}},
 		ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindExact},
 	)
@@ -45,6 +47,7 @@ func TestNewDebugSessionIntegration(t *testing.T) {
 		t.Fatalf("expected exact breakpoint to remain unbound: %#v", exactBreakpoint)
 	}
 	functionBreakpoint, err := session.SetBreakpointAt(
+		ctx,
 		ferret.DebugSourceLocation{Position: ferret.Position{Line: 3}},
 		ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFunction},
 	)

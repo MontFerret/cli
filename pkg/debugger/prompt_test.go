@@ -11,11 +11,11 @@ import (
 	"github.com/chzyer/readline"
 
 	"github.com/MontFerret/ferret/v2"
-	ferruntime "github.com/MontFerret/ferret/v2/pkg/runtime"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
 func TestRunDispatchesCommandsAndClosesSession(t *testing.T) {
+	ctx := t.Context()
 	src := source.New("demo.fql", "LET x = 1\nRETURN x")
 	session := &fakeSession{
 		startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 3}),
@@ -43,8 +43,14 @@ func TestRunDispatchesCommandsAndClosesSession(t *testing.T) {
 	}}
 	var out bytes.Buffer
 
-	if err := Run(context.Background(), session, src, input, &out); err != nil {
+	if err := Run(ctx, session, src, input, &out); err != nil {
 		t.Fatal(err)
+	}
+
+	for _, command := range []CommandName{CommandBreak, CommandDelete, CommandBreakpoints, CommandPause, CommandWhere, CommandLocals} {
+		if got := session.contexts[command]; got != ctx {
+			t.Fatalf("command %v received context %v, want caller context", command, got)
+		}
 	}
 
 	if session.startCalls != 1 || session.pauseCalls != 1 || session.continueCalls != 1 || session.stepCalls != 1 ||
@@ -113,6 +119,45 @@ func TestRunReportsCommandErrorsAndContinues(t *testing.T) {
 		if !strings.Contains(got, expected) {
 			t.Fatalf("expected %q in %q", expected, got)
 		}
+	}
+}
+
+func TestRunReportsBreakpointListErrorsAndContinues(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		breakpoints []ferret.DebugBreakpoint
+	}{
+		{name: "empty result"},
+		{name: "partial result", breakpoints: []ferret.DebugBreakpoint{{ID: 1}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			session := &fakeSession{
+				startEvent:     debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+				breakpoints:    test.breakpoints,
+				breakpointsErr: context.Canceled,
+			}
+			var out bytes.Buffer
+
+			err := Run(t.Context(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
+				results: []lineResult{{line: "breakpoints"}, {line: "locals"}, {line: "q"}},
+			}, &out)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if session.breakpointsCalls != 1 || session.localsCalls != 1 || session.closeCalls != 1 {
+				t.Fatalf("unexpected session calls: %#v", session)
+			}
+
+			got := out.String()
+			if !strings.Contains(got, "Breakpoints error: context canceled") {
+				t.Fatalf("missing breakpoint-list error in %q", got)
+			}
+
+			if strings.Contains(got, "No breakpoints.") || strings.Contains(got, "Requested") {
+				t.Fatalf("rendered breakpoint list after failure: %q", got)
+			}
+		})
 	}
 }
 
@@ -381,135 +426,6 @@ func TestRunResumeErrorPreservesState(t *testing.T) {
 	if session.continueCalls != 1 || session.nextCalls != 1 {
 		t.Fatalf("expected resume error to preserve active state: %#v", session)
 	}
-}
-
-type lineResult struct {
-	line string
-	err  error
-}
-
-type fakeLineReader struct {
-	results []lineResult
-	index   int
-}
-
-func (f *fakeLineReader) Readline() (string, error) {
-	if f.index >= len(f.results) {
-		return "", io.EOF
-	}
-	result := f.results[f.index]
-	f.index++
-	return result.line, result.err
-}
-
-type fakeSession struct {
-	startEvent         *ferret.DebugEvent
-	continueEvent      *ferret.DebugEvent
-	locals             []ferret.DebugVariable
-	frames             []ferret.DebugFrame
-	breakpoints        []ferret.DebugBreakpoint
-	evaluation         ferret.DebugValue
-	continueErr        error
-	evaluateErr        error
-	expression         string
-	closeErr           error
-	breakpointLocation ferret.DebugSourceLocation
-	breakpointOptions  ferret.DebugBreakpointOptions
-	startCalls         int
-	continueCalls      int
-	stepCalls          int
-	nextCalls          int
-	outCalls           int
-	pauseCalls         int
-	setBreakpointCalls int
-	deleteCalls        int
-	breakpointsCalls   int
-	framesCalls        int
-	localsCalls        int
-	evaluateCalls      int
-	closeCalls         int
-}
-
-func (f *fakeSession) Start(context.Context) (*ferret.DebugEvent, error) {
-	f.startCalls++
-	return f.startEvent, nil
-}
-
-func (f *fakeSession) Continue(context.Context) (*ferret.DebugEvent, error) {
-	f.continueCalls++
-	return f.continueEvent, f.continueErr
-}
-
-func (f *fakeSession) StepIn(context.Context) (*ferret.DebugEvent, error) {
-	f.stepCalls++
-	return f.continueEvent, nil
-}
-
-func (f *fakeSession) StepOver(context.Context) (*ferret.DebugEvent, error) {
-	f.nextCalls++
-	return f.continueEvent, nil
-}
-
-func (f *fakeSession) StepOut(context.Context) (*ferret.DebugEvent, error) {
-	f.outCalls++
-	return f.continueEvent, nil
-}
-
-func (f *fakeSession) Pause() error {
-	f.pauseCalls++
-	return nil
-}
-
-func (f *fakeSession) SetBreakpointAt(location ferret.DebugSourceLocation, options ferret.DebugBreakpointOptions) (ferret.DebugBreakpoint, error) {
-	f.setBreakpointCalls++
-	f.breakpointLocation = location
-	f.breakpointOptions = options
-	breakpoint := ferret.DebugBreakpoint{
-		ID:                ferret.DebugBreakpointID(len(f.breakpoints) + 1),
-		RequestedLocation: location,
-		Location:          debugLocation(location.SourceName, location.Line, location.Column, source.Span{}),
-		BindingMode:       options.BindingMode,
-		Bound:             true,
-	}
-	f.breakpoints = append(f.breakpoints, breakpoint)
-	return breakpoint, nil
-}
-
-func (f *fakeSession) DeleteBreakpoint(id ferret.DebugBreakpointID) error {
-	f.deleteCalls++
-	for i, breakpoint := range f.breakpoints {
-		if breakpoint.ID == id {
-			f.breakpoints = append(f.breakpoints[:i], f.breakpoints[i+1:]...)
-			return nil
-		}
-	}
-	return ferruntime.Errorf(ferruntime.ErrNotFound, "breakpoint %d", id)
-}
-
-func (f *fakeSession) Breakpoints() []ferret.DebugBreakpoint {
-	f.breakpointsCalls++
-	return f.breakpoints
-}
-
-func (f *fakeSession) Frames() ([]ferret.DebugFrame, error) {
-	f.framesCalls++
-	return f.frames, nil
-}
-
-func (f *fakeSession) Locals() ([]ferret.DebugVariable, error) {
-	f.localsCalls++
-	return f.locals, nil
-}
-
-func (f *fakeSession) Evaluate(_ context.Context, expression string) (ferret.DebugValue, error) {
-	f.evaluateCalls++
-	f.expression = expression
-	return f.evaluation, f.evaluateErr
-}
-
-func (f *fakeSession) Close() error {
-	f.closeCalls++
-	return f.closeErr
 }
 
 func debugEvent(reason ferret.DebugReason, file string, line int, span source.Span) *ferret.DebugEvent {
