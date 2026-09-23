@@ -22,7 +22,7 @@ require (
 	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.16
 	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.16
 	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.16
-	github.com/MontFerret/ferret/v2 v2.0.0-alpha.55
+	github.com/MontFerret/ferret/v2 v2.0.0-alpha.56
 	github.com/MontFerret/specs v1.12.0
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/chzyer/readline v1.5.1
