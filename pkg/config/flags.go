@@ -7,13 +7,15 @@ const (
 	LoggerOutput = "log-output"
 	LoggerFile   = "log-file"
 
-	ExecRuntime             = "runtime"
-	ExecKeepCookies         = "browser-cookies"
-	ExecWithBrowser         = "browser-open"
-	ExecBrowserAddress      = "browser-address"
-	ExecWithBrowserHeadless = "browser-headless"
-	ExecProxy               = "proxy"
-	ExecUserAgent           = "user-agent"
+	ExecRuntime               = "runtime"
+	ExecRuntimeEndpoint       = "runtime-endpoint"
+	ExecRuntimeConnectTimeout = "runtime-connect-timeout"
+	ExecKeepCookies           = "browser-cookies"
+	ExecWithBrowser           = "browser-open"
+	ExecBrowserAddress        = "browser-address"
+	ExecWithBrowserHeadless   = "browser-headless"
+	ExecProxy                 = "proxy"
+	ExecUserAgent             = "user-agent"
 
 	PolicyFSRoot                    = "policy-fs-root"
 	PolicyFSReadOnly                = "policy-fs-read-only"
@@ -47,6 +49,8 @@ var Flags = []string{
 	LoggerOutput,
 	LoggerFile,
 	ExecRuntime,
+	ExecRuntimeEndpoint,
+	ExecRuntimeConnectTimeout,
 	ExecKeepCookies,
 	ExecBrowserAddress,
 	ExecWithBrowser,

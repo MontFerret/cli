@@ -8,12 +8,14 @@ import (
 	"io"
 	"os"
 
+	"github.com/MontFerret/api"
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	"github.com/MontFerret/ferret/v2"
 	"github.com/MontFerret/ferret/v2/pkg/logging"
 	ferretnet "github.com/MontFerret/ferret/v2/pkg/net"
 	ferrethttp "github.com/MontFerret/ferret/v2/pkg/net/http"
 	"github.com/MontFerret/ferret/v2/pkg/source"
+	"github.com/MontFerret/ferret/v2/uapi"
 )
 
 var version = "unknown"
@@ -80,8 +82,7 @@ func newBuiltin(opts Options) (*Builtin, error) {
 	if len(opts.HTTPPolicy) > 0 {
 		client, err := ferrethttp.New(opts.HTTPPolicy...)
 		if err != nil {
-			_ = log.Close()
-			return nil, fmt.Errorf("initialize HTTP policy: %w", err)
+			return nil, errors.Join(fmt.Errorf("initialize HTTP policy: %w", err), log.Close())
 		}
 
 		network, err = ferretnet.New(ferretnet.WithHTTPClient(client))
@@ -90,8 +91,7 @@ func newBuiltin(opts Options) (*Builtin, error) {
 				closer.CloseIdleConnections()
 			}
 
-			_ = log.Close()
-			return nil, fmt.Errorf("initialize network: %w", err)
+			return nil, errors.Join(fmt.Errorf("initialize network: %w", err), log.Close())
 		}
 
 		engineOpts = append(engineOpts, ferret.WithNetwork(network))
@@ -104,8 +104,7 @@ func newBuiltin(opts Options) (*Builtin, error) {
 			ferretnet.CloseIdleNetworkConnections(network)
 		}
 
-		_ = log.Close()
-		return nil, fmt.Errorf("initialize engine: %w", err)
+		return nil, errors.Join(fmt.Errorf("initialize engine: %w", err), log.Close())
 	}
 
 	return &Builtin{
@@ -121,13 +120,10 @@ func (rt *Builtin) Version(_ context.Context) (string, error) {
 }
 
 func (rt *Builtin) Run(ctx context.Context, query source.Source, params map[string]any) (io.ReadCloser, error) {
-	res, err := rt.engine.Run(ctx, query, ferret.WithSessionParams(params))
+	adapter := uapi.Wrap(rt.engine, api.Version(EmbeddedVersion()))
+	res, err := adapter.Run(ctx, api.NewSource(query.Name(), query.Content()), api.WithParams(params))
 
-	if err != nil {
-		return nil, err
-	}
-
-	return io.NopCloser(bytes.NewBuffer(res.Content)), nil
+	return outputReader(res), errors.Join(err, adapter.Close())
 }
 
 func (rt *Builtin) RunArtifact(ctx context.Context, data []byte, params map[string]any) (io.ReadCloser, error) {

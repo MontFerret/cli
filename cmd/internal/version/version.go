@@ -1,10 +1,12 @@
 package version
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
+	"github.com/MontFerret/cli/v2/cmd/internal/execution"
 	"github.com/MontFerret/cli/v2/pkg/config"
 	"github.com/MontFerret/cli/v2/pkg/runtime"
 )
@@ -12,7 +14,7 @@ import (
 func New(store *config.Store) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "Show the CLI version information",
+		Short: "Show the CLI and selected runtime version information",
 		Args:  cobra.MaximumNArgs(0),
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
@@ -22,29 +24,32 @@ func New(store *config.Store) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP(config.ExecRuntime, "r", runtime.DefaultRuntime, "Ferret runtime type (\"builtin\"|$url)")
+	execution.AddRuntimeSelectionFlags(cmd)
 
 	return cmd
 }
 
-func runVersion(cmd *cobra.Command, store *config.Store) error {
-	rt, err := runtime.New(store.GetRuntimeOptions())
+func runVersion(cmd *cobra.Command, store *config.Store) (err error) {
+	resources, err := runtime.OpenSource(cmd.Context(), store.GetRuntimeOptions())
+	if err != nil {
+		return err
+	}
+
+	defer func() { err = errors.Join(err, resources.Close()) }()
+
+	var version string
+	if resources.Legacy != nil {
+		version, err = resources.Legacy.Version(cmd.Context())
+	} else {
+		metadata, versionErr := resources.Runtime.Version(cmd.Context())
+		version, err = metadata.String(), versionErr
+	}
 
 	if err != nil {
 		return err
 	}
 
-	defer rt.Close()
+	_, err = fmt.Fprintf(cmd.OutOrStdout(), "Version:\n  Self: %s\n  Runtime: %s\n", store.AppVersion(), version)
 
-	ver, err := rt.Version(cmd.Context())
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Version:")
-	fmt.Printf("  Self: %s\n", store.AppVersion())
-	fmt.Printf("  Runtime: %s\n", ver)
-
-	return nil
+	return err
 }

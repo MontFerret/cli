@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	"github.com/MontFerret/contrib/modules/web/html/drivers"
@@ -11,16 +12,25 @@ import (
 )
 
 type Options struct {
-	Type                string
-	Proxy               string
-	UserAgent           string
-	Headers             *drivers.HTTPHeaders
-	Cookies             *drivers.HTTPCookies
-	KeepCookies         bool
-	BrowserAddress      string
-	WithBrowser         bool
-	WithHeadlessBrowser bool
-	Logger              logger.Options
+	Type string
+	// Endpoint and ConnectTimeout configure Wire connections for source and metadata commands.
+	Endpoint          string
+	EndpointSet       bool
+	ConnectTimeout    time.Duration
+	ConnectTimeoutSet bool
+	// BrowserOptionsSet distinguishes explicitly configured browser settings from defaults.
+	BrowserOptionsSet bool
+	// BuiltinPolicyOptionsSet records explicit policy configuration even in metadata commands.
+	BuiltinPolicyOptionsSet bool
+	Proxy                   string
+	UserAgent               string
+	Headers                 *drivers.HTTPHeaders
+	Cookies                 *drivers.HTTPCookies
+	KeepCookies             bool
+	BrowserAddress          string
+	WithBrowser             bool
+	WithHeadlessBrowser     bool
+	Logger                  logger.Options
 	// FSPolicy configures filesystem access for the builtin runtime only.
 	FSPolicy *FileSystemPolicy
 	// HTTPPolicy configures outbound HTTP for the builtin runtime only.
@@ -36,6 +46,7 @@ type FileSystemPolicy struct {
 func NewDefaultOptions() Options {
 	return Options{
 		Type:                DefaultRuntime,
+		ConnectTimeout:      DefaultConnectTimeout,
 		BrowserAddress:      cdp.DefaultAddress,
 		Proxy:               "",
 		UserAgent:           "",
@@ -69,11 +80,35 @@ func ValidateOptions(opts Options) error {
 		return ErrFSPolicyRequiresBuiltinRuntime
 	}
 
+	if IsWireType(opts.Type) {
+		if opts.BuiltinPolicyOptionsSet {
+			return fmt.Errorf("wire mode does not accept filesystem or HTTP policies; configure the runtime host")
+		}
+
+		if _, err := wireAddress(opts.Endpoint); err != nil {
+			return err
+		}
+
+		if opts.ConnectTimeout <= 0 {
+			return fmt.Errorf("--runtime-connect-timeout must be positive")
+		}
+
+		if opts.BrowserOptionsSet || opts.WithBrowser || opts.WithHeadlessBrowser || opts.KeepCookies || opts.Proxy != "" || opts.UserAgent != "" || opts.Headers != nil || opts.Cookies != nil || (opts.BrowserAddress != "" && opts.BrowserAddress != DefaultBrowser && opts.BrowserAddress != cdp.DefaultAddress) {
+			return fmt.Errorf("wire mode does not accept browser configuration; configure the runtime host")
+		}
+	} else if opts.EndpointSet || opts.Endpoint != "" || opts.ConnectTimeoutSet {
+		return fmt.Errorf("--runtime-endpoint and --runtime-connect-timeout require --runtime wire")
+	}
+
 	return nil
 }
 
 func NormalizeOptions(opts Options) Options {
 	opts.Logger = logger.NormalizeOptions(opts.Logger)
+
+	if opts.ConnectTimeout == 0 && !opts.ConnectTimeoutSet {
+		opts.ConnectTimeout = DefaultConnectTimeout
+	}
 
 	return opts
 }

@@ -49,10 +49,9 @@ func NewStore(appName, version string) (*Store, error) {
 	// binds to an environment variable STING_NUMBER. This helps
 	// avoid conflicts.
 	v.SetEnvPrefix(envPrefix)
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
-	// Bind to environment variables
-	// Works great for simple config names, but needs help for names
-	// like --favorite-color which we fix in the bindFlags function
+	// Read settings even when the selected command does not register their flags.
 	v.AutomaticEnv()
 
 	return &Store{appName, version, envPrefix, v}, nil
@@ -104,6 +103,29 @@ func (s *Store) GetRuntimeOptions() runtime.Options {
 
 	if s.v.IsSet(ExecRuntime) {
 		opts.Type = s.v.GetString(ExecRuntime)
+	}
+
+	opts.EndpointSet = s.v.IsSet(ExecRuntimeEndpoint)
+	if opts.EndpointSet {
+		opts.Endpoint = s.v.GetString(ExecRuntimeEndpoint)
+	}
+
+	opts.ConnectTimeoutSet = s.v.IsSet(ExecRuntimeConnectTimeout)
+	if opts.ConnectTimeoutSet {
+		opts.ConnectTimeout = s.v.GetDuration(ExecRuntimeConnectTimeout)
+	}
+
+	for _, key := range []string{ExecBrowserAddress, ExecKeepCookies, ExecWithBrowser, ExecWithBrowserHeadless, ExecProxy, ExecUserAgent} {
+		if s.v.IsSet(key) {
+			opts.BrowserOptionsSet = true
+		}
+	}
+
+	for _, key := range Flags {
+		if strings.HasPrefix(key, "policy-") && s.v.IsSet(key) {
+			opts.BuiltinPolicyOptionsSet = true
+			break
+		}
 	}
 
 	if s.v.IsSet(ExecBrowserAddress) {

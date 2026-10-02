@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -44,12 +45,14 @@ func NewRemote(url url.URL, opts Options) Runtime {
 	return rt
 }
 
-func (rt *Remote) Version(ctx context.Context) (string, error) {
+func (rt *Remote) Version(ctx context.Context) (version string, err error) {
 	data, err := rt.makeRequest(ctx, "GET", "/info", nil)
 
 	if err != nil {
 		return "", fmt.Errorf("make request: %w", err)
 	}
+
+	defer func() { err = errors.Join(err, data.Close()) }()
 
 	info := remoteInfo{}
 

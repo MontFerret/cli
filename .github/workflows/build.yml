@@ -44,3 +44,9 @@ jobs:
 
       - name: Compile
         run: make compile
+
+      - name: Test
+        run: make test
+
+      - name: Race-test execution paths
+        run: go test -race ./pkg/runtime/... ./pkg/run/... ./pkg/repl/... ./cmd/... ./internal/diagnostics/...

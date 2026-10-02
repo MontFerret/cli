@@ -28,6 +28,10 @@ func New(opts Options) (Runtime, error) {
 
 	name := normalizeRuntimeType(opts.Type)
 
+	if IsWireType(name) {
+		return nil, fmt.Errorf("wire runtime requires context-aware OpenSource for source execution and metadata")
+	}
+
 	if IsBuiltinType(name) {
 		return NewBuiltin(opts)
 	}
@@ -42,7 +46,7 @@ func New(opts Options) (Runtime, error) {
 }
 
 func Run(ctx context.Context, opts Options, query source.Source, params map[string]any) (out io.ReadCloser, err error) {
-	rt, err := New(opts)
+	rt, err := OpenSource(ctx, opts)
 
 	if err != nil {
 		return nil, err
@@ -54,10 +58,14 @@ func Run(ctx context.Context, opts Options, query source.Source, params map[stri
 		}
 	}()
 
-	return rt.Run(ctx, query, params)
+	return RunSource(ctx, rt, query, params)
 }
 
 func RunArtifact(ctx context.Context, opts Options, data []byte, params map[string]any) (out io.ReadCloser, err error) {
+	if !IsBuiltinType(opts.Type) {
+		return nil, ErrArtifactRequiresBuiltinRuntime
+	}
+
 	rt, err := New(opts)
 
 	if err != nil {

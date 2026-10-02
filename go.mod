@@ -4,6 +4,7 @@ go 1.26.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/MontFerret/api v1.0.0-alpha.20
 	github.com/MontFerret/barn v1.4.0
 	github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.6
 	github.com/MontFerret/contrib/modules/archive v1.0.0-rc.5
@@ -22,8 +23,9 @@ require (
 	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.16
 	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.16
 	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.16
-	github.com/MontFerret/ferret/v2 v2.0.0-alpha.56
+	github.com/MontFerret/ferret/v2 v2.0.0-alpha.57
 	github.com/MontFerret/specs v1.12.0
+	github.com/MontFerret/wire v1.0.0-alpha.2
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
@@ -40,13 +42,13 @@ require (
 	github.com/spf13/viper v1.21.0
 	golang.org/x/mod v0.41.0
 	golang.org/x/sync v0.23.0
+	google.golang.org/grpc v1.84.0
 )
 
 require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/JohannesKaufmann/dom v0.3.1 // indirect
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2 // indirect
-	github.com/MontFerret/api v1.0.0-alpha.19 // indirect
 	github.com/MontFerret/contrib/pkg/common v0.2.0 // indirect
 	github.com/MontFerret/cssx v0.2.0 // indirect
 	github.com/PuerkitoBio/goquery v1.13.0 // indirect
@@ -108,6 +110,8 @@ require (
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/tools v0.50.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260810153831-ec0a7760b754 // indirect
+	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 	modernc.org/libc v1.75.7 // indirect
