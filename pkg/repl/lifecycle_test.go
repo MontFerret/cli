@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	goruntime "runtime"
 	"strings"
 	"testing"
 	"time"
@@ -75,8 +76,21 @@ func TestWireReplExecutionStops(t *testing.T) {
 			}()
 			select {
 			case <-host.WaitStarted:
+			case err := <-done:
+				t.Fatalf("REPL returned before query started: %v\nstdout=%q\nstderr=%q", err, stdout.String(), stderr.String())
 			case <-time.After(10 * time.Second):
-				t.Fatal("query did not start")
+				goroutines := make([]byte, 1<<20)
+				goroutines = goroutines[:goruntime.Stack(goroutines, true)]
+				cancel()
+
+				// The REPL owns these writers until it returns. Do not inspect
+				// their buffers if cancellation fails to settle the goroutine.
+				select {
+				case err := <-done:
+					t.Fatalf("query did not start; REPL returned after cancellation: %v\nstdout=%q\nstderr=%q\ngoroutines before cancellation:\n%s", err, stdout.String(), stderr.String(), goroutines)
+				case <-time.After(10 * time.Second):
+					t.Fatalf("query did not start and REPL did not settle after cancellation\ngoroutines before cancellation:\n%s", goroutines)
+				}
 			}
 
 			if transportLoss {
