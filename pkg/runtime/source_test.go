@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -42,7 +43,7 @@ func TestSourceOutputAndCleanupFailures(t *testing.T) {
 	for _, output := range []*api.Output{nil, {}, {Content: []byte("available")}} {
 		rt := &scriptedRuntime{output: output, err: runErr, closeErr: closeErr}
 		physicalClosed := 0
-		resources := &SourceResources{Runtime: rt, owners: []io.Closer{rt, closeFunc(func() error {
+		resources := &Resources{Runtime: rt, owners: []io.Closer{rt, closeFunc(func() error {
 			if rt.closed != 1 {
 				t.Error("transport closed before runtime")
 			}
@@ -76,7 +77,7 @@ func TestSourceOutputAndCleanupFailures(t *testing.T) {
 	}
 
 	rt := &scriptedRuntime{output: &api.Output{}}
-	reader, err := RunSource(t.Context(), &SourceResources{Runtime: rt}, source.New("empty.fql", "RETURN 42"), nil)
+	reader, err := RunSource(t.Context(), &Resources{Runtime: rt}, source.New("empty.fql", "RETURN 42"), nil)
 	if err != nil || reader == nil {
 		t.Fatalf("successful empty output lost: %v", err)
 	}
@@ -99,7 +100,7 @@ func TestWireFailedHandshake(t *testing.T) {
 	defer listener.Close()
 	served := make(chan error, 1)
 	go func() { served <- server.Serve(listener) }()
-	resources, err := OpenSource(t.Context(), Options{Type: "wire", Endpoint: "tcp://" + listener.Addr().String()})
+	resources, err := New(t.Context(), Options{Type: "wire", Endpoint: "tcp://" + listener.Addr().String()})
 	if resources != nil || err == nil || !strings.Contains(err.Error(), "unknown service") {
 		t.Fatalf("failed handshake: resources=%v error=%v", resources, err)
 	}
@@ -116,9 +117,13 @@ func TestWireConfiguredRuntimeAndOwnership(t *testing.T) {
 	host := wirehost.New(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
-	resources, err := OpenSource(ctx, Options{Type: "wire", Endpoint: host.Endpoint})
+	resources, err := New(ctx, Options{Type: "wire", Endpoint: host.Endpoint})
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if resources.builtin != nil || resources.Legacy != nil {
+		t.Fatal("Wire construction created a local or legacy runtime")
 	}
 
 	for _, value := range []any{nil, true, 42.0, "123", []any{1.0, false}, map[string]any{"value": nil}} {
@@ -146,7 +151,7 @@ func TestWireConfiguredRuntimeAndOwnership(t *testing.T) {
 func TestWireExecutionCancellation(t *testing.T) {
 	host := wirehost.New(t)
 	ctx, cancel := context.WithCancel(t.Context())
-	resources, err := OpenSource(ctx, Options{Type: "wire", Endpoint: host.Endpoint})
+	resources, err := New(ctx, Options{Type: "wire", Endpoint: host.Endpoint})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +194,7 @@ func TestWireHandshakeTimeoutAndCancellation(t *testing.T) {
 			defer cancel()
 			done := make(chan error, 1)
 			go func() {
-				_, err := OpenSource(ctx, Options{Type: "wire", Endpoint: "tcp://" + listener.Addr().String(), ConnectTimeout: 200 * time.Millisecond})
+				_, err := New(ctx, Options{Type: "wire", Endpoint: "tcp://" + listener.Addr().String(), ConnectTimeout: 200 * time.Millisecond})
 				done <- err
 			}()
 
@@ -230,6 +235,7 @@ func TestWireHandshakeTimeoutAndCancellation(t *testing.T) {
 }
 
 func TestLegacyHTTPExecution(t *testing.T) {
+	var requests atomic.Int32
 	worker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" || r.URL.Path != "/" {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL)
@@ -240,6 +246,7 @@ func TestLegacyHTTPExecution(t *testing.T) {
 			t.Errorf("Worker request = %s", body)
 		}
 
+		requests.Add(1)
 		_, _ = io.WriteString(w, "42")
 	}))
 	defer worker.Close()
@@ -249,6 +256,10 @@ func TestLegacyHTTPExecution(t *testing.T) {
 	}
 
 	assertRuntimeOutput(t, output, "42")
+
+	if got := requests.Load(); got != 1 {
+		t.Fatalf("legacy execution made %d HTTP Worker requests, want 1", got)
+	}
 }
 
 func waitSignal(t *testing.T, signal <-chan struct{}) {

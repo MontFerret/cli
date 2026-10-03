@@ -11,7 +11,7 @@ import (
 
 // RunSource executes through the selected canonical runtime or isolated Worker
 // adapter. Output remains available alongside an execution or cleanup error.
-func RunSource(ctx context.Context, resources *SourceResources, src source.Source, params map[string]any) (io.ReadCloser, error) {
+func RunSource(ctx context.Context, resources *Resources, src source.Source, params map[string]any) (io.ReadCloser, error) {
 	if resources.Legacy != nil {
 		return resources.Legacy.Run(ctx, src, params)
 	}

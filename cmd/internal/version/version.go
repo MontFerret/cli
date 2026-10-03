@@ -30,7 +30,7 @@ func New(store *config.Store) *cobra.Command {
 }
 
 func runVersion(cmd *cobra.Command, store *config.Store) (err error) {
-	resources, err := runtime.OpenSource(cmd.Context(), store.GetRuntimeOptions())
+	resources, err := runtime.New(cmd.Context(), store.GetRuntimeOptions())
 	if err != nil {
 		return err
 	}

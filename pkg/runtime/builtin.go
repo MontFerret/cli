@@ -8,14 +8,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/MontFerret/api"
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	"github.com/MontFerret/ferret/v2"
 	"github.com/MontFerret/ferret/v2/pkg/logging"
 	ferretnet "github.com/MontFerret/ferret/v2/pkg/net"
 	ferrethttp "github.com/MontFerret/ferret/v2/pkg/net/http"
-	"github.com/MontFerret/ferret/v2/pkg/source"
-	"github.com/MontFerret/ferret/v2/uapi"
 )
 
 var version = "unknown"
@@ -28,10 +25,6 @@ type Builtin struct {
 	engine  *ferret.Engine
 	logger  *logger.Logger
 	network ferretnet.Network
-}
-
-func NewBuiltin(opts Options) (Runtime, error) {
-	return newBuiltin(opts)
 }
 
 func newBuiltin(opts Options) (*Builtin, error) {
@@ -113,17 +106,6 @@ func newBuiltin(opts Options) (*Builtin, error) {
 		logger:  log,
 		network: network,
 	}, nil
-}
-
-func (rt *Builtin) Version(_ context.Context) (string, error) {
-	return version, nil
-}
-
-func (rt *Builtin) Run(ctx context.Context, query source.Source, params map[string]any) (io.ReadCloser, error) {
-	adapter := uapi.Wrap(rt.engine, api.Version(EmbeddedVersion()))
-	res, err := adapter.Run(ctx, api.NewSource(query.Name(), query.Content()), api.WithParams(params))
-
-	return outputReader(res), errors.Join(err, adapter.Close())
 }
 
 func (rt *Builtin) RunArtifact(ctx context.Context, data []byte, params map[string]any) (io.ReadCloser, error) {

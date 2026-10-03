@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"sync/atomic"
 
 	"google.golang.org/grpc"
@@ -16,10 +17,10 @@ import (
 	"github.com/MontFerret/wire/client"
 )
 
-// OpenSource creates source-execution resources for one invocation or REPL.
+// New creates the selected runtime and owns its resources for one invocation or REPL.
 // Its context bounds Wire construction; callers pass their execution contexts
 // to the returned api.Runtime and settle those calls before closing the owner.
-func OpenSource(ctx context.Context, opts Options) (*SourceResources, error) {
+func New(ctx context.Context, opts Options) (*Resources, error) {
 	opts = NormalizeOptions(opts)
 
 	if err := ValidateOptions(opts); err != nil {
@@ -38,22 +39,24 @@ func OpenSource(ctx context.Context, opts Options) (*SourceResources, error) {
 
 		rt := uapi.Wrap(native.engine, api.Version(EmbeddedVersion()))
 
-		return &SourceResources{Runtime: rt, owners: []io.Closer{rt, native}}, nil
+		return &Resources{Runtime: rt, builtin: native, owners: []io.Closer{rt, native}}, nil
 	}
 
 	if IsWireType(opts.Type) {
 		return openWire(ctx, opts)
 	}
 
-	legacy, err := New(opts)
+	u, err := url.Parse(normalizeRuntimeType(opts.Type))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse url: %w", err)
 	}
 
-	return &SourceResources{Legacy: legacy, owners: []io.Closer{legacy}}, nil
+	legacy := newRemote(*u, opts)
+
+	return &Resources{Legacy: legacy, owners: []io.Closer{legacy}}, nil
 }
 
-func openWire(ctx context.Context, opts Options) (*SourceResources, error) {
+func openWire(ctx context.Context, opts Options) (*Resources, error) {
 	address, err := wireAddress(opts.Endpoint)
 	if err != nil {
 		return nil, err
@@ -98,7 +101,7 @@ func openWire(ctx context.Context, opts Options) (*SourceResources, error) {
 		err = errors.Join(err, ctxErr)
 	}
 
-	resources := &SourceResources{Runtime: rt, owners: []io.Closer{physical}}
+	resources := &Resources{Runtime: rt, owners: []io.Closer{physical}}
 	if rt != nil {
 		resources.owners = []io.Closer{rt, physical}
 	}

@@ -26,7 +26,7 @@ func TestWireRejectsHandshakeWithoutRuntimeVersion(t *testing.T) {
 	go func() { served <- server.Serve(listener) }()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
-	resources, err := OpenSource(ctx, Options{Type: "wire", Endpoint: "tcp://" + listener.Addr().String()})
+	resources, err := New(ctx, Options{Type: "wire", Endpoint: "tcp://" + listener.Addr().String()})
 	if resources != nil || err == nil || !strings.Contains(err.Error(), "invalid Connect handshake") {
 		t.Fatalf("unversioned handshake: resources=%v error=%v", resources, err)
 	}

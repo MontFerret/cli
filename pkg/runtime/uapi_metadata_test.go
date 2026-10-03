@@ -16,7 +16,7 @@ func TestSourceRuntimeVersion(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
-	builtin, err := OpenSource(ctx, NewDefaultOptions())
+	builtin, err := New(ctx, NewDefaultOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestSourceRuntimeVersion(t *testing.T) {
 	for _, value := range []api.Version{"v2.0.0-alpha.57", " runtime+opaque \n", "版本-α", "runtime\x00\xff", ""} {
 		t.Run(string(value), func(t *testing.T) {
 			host := wirehost.NewWithVersion(t, value)
-			resources, err := OpenSource(ctx, Options{Type: "wire", Endpoint: host.Endpoint})
+			resources, err := New(ctx, Options{Type: "wire", Endpoint: host.Endpoint})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -75,7 +75,7 @@ func TestSourcePlanParameterMetadata(t *testing.T) {
 				opts.Type, opts.Endpoint = mode, host.Endpoint
 			}
 
-			resources, err := OpenSource(ctx, opts)
+			resources, err := New(ctx, opts)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -194,7 +194,7 @@ func TestWireVersionHandshakeCancellation(t *testing.T) {
 
 			done := make(chan error, 1)
 			go func() {
-				resources, err := OpenSource(ctx, opts)
+				resources, err := New(ctx, opts)
 				if resources != nil {
 					err = errors.Join(err, errors.New("canceled handshake returned resources"), resources.Close())
 				}
@@ -242,7 +242,7 @@ func TestWireVersionSnapshotAfterTransportLoss(t *testing.T) {
 
 		return "hosted-opaque-version", nil
 	})
-	resources, err := OpenSource(ctx, Options{Type: "wire", Endpoint: host.Endpoint})
+	resources, err := New(ctx, Options{Type: "wire", Endpoint: host.Endpoint})
 	if err != nil {
 		t.Fatal(err)
 	}

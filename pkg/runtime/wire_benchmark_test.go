@@ -15,7 +15,7 @@ func BenchmarkWireConnection(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		resources, err := OpenSource(context.Background(), opts)
+		resources, err := New(context.Background(), opts)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -28,7 +28,7 @@ func BenchmarkWireConnection(b *testing.B) {
 
 func BenchmarkWireSource(b *testing.B) {
 	host := wirehost.New(b)
-	resources, err := OpenSource(context.Background(), Options{Type: "wire", Endpoint: host.Endpoint})
+	resources, err := New(context.Background(), Options{Type: "wire", Endpoint: host.Endpoint})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func BenchmarkWireSource(b *testing.B) {
 
 func BenchmarkWireVersion(b *testing.B) {
 	host := wirehost.New(b)
-	resources, err := OpenSource(context.Background(), Options{Type: "wire", Endpoint: host.Endpoint})
+	resources, err := New(context.Background(), Options{Type: "wire", Endpoint: host.Endpoint})
 	if err != nil {
 		b.Fatal(err)
 	}

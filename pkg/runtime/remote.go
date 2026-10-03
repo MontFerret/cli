@@ -36,7 +36,7 @@ type (
 	}
 )
 
-func NewRemote(url url.URL, opts Options) Runtime {
+func newRemote(url url.URL, opts Options) *Remote {
 	rt := new(Remote)
 	rt.url = url
 	rt.opts = opts
@@ -80,10 +80,6 @@ func (rt *Remote) Run(ctx context.Context, query source.Source, params map[strin
 	}
 
 	return rt.makeRequest(ctx, "POST", "/", body)
-}
-
-func (rt *Remote) RunArtifact(_ context.Context, _ []byte, _ map[string]any) (io.ReadCloser, error) {
-	return nil, ErrArtifactRequiresBuiltinRuntime
 }
 
 func (rt *Remote) Close() error {

@@ -26,7 +26,7 @@ func Start(ctx context.Context, opts runtime.Options, params map[string]interfac
 // Parent cancellation interrupts input and execution; active execution settles
 // before the runtime and physical transport are released.
 func StartWithIO(ctx context.Context, opts runtime.Options, params map[string]any, stdin io.Reader, stdout, stderr io.Writer) (err error) {
-	resources, err := runtime.OpenSource(ctx, opts)
+	resources, err := runtime.New(ctx, opts)
 	if err != nil {
 		return err
 	}
