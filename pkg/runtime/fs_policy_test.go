@@ -110,7 +110,7 @@ func TestBuiltinFilesystemPolicyRejectsMissingRoot(t *testing.T) {
 	opts := NewDefaultOptions()
 	opts.FSPolicy = &FileSystemPolicy{Root: root}
 
-	_, err := NewBuiltin(opts)
+	_, err := New(t.Context(), opts)
 	if err == nil || !strings.Contains(err.Error(), root) {
 		t.Fatalf("expected filesystem root error, got %v", err)
 	}
@@ -121,7 +121,7 @@ func TestNewRejectsFilesystemPolicyForRemoteRuntime(t *testing.T) {
 	opts.Type = "https://worker.example"
 	opts.FSPolicy = &FileSystemPolicy{ReadOnly: true}
 
-	_, err := New(opts)
+	_, err := New(t.Context(), opts)
 	if !errors.Is(err, ErrFSPolicyRequiresBuiltinRuntime) {
 		t.Fatalf("expected builtin runtime policy error, got %v", err)
 	}

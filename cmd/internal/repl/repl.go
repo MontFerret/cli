@@ -44,7 +44,7 @@ func New(store *config.Store) *cobra.Command {
 
 			defer cleanup()
 
-			return clirepl.Start(cmd.Context(), rtOpts, params)
+			return clirepl.StartWithIO(cmd.Context(), rtOpts, params, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr())
 		},
 	}
 

@@ -65,7 +65,7 @@ func TestBuiltinHTTPPolicyRejectsInvalidConfiguration(t *testing.T) {
 	opts := NewDefaultOptions()
 	opts.HTTPPolicy = []ferrethttp.PolicyOption{ferrethttp.WithAllowedHosts("bad host")}
 
-	_, err := NewBuiltin(opts)
+	_, err := newBuiltin(opts)
 	if !errors.Is(err, ferrethttp.ErrInvalidPolicyConfiguration) ||
 		!strings.Contains(err.Error(), "initialize HTTP policy") ||
 		!strings.Contains(err.Error(), "allowed hosts") ||
@@ -101,7 +101,7 @@ func TestBuiltinCloseSucceedsWithConfiguredHTTPPolicy(t *testing.T) {
 	opts := NewDefaultOptions()
 	opts.HTTPPolicy = []ferrethttp.PolicyOption{ferrethttp.WithAllowLocalhost(true)}
 
-	rt, err := NewBuiltin(opts)
+	rt, err := New(t.Context(), opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestNewRejectsHTTPPolicyForRemoteRuntime(t *testing.T) {
 	opts.Type = "https://worker.example"
 	opts.HTTPPolicy = []ferrethttp.PolicyOption{ferrethttp.WithAllowLocalhost(true)}
 
-	_, err := New(opts)
+	_, err := New(t.Context(), opts)
 	if !errors.Is(err, ErrHTTPPolicyRequiresBuiltinRuntime) {
 		t.Fatalf("expected builtin runtime policy error, got %v", err)
 	}

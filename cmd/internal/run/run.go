@@ -1,9 +1,9 @@
 package run
 
 import (
+	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -93,14 +93,18 @@ func execute(cmd *cobra.Command, rtOpts cliruntime.Options, brOpts browser.Optio
 
 	out, err := clirun.Execute(cmd.Context(), rtOpts, params, input)
 
-	if err != nil {
-		diagnostics.PrintError(err)
-		return err
+	return writeResult(cmd, out, err)
+}
+
+func writeResult(cmd *cobra.Command, out io.ReadCloser, err error) error {
+	if out != nil {
+		_, copyErr := io.Copy(cmd.OutOrStdout(), out)
+		err = errors.Join(err, copyErr, out.Close())
 	}
 
-	defer out.Close()
-
-	_, err = io.Copy(os.Stdout, out)
+	if err != nil {
+		diagnostics.PrintErrorTo(cmd.ErrOrStderr(), err)
+	}
 
 	return err
 }

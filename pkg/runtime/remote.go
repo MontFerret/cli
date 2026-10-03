@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -35,7 +36,7 @@ type (
 	}
 )
 
-func NewRemote(url url.URL, opts Options) Runtime {
+func newRemote(url url.URL, opts Options) *Remote {
 	rt := new(Remote)
 	rt.url = url
 	rt.opts = opts
@@ -44,12 +45,14 @@ func NewRemote(url url.URL, opts Options) Runtime {
 	return rt
 }
 
-func (rt *Remote) Version(ctx context.Context) (string, error) {
+func (rt *Remote) Version(ctx context.Context) (version string, err error) {
 	data, err := rt.makeRequest(ctx, "GET", "/info", nil)
 
 	if err != nil {
 		return "", fmt.Errorf("make request: %w", err)
 	}
+
+	defer func() { err = errors.Join(err, data.Close()) }()
 
 	info := remoteInfo{}
 
@@ -77,10 +80,6 @@ func (rt *Remote) Run(ctx context.Context, query source.Source, params map[strin
 	}
 
 	return rt.makeRequest(ctx, "POST", "/", body)
-}
-
-func (rt *Remote) RunArtifact(_ context.Context, _ []byte, _ map[string]any) (io.ReadCloser, error) {
-	return nil, ErrArtifactRequiresBuiltinRuntime
 }
 
 func (rt *Remote) Close() error {
