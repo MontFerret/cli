@@ -38,7 +38,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	golang.org/x/mod v0.41.0
+	golang.org/x/mod v0.42.0
 	golang.org/x/sync v0.23.0
 )
 
@@ -107,7 +107,7 @@ require (
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
-	golang.org/x/tools v0.50.0 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 	modernc.org/libc v1.75.7 // indirect
