@@ -18,7 +18,7 @@ require (
 	github.com/MontFerret/contrib/modules/security/oauth2 v1.0.0-rc.7
 	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.18
 	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.19
-	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.26
+	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.27
 	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.18
 	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.18
 	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.18
