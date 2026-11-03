@@ -14,7 +14,7 @@ import (
 type DebugSession struct {
 	*ferret.DebugSession
 
-	runtime   *Builtin
+	runtime   *Resources
 	plan      *ferret.Plan
 	closeErr  error
 	closeOnce sync.Once
@@ -33,12 +33,12 @@ func NewDebugSession(ctx context.Context, opts Options, params map[string]any, s
 		return nil, ErrDebugRequiresBuiltinRuntime
 	}
 
-	rt, err := newBuiltin(opts)
+	rt, err := New(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	plan, err := rt.engine.CompileDebug(ctx, src)
+	plan, err := rt.builtin.engine.CompileDebug(ctx, src)
 	if err != nil {
 		return nil, errors.Join(err, rt.Close())
 	}

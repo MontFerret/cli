@@ -8,6 +8,7 @@ import (
 
 	"github.com/MontFerret/cli/v2/cmd/internal/execution"
 	"github.com/MontFerret/cli/v2/cmd/internal/testutil"
+	"github.com/MontFerret/cli/v2/internal/testutil/wirehost"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 
 	"github.com/MontFerret/cli/v2/pkg/browser"
@@ -27,6 +28,21 @@ func TestDebugCommandRequiresExactlyOneScript(t *testing.T) {
 	}
 	if err := command.Args(command, []string{"one.fql"}); err != nil {
 		t.Fatalf("unexpected argument error: %v", err)
+	}
+}
+
+func TestDebugRejectsWireBeforeConnecting(t *testing.T) {
+	host := wirehost.New(t)
+	path := filepath.Join(t.TempDir(), "script.fql")
+	testutil.WriteQuery(t, path, "RETURN DEMO::IDENTITY(42)")
+	store := testutil.NewStore(t)
+	cmd := New(store)
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"--runtime=wire", "--runtime-endpoint=" + host.Endpoint, path})
+	err := cmd.ExecuteContext(config.With(t.Context(), store))
+	if !errors.Is(err, cliruntime.ErrDebugRequiresBuiltinRuntime) || host.Connections() != 0 {
+		t.Fatalf("error=%v connections=%d", err, host.Connections())
 	}
 }
 

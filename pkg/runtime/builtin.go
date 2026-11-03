@@ -1,19 +1,17 @@
 package runtime
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 
+	"github.com/MontFerret/api"
 	"github.com/MontFerret/cli/v2/pkg/logger"
 	"github.com/MontFerret/ferret/v2"
 	"github.com/MontFerret/ferret/v2/pkg/logging"
 	ferretnet "github.com/MontFerret/ferret/v2/pkg/net"
 	ferrethttp "github.com/MontFerret/ferret/v2/pkg/net/http"
-	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
 var version = "unknown"
@@ -26,10 +24,6 @@ type Builtin struct {
 	engine  *ferret.Engine
 	logger  *logger.Logger
 	network ferretnet.Network
-}
-
-func NewBuiltin(opts Options) (Runtime, error) {
-	return newBuiltin(opts)
 }
 
 func newBuiltin(opts Options) (*Builtin, error) {
@@ -80,8 +74,7 @@ func newBuiltin(opts Options) (*Builtin, error) {
 	if len(opts.HTTPPolicy) > 0 {
 		client, err := ferrethttp.New(opts.HTTPPolicy...)
 		if err != nil {
-			_ = log.Close()
-			return nil, fmt.Errorf("initialize HTTP policy: %w", err)
+			return nil, errors.Join(fmt.Errorf("initialize HTTP policy: %w", err), log.Close())
 		}
 
 		network, err = ferretnet.New(ferretnet.WithHTTPClient(client))
@@ -90,8 +83,7 @@ func newBuiltin(opts Options) (*Builtin, error) {
 				closer.CloseIdleConnections()
 			}
 
-			_ = log.Close()
-			return nil, fmt.Errorf("initialize network: %w", err)
+			return nil, errors.Join(fmt.Errorf("initialize network: %w", err), log.Close())
 		}
 
 		engineOpts = append(engineOpts, ferret.WithNetwork(network))
@@ -104,8 +96,7 @@ func newBuiltin(opts Options) (*Builtin, error) {
 			ferretnet.CloseIdleNetworkConnections(network)
 		}
 
-		_ = log.Close()
-		return nil, fmt.Errorf("initialize engine: %w", err)
+		return nil, errors.Join(fmt.Errorf("initialize engine: %w", err), log.Close())
 	}
 
 	return &Builtin{
@@ -116,48 +107,24 @@ func newBuiltin(opts Options) (*Builtin, error) {
 	}, nil
 }
 
-func (rt *Builtin) Version(_ context.Context) (string, error) {
-	return version, nil
-}
-
-func (rt *Builtin) Run(ctx context.Context, query source.Source, params map[string]any) (io.ReadCloser, error) {
-	res, err := rt.engine.Run(ctx, query, ferret.WithSessionParams(params))
-
-	if err != nil {
-		return nil, err
-	}
-
-	return io.NopCloser(bytes.NewBuffer(res.Content)), nil
-}
-
-func (rt *Builtin) RunArtifact(ctx context.Context, data []byte, params map[string]any) (io.ReadCloser, error) {
+// RunArtifact transfers its temporary session and plan to the returned output.
+func (rt *Builtin) RunArtifact(ctx context.Context, data []byte, params map[string]any) (api.Output, error) {
 	plan, err := rt.engine.Load(data)
-
 	if err != nil {
 		return nil, err
 	}
-
-	defer func() {
-		_ = plan.Close()
-	}()
 
 	session, err := plan.NewSession(ctx, ferret.WithSessionParams(params))
-
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, plan.Close())
 	}
 
-	defer func() {
-		_ = session.Close()
-	}()
-
-	res, err := session.Run(ctx)
-
+	output, err := session.Run(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, session.Close(), plan.Close())
 	}
 
-	return io.NopCloser(bytes.NewBuffer(res.Content)), nil
+	return newOwnedOutput(ctx, output, session, plan), nil
 }
 
 func (rt *Builtin) Close() error {

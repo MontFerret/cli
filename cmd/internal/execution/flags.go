@@ -7,9 +7,16 @@ import (
 	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
 )
 
+// AddRuntimeSelectionFlags registers runtime selection without execution policies.
+func AddRuntimeSelectionFlags(cmd *cobra.Command) {
+	cmd.Flags().StringP(config.ExecRuntime, "r", cliruntime.DefaultRuntime, "Ferret runtime (builtin, wire, or legacy HTTP URL)")
+	cmd.Flags().String(config.ExecRuntimeEndpoint, "", "Wire endpoint: tcp://127.0.0.1:<port> (trusted local development)")
+	cmd.Flags().Duration(config.ExecRuntimeConnectTimeout, cliruntime.DefaultConnectTimeout, "Wire connection and handshake timeout (must be positive)")
+}
+
 // AddRuntimeFlags keeps the execution-policy surface identical across run, debug, and repl.
 func AddRuntimeFlags(cmd *cobra.Command) {
-	cmd.Flags().StringP(config.ExecRuntime, "r", cliruntime.DefaultRuntime, "Ferret runtime type (\"builtin\"|$url)")
+	AddRuntimeSelectionFlags(cmd)
 	cmd.Flags().String(config.ExecProxy, "x", "Proxy server address")
 	cmd.Flags().String(config.ExecUserAgent, "a", "User agent header")
 	cmd.Flags().StringP(config.ExecBrowserAddress, "d", cliruntime.DefaultBrowser, "Browser debugger address")

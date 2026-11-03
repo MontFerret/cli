@@ -4,26 +4,28 @@ go 1.26.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/MontFerret/api v1.0.0-alpha.21
 	github.com/MontFerret/barn v1.4.0
-	github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.6
-	github.com/MontFerret/contrib/modules/archive v1.0.0-rc.5
-	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.18
-	github.com/MontFerret/contrib/modules/db/postgres v1.0.0-rc.11
-	github.com/MontFerret/contrib/modules/db/sqlite v1.0.0-rc.14
-	github.com/MontFerret/contrib/modules/document/pdf v1.0.0-rc.10
-	github.com/MontFerret/contrib/modules/document/xlsx v1.0.0-rc.10
-	github.com/MontFerret/contrib/modules/net/rest v1.0.0-rc.13
-	github.com/MontFerret/contrib/modules/security/jwt v1.0.0-rc.14
-	github.com/MontFerret/contrib/modules/security/oauth2 v1.0.0-rc.5
-	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.16
-	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.17
-	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.23
-	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.16
-	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.16
-	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.16
-	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.16
-	github.com/MontFerret/ferret/v2 v2.0.0-alpha.57
+	github.com/MontFerret/contrib/modules/ai/llm v1.0.0-rc.8
+	github.com/MontFerret/contrib/modules/archive v1.0.0-rc.7
+	github.com/MontFerret/contrib/modules/csv v1.0.0-rc.20
+	github.com/MontFerret/contrib/modules/db/postgres v1.0.0-rc.13
+	github.com/MontFerret/contrib/modules/db/sqlite v1.0.0-rc.16
+	github.com/MontFerret/contrib/modules/document/pdf v1.0.0-rc.12
+	github.com/MontFerret/contrib/modules/document/xlsx v1.0.0-rc.12
+	github.com/MontFerret/contrib/modules/net/rest v1.0.0-rc.15
+	github.com/MontFerret/contrib/modules/security/jwt v1.0.0-rc.16
+	github.com/MontFerret/contrib/modules/security/oauth2 v1.0.0-rc.7
+	github.com/MontFerret/contrib/modules/toml v1.0.0-rc.18
+	github.com/MontFerret/contrib/modules/web/article v1.0.0-rc.19
+	github.com/MontFerret/contrib/modules/web/html v1.0.0-rc.27
+	github.com/MontFerret/contrib/modules/web/robots v1.0.0-rc.18
+	github.com/MontFerret/contrib/modules/web/sitemap v1.0.0-rc.18
+	github.com/MontFerret/contrib/modules/xml v1.0.0-rc.18
+	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.18
+	github.com/MontFerret/ferret/v2 v2.0.0-alpha.62
 	github.com/MontFerret/specs v1.12.0
+	github.com/MontFerret/wire v1.0.0-alpha.4
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0
@@ -38,30 +40,31 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	golang.org/x/mod v0.41.0
-	golang.org/x/sync v0.23.0
+	golang.org/x/mod v0.42.0
+	golang.org/x/sync v0.24.0
+	google.golang.org/grpc v1.84.0
 )
 
 require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/JohannesKaufmann/dom v0.3.1 // indirect
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2 // indirect
-	github.com/MontFerret/api v1.0.0-alpha.20 // indirect
 	github.com/MontFerret/contrib/pkg/common v0.2.0 // indirect
 	github.com/MontFerret/cssx v0.2.0 // indirect
 	github.com/PuerkitoBio/goquery v1.13.0 // indirect
 	github.com/andybalholm/cascadia v1.3.5 // indirect
-	github.com/antchfx/htmlquery v1.3.6 // indirect
-	github.com/antchfx/xpath v1.3.8 // indirect
+	github.com/antchfx/htmlquery v1.3.7 // indirect
+	github.com/antchfx/xpath v1.3.9 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
+	github.com/coder/websocket v1.8.15 // indirect
 	github.com/corpix/uarand v0.2.0 // indirect
-	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/github/go-spdx/v2 v2.7.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/gobwas/glob v1.0.0 // indirect
-	github.com/goccy/go-json v0.10.6 // indirect
+	github.com/gobwas/glob v1.1.0 // indirect
+	github.com/goccy/go-json v0.12.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -70,17 +73,17 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.11.0 // indirect
-	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/ledongthuc/pdf v0.0.0-20260907135840-6c8c28e0e8a0 // indirect
+	github.com/jackc/pgx/v5 v5.12.0 // indirect
+	github.com/jackc/puddle/v2 v2.2.3 // indirect
+	github.com/ledongthuc/pdf v0.0.0-20261020125853-5e46805f718e // indirect
 	github.com/mafredri/cdp v0.35.0 // indirect
-	github.com/mattn/go-colorable v0.1.15 // indirect
+	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
-	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/openai/openai-go/v3 v3.61.0 // indirect
+	github.com/ncruces/go-strftime v1.1.0 // indirect
+	github.com/openai/openai-go/v3 v3.91.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/richardlehane/mscfb v1.0.8 // indirect
+	github.com/richardlehane/mscfb v1.0.9 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
@@ -88,30 +91,32 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/tidwall/gjson v1.19.0 // indirect
+	github.com/tidwall/gjson v1.20.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
-	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/pretty v1.2.2 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	github.com/xuri/efp v0.0.1 // indirect
-	github.com/xuri/excelize/v2 v2.11.0 // indirect
+	github.com/xuri/efp v0.0.3-0.20260924042702-217b81952dec // indirect
+	github.com/xuri/excelize/v2 v2.11.1 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	github.com/yuin/goldmark v1.8.5 // indirect
 	github.com/ziflex/dbx v1.11.0 // indirect
-	github.com/ziflex/go-options v1.6.1 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
-	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba // indirect
-	golang.org/x/net v0.59.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
-	golang.org/x/tools v0.50.0 // indirect
+	github.com/ziflex/go-options v1.7.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.6 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e // indirect
+	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
+	golang.org/x/tools v0.52.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260810153831-ec0a7760b754 // indirect
+	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
-	modernc.org/libc v1.75.7 // indirect
+	modernc.org/libc v1.80.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	modernc.org/sqlite v1.59.0 // indirect
+	modernc.org/sqlite v1.61.1 // indirect
 )

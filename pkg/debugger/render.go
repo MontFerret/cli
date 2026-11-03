@@ -78,7 +78,7 @@ func (r *Renderer) Event(event *ferret.DebugEvent) {
 		fmt.Fprintln(r.out, "Program completed.")
 		if event.Output != nil {
 			fmt.Fprintln(r.out, "Result:")
-			fmt.Fprintln(r.out, string(event.Output.Content))
+			fmt.Fprintln(r.out, string(event.Output.Data))
 		}
 	case ferret.DebugReasonTerminated:
 		fmt.Fprintln(r.out, "Program terminated.")

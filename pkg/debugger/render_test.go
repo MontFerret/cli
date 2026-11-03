@@ -32,7 +32,7 @@ func TestRendererEventPauseAndCompletion(t *testing.T) {
 	out.Reset()
 	renderer.Event(&ferret.DebugEvent{
 		Reason: ferret.DebugReasonCompleted,
-		Output: &encoding.Output{Content: []byte(`["Ada"]`)},
+		Output: &encoding.Content{Data: []byte(`["Ada"]`)},
 	})
 	if got := out.String(); !strings.Contains(got, "Program completed.\nResult:\n[\"Ada\"]") {
 		t.Fatalf("unexpected completion output: %q", got)

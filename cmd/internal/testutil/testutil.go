@@ -5,10 +5,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 
+	"github.com/MontFerret/cli/v2/pkg/config"
 	"github.com/MontFerret/ferret/v2/pkg/compiler"
 )
 
@@ -22,6 +25,25 @@ func WriteQuery(t *testing.T, path, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// NewStore isolates command configuration from the user's filesystem and environment.
+func NewStore(t *testing.T) *config.Store {
+	t.Helper()
+	t.Setenv("HOME", t.TempDir())
+	for _, key := range config.Flags {
+		t.Setenv("FERRET_"+strings.ToUpper(strings.ReplaceAll(key, "-", "_")), "")
+	}
+
+	homedir.Reset()
+	t.Cleanup(homedir.Reset)
+
+	store, err := config.NewStore("ferret", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return store
 }
 
 func CaptureStdout(t *testing.T, fn func() error) (string, error) {

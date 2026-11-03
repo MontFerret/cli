@@ -2,12 +2,12 @@ package run
 
 import (
 	"context"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/MontFerret/api"
 	"github.com/MontFerret/cli/v2/pkg/build"
 	cliruntime "github.com/MontFerret/cli/v2/pkg/runtime"
 	"github.com/MontFerret/ferret/v2/pkg/compiler"
@@ -378,18 +378,18 @@ func readFile(t *testing.T, path string) []byte {
 	return data
 }
 
-func assertOutput(t *testing.T, output io.ReadCloser, expected string) {
+func assertOutput(t *testing.T, output api.Output, expected string) {
 	t.Helper()
 
 	defer output.Close()
 
-	data, err := io.ReadAll(output)
+	content, err := output.Collect(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if strings.TrimSpace(string(data)) != expected {
-		t.Fatalf("expected %s, got %q", expected, string(data))
+	if strings.TrimSpace(string(content.Data)) != expected {
+		t.Fatalf("expected %s, got %q", expected, string(content.Data))
 	}
 }
 

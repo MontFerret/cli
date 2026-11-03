@@ -23,5 +23,5 @@ func OptionsFromCommand(cmd *cobra.Command, store *config.Store) (cliruntime.Opt
 	}
 	opts.FSPolicy = fsPolicy
 
-	return opts, nil
+	return opts, cliruntime.ValidateOptions(opts)
 }
