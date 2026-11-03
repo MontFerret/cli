@@ -14,12 +14,12 @@
 		<img alt="Ferret release" src="https://img.shields.io/github/release/MontFerret/cli.svg">
 	</a>
 	<a href="https://opensource.org/licenses/Apache-2.0">
-		<img alt="Apache-2.0 License" src="http://img.shields.io/badge/license-Apache-brightgreen.svg">
+		<img alt="Apache-2.0 License" src="https://img.shields.io/badge/license-Apache-brightgreen.svg">
 	</a>
 </p>
 
 <p align="center">
-	<img alt="Ferret" src="https://raw.githubusercontent.com/MontFerret/cli/master/assets/logo.svg" width="360px" />
+	<img alt="Ferret" src="assets/logo.svg" width="360px" />
 </p>
 
 > This branch contains the CLI for Ferret v2. For the stable v1 CLI, see the [`v1` branch](https://github.com/MontFerret/cli/tree/v1).
@@ -36,17 +36,23 @@ Full documentation lives at [ferretlang.org](https://ferretlang.org/).
 
 ## Installation
 
-Download a release from the [releases page](https://github.com/MontFerret/cli/releases), or install from source:
+Build the checkout with **Go 1.26.5 or newer** and `make` to use the features
+documented here:
 
 ```bash
-go install github.com/MontFerret/cli/v2/ferret@latest
+git clone https://github.com/MontFerret/cli.git
+cd cli
+make compile
+export PATH="$PWD/bin:$PATH"
 ```
 
-Shell installer:
+The binary is written to `bin/ferret`. The `export` command adds that directory to
+`PATH` for the current shell; you can also run `./bin/ferret` directly.
 
-```bash
-curl https://raw.githubusercontent.com/MontFerret/cli/master/install.sh | sh
-```
+For prebuilt binaries, choose a **v2 release** from the
+[releases page](https://github.com/MontFerret/cli/releases). Published releases
+may not include features added since their tag. GitHub's latest stable release
+and the shell installer can still select the v1 CLI.
 
 ## Quick start
 
@@ -85,9 +91,9 @@ ferret run example.fql --param code='"123"'
 Use parameters in FQL with `@name`:
 
 ```fql
-let page = DOCUMENT(@url)
+let page = web::html::open(@url)
 
-return ELEMENT(page, "title").innerText
+return web::html::element(page, "title").innerText
 ```
 
 ## Common commands
@@ -506,20 +512,34 @@ backpressure from the output writer. Bytes are preserved without decoding or
 re-encoding. Available output remains printed if execution or delivery later
 fails; read, write, and cleanup failures fail the command. HTTP delivery uses a
 bounded buffer rather than memory proportional to the response size. The HTTP
-REPL ends on request, response, or cleanup failures.
+REPL ends on request, response-read, or cleanup failures.
 REPLs recover from structured query diagnostics; Worker response bodies remain
-raw output. Worker requests still use
+raw output. For execution responses, an HTTP error status alone does not fail
+the command: the body is streamed unchanged, without interpreting it as query
+diagnostics. Worker requests still use
 `POST /` with source text and parameters, and `GET /info` for the hosted Ferret
 version. Worker does not support Universal API compilation, debugging, output
 codec selection, or per-session filesystem-root selection.
 
 For Go callers, `runtime.Run`, `RunSource`, `RunArtifact`,
 `Builtin.RunArtifact`, and `run.Execute` now return a caller-owned `api.Output`
-instead of `io.ReadCloser`. Keep the invocation context alive and call `Consume`
-to write chunks or `Collect` to materialize detached content. Consumption observes
-terminal execution and delivery failures. Close abandoned output; runtime and
-transport resources remain alive until the output settles. Debugger events carry
-detached content. Streaming delivery does not imply incremental query evaluation.
+instead of `io.ReadCloser`. Output is one-shot: call `Consume` to process chunks
+or `Collect` to materialize detached `Content.Data`. Consumer callbacks borrow
+read-only chunks valid only until the callback returns; copy any bytes you retain.
+Non-nil collected content can accompany an error and contain partial output.
+
+`runtime.Run`, `RunArtifact`, and `run.Execute` transfer their invocation-owned
+runtime and transport resources to the returned output. `RunSource` borrows the
+supplied `Resources`, and `Builtin.RunArtifact` borrows its receiver while
+transferring its temporary session and plan to the output. Consume or close the
+output before releasing borrowed parents; the caller remains responsible for
+closing those parents.
+
+Keep the invocation context alive until consumption or closure finishes.
+`Consume` and `Collect` observe terminal execution, delivery, and cleanup failures
+and finalize output-owned resources. `Close` abandons unread output without
+certifying successful execution. Debugger events carry detached content.
+Streaming delivery does not imply incremental query evaluation.
 
 `ferret version --runtime wire` reports the hosted runtime version alongside the
 CLI version. The Wire REPL banner shows the endpoint and hosted version. Version
@@ -533,6 +553,18 @@ version metadata (or `unknown` in a build without version injection).
 ## Browser usage
 
 Ferret can use Chrome or Chromium through the Chrome DevTools Protocol.
+
+The HTML module uses the memory driver by default. Select the CDP driver in your
+script to use a browser:
+
+```fql
+let page = web::html::open("https://example.com", { driver: "cdp" })
+
+return web::html::element(page, "title").innerText
+```
+
+The browser flags below manage browser startup and the debugger address; they
+do not select the HTML driver for the script.
 
 Open a managed browser:
 
@@ -581,6 +613,10 @@ print <expr>    Evaluate a safe debug expression
 quit            Exit
 ```
 
+`print` supports limited expressions over paused program state, including
+variable access and arithmetic. It does not execute function calls, queries, or
+mutation.
+
 The debugger currently supports local source scripts with the builtin runtime. Compiled artifacts, remote debugging, DAP, conditional breakpoints, hit-count breakpoints, and logpoints are not supported yet.
 
 ## Filesystem policy
@@ -603,7 +639,10 @@ Filesystem policy options are available on `run`, `repl`, and `debug` and apply 
 
 ## HTTP policy
 
-Ferret's builtin runtime blocks localhost, loopback, private-network, and link-local HTTP access by default. Grant only the access a script needs; for example, a script that intentionally calls a local development service requires an explicit opt-in:
+In the builtin runtime, Ferret's HTTP client blocks localhost, loopback,
+private-network, and link-local HTTP access by default. Grant only the access a
+script needs; for example, a script that intentionally calls a local development
+service through this client requires an explicit opt-in:
 
 ```bash
 ferret run \
@@ -612,7 +651,11 @@ ferret run \
   script.fql
 ```
 
-HTTP policy options are available on `run`, `repl`, and `debug` and apply only to the builtin runtime. Supplying one with a remote runtime is a configuration error. They configure Ferret HTTP integrations such as `IO::NET::HTTP` and `NET::REST`; the existing `--proxy` and `--user-agent` options continue to configure HTML/browser drivers.
+HTTP policy options are available on `run`, `repl`, and `debug` and apply only to
+the builtin runtime. Supplying one with a remote runtime is a configuration error.
+They configure integrations using Ferret's HTTP client, such as `io::net::http`
+and `net::rest`; they do not govern requests made by Chrome itself. The existing
+`--proxy` and `--user-agent` options continue to configure HTML/browser drivers.
 
 List values accept repeated flags or comma-separated values. Default headers use a JSON object with string values. Only values explicitly supplied through a flag, environment variable, or config file override Ferret's secure defaults. Numeric zero retains the Ferret default; use the dedicated `no-timeout` or `unlimited-*` option to disable a limit.
 
@@ -648,10 +691,8 @@ Priority order:
 3. Config file
 4. Defaults
 
-Config file locations:
-
-- Linux/macOS: `~/.config/ferret/config.yaml`
-- Windows: `%APPDATA%\ferret\config.yaml`
+The config file is `~/.ferret/config.yaml`: a `.ferret` directory inside the
+resolved user home directory on all supported platforms.
 
 Examples:
 
@@ -674,19 +715,18 @@ ferret config unset policy-http-allowed-hosts
 
 ## Development
 
-Build and test locally:
+From the checkout described under Installation, build and test locally:
 
 ```bash
-git clone https://github.com/MontFerret/cli.git
-cd cli
-
 make compile
 make test
 ```
 
-Common development commands:
+Install the formatter and linters before using the remaining development
+commands. Ensure Go's binary installation directory is on `PATH`:
 
 ```bash
+make install-tools
 make fmt
 make lint
 make build
