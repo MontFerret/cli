@@ -25,7 +25,7 @@ require (
 	github.com/MontFerret/contrib/modules/yaml v1.0.0-rc.18
 	github.com/MontFerret/ferret/v2 v2.0.0-alpha.62
 	github.com/MontFerret/specs v1.12.0
-	github.com/MontFerret/wire v1.0.0-alpha.3
+	github.com/MontFerret/wire v1.0.0-alpha.4
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/chzyer/readline v1.5.1
 	github.com/go-waitfor/waitfor v1.1.0

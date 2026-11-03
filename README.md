@@ -428,14 +428,15 @@ publication branch from your fork before retrying if its contents differ.
 
 ## Wire source execution
 
-This CLI integrates Wire `v1.0.0-alpha.3`, Universal API `v1.0.0-alpha.21`, and
+This CLI integrates Wire `v1.0.0-alpha.4`, Universal API `v1.0.0-alpha.21`, and
 Ferret `v2.0.0-alpha.62`. The host must support the alpha.3 handshake, including
 hosted runtime version metadata and chunked output framing; alpha.1 and alpha.2
 hosts are incompatible.
 
-The alpha.3 host release currently loses structured diagnostics for preparation
-failures such as syntax errors. Those failures appear as internal errors and end
-the Wire REPL; retaining diagnostic recovery requires the separate Wire host fix.
+Wire alpha.4 restores structured diagnostics for preparation failures such as
+syntax errors, allowing the Wire REPL to recover and continue with the next query.
+Alpha.3 hosts lose those diagnostics and end the REPL on preparation failures;
+use an alpha.4 host to retain diagnostic recovery.
 
 Builtin execution remains the default. Select `--runtime wire` explicitly to run
 source against an application-configured Universal API runtime. HTTP URLs in

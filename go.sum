@@ -58,8 +58,8 @@ github.com/MontFerret/ferret/v2 v2.0.0-alpha.62 h1:tDkYxxlk4kvNOVlunAREy87f1+5Px
 github.com/MontFerret/ferret/v2 v2.0.0-alpha.62/go.mod h1:1GOEWQoTqOj2kCv7vUfepu5oNh4AtIG1lq3mvQsGLIs=
 github.com/MontFerret/specs v1.12.0 h1:1HaElGLN+tyZIsrb3WVdulxbW5W0LXEdOH0k6F1sFzk=
 github.com/MontFerret/specs v1.12.0/go.mod h1:ENGyEPFjrWVPWOUAsBMc1acUsqpswieTrAJfhcm576E=
-github.com/MontFerret/wire v1.0.0-alpha.3 h1:Y8RFXIQQWdOqphMNizbK9SksA24bybSFIMlublbZm+4=
-github.com/MontFerret/wire v1.0.0-alpha.3/go.mod h1:jzCjXY3SEAC//WZasLJEo3hMAJJrANbnIAbdcn4hWdA=
+github.com/MontFerret/wire v1.0.0-alpha.4 h1:DtW6e1GrevWAbSAYtKh/7ZaHfhQ4mKIOxYThmeF0bNI=
+github.com/MontFerret/wire v1.0.0-alpha.4/go.mod h1:jzCjXY3SEAC//WZasLJEo3hMAJJrANbnIAbdcn4hWdA=
 github.com/PuerkitoBio/goquery v1.13.0 h1:mqHbjD7Jmnul4DTR24LKTjo1uUmHUh072kteGV+xpFM=
 github.com/PuerkitoBio/goquery v1.13.0/go.mod h1:Hip5mdBL8K2wEGKJdr27sRaNwIdDajmCwB/ExUPwW+g=
 github.com/andybalholm/cascadia v1.3.5 h1:RLjq12WJy58dN6eCIQrz0bAGZkztHWsEPFxP53Y7Ms8=

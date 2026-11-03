@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"github.com/MontFerret/api"
 	"github.com/MontFerret/ferret/v2"
 	native "github.com/MontFerret/ferret/v2/pkg/runtime"
@@ -173,7 +175,10 @@ func (h *Host) Close() error {
 		if h.served != nil {
 			select {
 			case err := <-h.served:
-				h.err = errors.Join(h.err, err)
+				// Shutdown can finish before the serving goroutine starts.
+				if err != grpc.ErrServerStopped {
+					h.err = errors.Join(h.err, err)
+				}
 			case <-ctx.Done():
 				h.err = errors.Join(h.err, ctx.Err())
 			}
