@@ -55,8 +55,9 @@ func TestResourcesOwnsBuiltinEngine(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output, err := resources.Runtime.Run(t.Context(), api.NewSource("owned.fql", "RETURN 42"))
-	if err != nil || output == nil || string(output.Content) != "42" {
+	handle, err := resources.Runtime.Run(t.Context(), api.NewSource("owned.fql", "RETURN 42"))
+	output, err := collectOutput(t, handle, err)
+	if err != nil || output == nil || string(output.Data) != "42" {
 		t.Fatalf("borrowed adapter became unusable: output=%v error=%v", output, err)
 	}
 

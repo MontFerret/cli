@@ -252,12 +252,17 @@ func TestMigrateFQLSourceExecutesAndIsIdempotent(t *testing.T) {
 		}
 	})
 
-	output, err := engine.Run(context.Background(), source.New("query.fql", string(first.Data)))
+	handle, err := engine.Run(context.Background(), source.New("query.fql", string(first.Data)))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if got, want := string(output.Content), "[1,2,3]"; got != want {
+	output, err := handle.Collect(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := string(output.Data), "[1,2,3]"; got != want {
 		t.Fatalf("migrated result = %s, want %s", got, want)
 	}
 

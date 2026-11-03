@@ -51,9 +51,9 @@ func New(ctx context.Context, opts Options) (*Resources, error) {
 		return nil, fmt.Errorf("parse url: %w", err)
 	}
 
-	legacy := newRemote(*u, opts)
+	rt := newRemote(*u, opts)
 
-	return &Resources{Legacy: legacy, owners: []io.Closer{legacy}}, nil
+	return &Resources{Runtime: rt, owners: []io.Closer{rt}}, nil
 }
 
 func openWire(ctx context.Context, opts Options) (*Resources, error) {
@@ -92,7 +92,7 @@ func openWire(ctx context.Context, opts Options) (*Resources, error) {
 		_ = physical.Close()
 		close(closed)
 	})
-	rt, err := client.New(connectCtx, connection)
+	rt, err := client.From(connectCtx, connection)
 	if !stop() {
 		<-closed
 	}

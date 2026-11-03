@@ -20,12 +20,14 @@ func TestBuiltinHTTPPolicyBlocksLocalhostByDefault(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := Run(
+	out, err := Run(
 		context.Background(),
 		NewDefaultOptions(),
 		source.NewAnonymous(fmt.Sprintf("RETURN IO::NET::HTTP::GET(%q)", server.URL)),
 		nil,
 	)
+
+	_, err = collectOutput(t, out, err)
 	if err == nil || !strings.Contains(err.Error(), "localhost is not allowed") {
 		t.Fatalf("expected localhost policy error, got %v", err)
 	}
@@ -51,10 +53,11 @@ func TestBuiltinHTTPPolicyAllowsConfiguredLocalhostAndSendsDefaultHeaders(t *tes
 		source.NewAnonymous(fmt.Sprintf("RETURN TO_STRING(IO::NET::HTTP::GET(%q))", server.URL)),
 		nil,
 	)
+
+	_, err = collectOutput(t, out, err)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer out.Close()
 
 	if got := <-requests; got != "configured" {
 		t.Fatalf("expected configured default header, got %q", got)
@@ -86,12 +89,14 @@ func TestBuiltinHTTPPolicyEnforcesResponseLimit(t *testing.T) {
 		ferrethttp.WithMaxResponseSize(1),
 	}
 
-	_, err := Run(
+	out, err := Run(
 		context.Background(),
 		opts,
 		source.NewAnonymous(fmt.Sprintf("RETURN IO::NET::HTTP::GET(%q)", server.URL)),
 		nil,
 	)
+
+	_, err = collectOutput(t, out, err)
 	if err == nil || !strings.Contains(err.Error(), "response body exceeds") {
 		t.Fatalf("expected response-size error, got %v", err)
 	}

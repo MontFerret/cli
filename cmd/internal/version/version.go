@@ -37,14 +37,7 @@ func runVersion(cmd *cobra.Command, store *config.Store) (err error) {
 
 	defer func() { err = errors.Join(err, resources.Close()) }()
 
-	var version string
-	if resources.Legacy != nil {
-		version, err = resources.Legacy.Version(cmd.Context())
-	} else {
-		metadata, versionErr := resources.Runtime.Version(cmd.Context())
-		version, err = metadata.String(), versionErr
-	}
-
+	version, err := resources.Runtime.Version(cmd.Context())
 	if err != nil {
 		return err
 	}

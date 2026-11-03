@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"io"
 	"testing"
 
 	"github.com/MontFerret/cli/v2/pkg/logger"
@@ -58,7 +57,7 @@ func BenchmarkBuiltinArtifactLifecycle(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		if _, err := io.Copy(io.Discard, out); err != nil {
+		if err := out.Consume(b.Context(), func(context.Context, []byte) error { return nil }); err != nil {
 			b.Fatal(err)
 		}
 
@@ -89,7 +88,7 @@ func BenchmarkBuiltinSource(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		if _, err := io.Copy(io.Discard, out); err != nil {
+		if err := out.Consume(context.Background(), func(context.Context, []byte) error { return nil }); err != nil {
 			b.Fatal(err)
 		}
 

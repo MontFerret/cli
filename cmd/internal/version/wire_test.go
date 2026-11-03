@@ -33,7 +33,12 @@ func TestWireVersionCommand(t *testing.T) {
 
 			waitForVersionCleanup(t, host)
 
-			if _, err := host.Runtime.Run(t.Context(), api.NewSource("survivor.fql", "RETURN DEMO::IDENTITY(42)")); err != nil {
+			handle, err := host.Runtime.Run(t.Context(), api.NewSource("survivor.fql", "RETURN DEMO::IDENTITY(42)"))
+			if err == nil {
+				_, err = handle.Collect(t.Context())
+				err = errors.Join(err, handle.Close())
+			}
+			if err != nil {
 				t.Fatalf("version command closed host engine: %v", err)
 			}
 		})
@@ -166,7 +171,12 @@ func TestWireVersionOutputFailureReleasesClient(t *testing.T) {
 
 	waitForVersionCleanup(t, host)
 
-	if _, err := host.Runtime.Run(t.Context(), api.NewSource("survivor.fql", "RETURN DEMO::IDENTITY(42)")); err != nil {
+	handle, err := host.Runtime.Run(t.Context(), api.NewSource("survivor.fql", "RETURN DEMO::IDENTITY(42)"))
+	if err == nil {
+		_, err = handle.Collect(t.Context())
+		err = errors.Join(err, handle.Close())
+	}
+	if err != nil {
 		t.Fatalf("output failure closed hosted runtime: %v", err)
 	}
 }

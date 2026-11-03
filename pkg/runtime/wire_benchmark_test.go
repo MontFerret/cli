@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/MontFerret/api"
@@ -40,7 +41,14 @@ func BenchmarkWireSource(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := resources.Runtime.Run(context.Background(), src, params); err != nil {
+		out, err := resources.Runtime.Run(context.Background(), src, params)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if err := out.Consume(context.Background(), func(context.Context, []byte) error { return nil }); err != nil {
+			b.Fatal(err)
+		}
+		if err := out.Close(); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -59,6 +67,34 @@ func BenchmarkWireVersion(b *testing.B) {
 
 	for b.Loop() {
 		if _, err := resources.Runtime.Version(context.Background()); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkWireSourceLarge(b *testing.B) {
+	host := wirehost.New(b)
+	resources, err := New(b.Context(), Options{Type: "wire", Endpoint: host.Endpoint})
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.Cleanup(func() { _ = resources.Close() })
+	src := api.NewSource("benchmark.fql", "RETURN DEMO::IDENTITY(@value)")
+	params := api.WithParam("value", strings.Repeat("x", 1<<20))
+	b.SetBytes(1 << 20)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for b.Loop() {
+		out, err := resources.Runtime.Run(b.Context(), src, params)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if err := out.Consume(b.Context(), func(context.Context, []byte) error { return nil }); err != nil {
+			b.Fatal(err)
+		}
+		if err := out.Close(); err != nil {
 			b.Fatal(err)
 		}
 	}

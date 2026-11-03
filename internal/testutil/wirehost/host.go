@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -38,15 +39,20 @@ func New(t testing.TB) *Host {
 
 // NewWithVersion hosts an opaque runtime version, including an empty value.
 func NewWithVersion(t testing.TB, version api.Version) *Host {
-	return newHost(t, version, nil)
+	return newHost(t, version, nil, nil)
 }
 
 // NewWithVersionFunc controls hosted metadata retrieval for handshake failure tests.
 func NewWithVersionFunc(t testing.TB, version func(context.Context) (api.Version, error)) *Host {
-	return newHost(t, "", version)
+	return newHost(t, "", version, nil)
 }
 
-func newHost(t testing.TB, version api.Version, retrieve func(context.Context) (api.Version, error)) *Host {
+// NewWithRun hosts a scripted execution over the same real Wire transport.
+func NewWithRun(t testing.TB, run func(context.Context, api.Source, ...api.SessionOption) (api.Output, error)) *Host {
+	return newHost(t, "test-core-version", nil, run)
+}
+
+func newHost(t testing.TB, version api.Version, retrieve func(context.Context) (api.Version, error), run func(context.Context, api.Source, ...api.SessionOption) (api.Output, error)) *Host {
 	t.Helper()
 	h := &Host{WaitStarted: make(chan struct{}), WaitFinished: make(chan struct{})}
 	var started, finished sync.Once
@@ -56,6 +62,10 @@ func newHost(t testing.TB, version api.Version, retrieve func(context.Context) (
 		demo.Function().A1().Add("IDENTITY", func(_ context.Context, value native.Value) (native.Value, error) {
 			return value, nil
 		})
+		demo.Function().A0().Add("LARGE", func(context.Context) (native.Value, error) {
+			return native.NewString(strings.Repeat("x", 8<<20)), nil
+		})
+
 		demo.Function().A0().Add("WAIT", func(ctx context.Context) (native.Value, error) {
 			started.Do(func() { close(h.WaitStarted) })
 			defer finished.Do(func() { close(h.WaitFinished) })
@@ -78,7 +88,11 @@ func newHost(t testing.TB, version api.Version, retrieve func(context.Context) (
 		h.Runtime = &versionRuntime{Runtime: h.Runtime, retrieve: retrieve}
 	}
 
-	h.server, err = server.NewServer(h.Runtime)
+	if run != nil {
+		h.Runtime = &runRuntime{Runtime: h.Runtime, run: run}
+	}
+
+	h.server, err = server.New(h.Runtime)
 	if err != nil {
 		t.Fatal(err)
 	}

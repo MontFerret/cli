@@ -3,20 +3,21 @@ package run
 import (
 	"bytes"
 	"errors"
-	"io"
 	"strings"
 	"testing"
-	"testing/iotest"
 
 	"github.com/spf13/cobra"
+
+	"github.com/MontFerret/api"
+	"github.com/MontFerret/cli/v2/internal/testutil/encoded"
 )
 
 func TestRunOutputWithError(t *testing.T) {
 	for _, test := range []struct {
-		output io.ReadCloser
+		output api.Output
 		want   string
 	}{
-		{nil, ""}, {io.NopCloser(strings.NewReader("")), ""}, {io.NopCloser(strings.NewReader("available")), "available"},
+		{nil, ""}, {&encoded.Output{Chunks: [][]byte{{}}}, ""}, {&encoded.Output{Chunks: [][]byte{[]byte("available")}}, "available"},
 	} {
 		cmd := &cobra.Command{}
 		var stdout, stderr bytes.Buffer
@@ -39,7 +40,7 @@ func TestRunSuccessfulEmptyOutput(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
-	if err := writeResult(cmd, io.NopCloser(strings.NewReader("")), nil); err != nil || stdout.Len() != 0 || stderr.Len() != 0 {
+	if err := writeResult(cmd, &encoded.Output{Chunks: [][]byte{{}}}, nil); err != nil || stdout.Len() != 0 || stderr.Len() != 0 {
 		t.Fatalf("empty result: stdout=%q stderr=%q error=%v", stdout.String(), stderr.String(), err)
 	}
 }
@@ -48,10 +49,7 @@ func TestRunJoinsExecutionCopyAndReaderCloseErrors(t *testing.T) {
 	executionErr := errors.New("execution failed")
 	copyErr := errors.New("reading output failed")
 	closeErr := errors.New("closing output failed")
-	output := &failingCloseReader{
-		Reader: io.MultiReader(strings.NewReader("available"), iotest.ErrReader(copyErr)),
-		err:    closeErr,
-	}
+	output := &encoded.Output{Chunks: [][]byte{[]byte("available")}, Err: copyErr, CloseErr: closeErr}
 	cmd := &cobra.Command{}
 	var stdout, stderr bytes.Buffer
 	cmd.SetOut(&stdout)

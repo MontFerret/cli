@@ -14,6 +14,7 @@ import (
 	"github.com/MontFerret/ferret/v2/pkg/source"
 
 	"github.com/MontFerret/cli/v2/internal/diagnostics"
+	"github.com/MontFerret/cli/v2/internal/output"
 	"github.com/MontFerret/cli/v2/pkg/runtime"
 )
 
@@ -33,14 +34,7 @@ func StartWithIO(ctx context.Context, opts runtime.Options, params map[string]an
 
 	defer func() { err = errors.Join(err, resources.Close()) }()
 
-	var version string
-	if resources.Legacy != nil {
-		version, err = resources.Legacy.Version(ctx)
-	} else {
-		metadata, versionErr := resources.Runtime.Version(ctx)
-		version, err = metadata.String(), versionErr
-	}
-
+	version, err := resources.Runtime.Version(ctx)
 	if err != nil {
 		return err
 	}
@@ -168,11 +162,8 @@ func StartWithIO(ctx context.Context, opts runtime.Options, params map[string]an
 		}
 
 		out, runErr := runtime.RunSource(ctx, resources, source.NewAnonymous(query), params)
-		if out != nil {
-			if outputErr := writeResult(stdout, out); outputErr != nil {
-				return errors.Join(runErr, outputErr)
-			}
-		}
+		resultErr, failure := output.Write(ctx, stdout, out, true)
+		runErr = errors.Join(runErr, resultErr)
 
 		if runErr != nil {
 			diagnostics.Print(stderr, runErr)
@@ -181,7 +172,7 @@ func StartWithIO(ctx context.Context, opts runtime.Options, params map[string]an
 				return errors.Join(context.Cause(ctx), runErr)
 			}
 
-			if diagnostics.Recoverable(runErr) || resources.Legacy != nil {
+			if failure == nil && diagnostics.Recoverable(runErr) {
 				continue
 			}
 

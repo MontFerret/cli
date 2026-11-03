@@ -92,7 +92,7 @@ func TestNewDebugSessionIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Reason != ferret.DebugReasonCompleted || event.Output == nil || string(event.Output.Content) != "3" {
+	if event.Reason != ferret.DebugReasonCompleted || event.Output == nil || string(event.Output.Data) != "3" {
 		t.Fatalf("unexpected completion event: %#v", event)
 	}
 
@@ -143,7 +143,7 @@ func TestNewDebugSessionDocumentSurvivesResume(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Reason != ferret.DebugReasonCompleted || event.Output == nil || string(event.Output.Content) != "true" {
+	if event.Reason != ferret.DebugReasonCompleted || event.Output == nil || string(event.Output.Data) != "true" {
 		t.Fatalf("unexpected completion event: %#v", event)
 	}
 }

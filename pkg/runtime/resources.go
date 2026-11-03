@@ -10,12 +10,11 @@ import (
 )
 
 // Resources owns the selected runtime and the resources created for it.
-// Runtime is canonical UAPI for builtin/Wire; Legacy is set only for HTTP Worker
-// compatibility. Callers must settle active calls and close any directly created
-// children before Close. The exported runtime fields are borrowed by callers.
+// Runtime is the borrowed canonical UAPI for builtin, Wire, or HTTP Worker.
+// Callers must settle active outputs and close any directly created children
+// before Close.
 type Resources struct {
 	Runtime api.Runtime
-	Legacy  *Remote
 	// Disconnected closes on loss of an established Wire transport. It is nil
 	// for builtin and HTTP. Callers may use it to interrupt idle input, but must
 	// still settle runtime calls before closing these resources.

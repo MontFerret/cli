@@ -376,14 +376,19 @@ func TestMigrateFQLStdlibCanonicalCallsExecute(t *testing.T) {
 		}
 	})
 
-	output, err := engine.Run(context.Background(), source.New("query.fql", string(result.Data)))
+	handle, err := engine.Run(context.Background(), source.New("query.fql", string(result.Data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	output, err := handle.Collect(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	want := `[[1],"a9993e364706816aba3e25717850c26c9cd0d89d","file",true,2026,3]`
-	if string(output.Content) != want {
-		t.Fatalf("migrated behavior = %s, want %s", output.Content, want)
+	if string(output.Data) != want {
+		t.Fatalf("migrated behavior = %s, want %s", output.Data, want)
 	}
 }
 

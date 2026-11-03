@@ -8,7 +8,7 @@ import (
 
 type scriptedRuntime struct {
 	api.Runtime
-	output   *api.Output
+	output   api.Output
 	err      error
 	closeErr error
 	closed   int
@@ -22,7 +22,7 @@ func (r *scriptedRuntime) Version(ctx context.Context) (api.Version, error) {
 	return "scripted-runtime", nil
 }
 
-func (r *scriptedRuntime) Run(context.Context, api.Source, ...api.SessionOption) (*api.Output, error) {
+func (r *scriptedRuntime) Run(context.Context, api.Source, ...api.SessionOption) (api.Output, error) {
 	return r.output, r.err
 }
 

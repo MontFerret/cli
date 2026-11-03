@@ -428,13 +428,18 @@ publication branch from your fork before retrying if its contents differ.
 
 ## Wire source execution
 
-This CLI integrates Wire `v1.0.0-alpha.2`, Universal API `v1.0.0-alpha.20`, and
-Ferret `v2.0.0-alpha.57`. The host must support the alpha.2 handshake, including
-hosted runtime version metadata; alpha.1 hosts are incompatible.
+This CLI integrates Wire `v1.0.0-alpha.3`, Universal API `v1.0.0-alpha.21`, and
+Ferret `v2.0.0-alpha.62`. The host must support the alpha.3 handshake, including
+hosted runtime version metadata and chunked output framing; alpha.1 and alpha.2
+hosts are incompatible.
+
+The alpha.3 host release currently loses structured diagnostics for preparation
+failures such as syntax errors. Those failures appear as internal errors and end
+the Wire REPL; retaining diagnostic recovery requires the separate Wire host fix.
 
 Builtin execution remains the default. Select `--runtime wire` explicitly to run
-source against an application-configured Universal API runtime. Legacy HTTP URLs
-in `--runtime` keep their existing Worker behavior.
+source against an application-configured Universal API runtime. HTTP URLs in
+`--runtime` continue to use the Worker execution and metadata endpoints.
 
 Start the development host in terminal 1:
 
@@ -471,7 +476,7 @@ Only `tcp://127.0.0.1:<port>` is supported (ports 1–65535, no other URL compon
 Both connection establishment and the Wire handshake respect the timeout and
 command cancellation. Connection failure never falls back or reconnects the
 logical runtime automatically. Endpoint and connection-timeout settings require
-Wire mode; builtin and legacy HTTP behavior otherwise remain unchanged.
+Wire mode.
 
 This plaintext transport is for **trusted local development**. Loopback access
 does not authenticate either the client or runtime. There are no TLS or credential
@@ -494,6 +499,26 @@ engine independently; closing a CLI connection does not close it.
 Run output is printed as encoded bytes, including available output accompanying
 an error. Errors go to stderr and fail the command; successfully produced empty
 output prints nothing. Artifacts and debugging remain builtin-only.
+
+Wire and HTTP Worker execution stream encoded chunks directly to stdout, with
+backpressure from the output writer. Bytes are preserved without decoding or
+re-encoding. Available output remains printed if execution or delivery later
+fails; read, write, and cleanup failures fail the command. HTTP delivery uses a
+bounded buffer rather than memory proportional to the response size. The HTTP
+REPL ends on request, response, or cleanup failures.
+REPLs recover from structured query diagnostics; Worker response bodies remain
+raw output. Worker requests still use
+`POST /` with source text and parameters, and `GET /info` for the hosted Ferret
+version. Worker does not support Universal API compilation, debugging, output
+codec selection, or per-session filesystem-root selection.
+
+For Go callers, `runtime.Run`, `RunSource`, `RunArtifact`,
+`Builtin.RunArtifact`, and `run.Execute` now return a caller-owned `api.Output`
+instead of `io.ReadCloser`. Keep the invocation context alive and call `Consume`
+to write chunks or `Collect` to materialize detached content. Consumption observes
+terminal execution and delivery failures. Close abandoned output; runtime and
+transport resources remain alive until the output settles. Debugger events carry
+detached content. Streaming delivery does not imply incremental query evaluation.
 
 `ferret version --runtime wire` reports the hosted runtime version alongside the
 CLI version. The Wire REPL banner shows the endpoint and hosted version. Version

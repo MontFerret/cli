@@ -3,12 +3,13 @@ package run
 import (
 	"errors"
 	"fmt"
-	"io"
 
 	"github.com/spf13/cobra"
 
+	"github.com/MontFerret/api"
 	"github.com/MontFerret/cli/v2/cmd/internal/diagnostics"
 	"github.com/MontFerret/cli/v2/cmd/internal/execution"
+	"github.com/MontFerret/cli/v2/internal/output"
 	"github.com/MontFerret/cli/v2/pkg/browser"
 	"github.com/MontFerret/cli/v2/pkg/config"
 	clirun "github.com/MontFerret/cli/v2/pkg/run"
@@ -96,11 +97,9 @@ func execute(cmd *cobra.Command, rtOpts cliruntime.Options, brOpts browser.Optio
 	return writeResult(cmd, out, err)
 }
 
-func writeResult(cmd *cobra.Command, out io.ReadCloser, err error) error {
-	if out != nil {
-		_, copyErr := io.Copy(cmd.OutOrStdout(), out)
-		err = errors.Join(err, copyErr, out.Close())
-	}
+func writeResult(cmd *cobra.Command, out api.Output, err error) error {
+	resultErr, _ := output.Write(cmd.Context(), cmd.OutOrStdout(), out, false)
+	err = errors.Join(err, resultErr)
 
 	if err != nil {
 		diagnostics.PrintErrorTo(cmd.ErrOrStderr(), err)

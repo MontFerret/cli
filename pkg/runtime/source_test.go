@@ -35,57 +35,12 @@ func TestWireEndpointValidation(t *testing.T) {
 	}
 }
 
-func TestSourceOutputAndCleanupFailures(t *testing.T) {
-	runErr := errors.New("execution failed")
-	closeErr := errors.New("logical cleanup failed")
-	physicalErr := errors.New("physical cleanup failed")
-
-	for _, output := range []*api.Output{nil, {}, {Content: []byte("available")}} {
-		rt := &scriptedRuntime{output: output, err: runErr, closeErr: closeErr}
-		physicalClosed := 0
-		resources := &Resources{Runtime: rt, owners: []io.Closer{rt, closeFunc(func() error {
-			if rt.closed != 1 {
-				t.Error("transport closed before runtime")
-			}
-			physicalClosed++
-
-			return physicalErr
-		})}}
-		reader, err := RunSource(t.Context(), resources, source.New("source.fql", "RETURN 42"), nil)
-		if !errors.Is(err, runErr) || (reader == nil) != (output == nil) {
-			t.Fatalf("output presence lost: reader=%v error=%v", reader, err)
-		}
-
-		if reader != nil {
-			data, _ := io.ReadAll(reader)
-			_ = reader.Close()
-			if string(data) != string(output.Content) {
-				t.Fatalf("output changed: %q", data)
-			}
-		}
-
-		for range 2 {
-			err = resources.Close()
-			if !errors.Is(err, closeErr) || !errors.Is(err, physicalErr) {
-				t.Fatalf("cleanup errors lost: %v", err)
-			}
-		}
-
-		if rt.closed != 1 || physicalClosed != 1 {
-			t.Fatal("cleanup repeated")
-		}
-	}
-
-	rt := &scriptedRuntime{output: &api.Output{}}
-	reader, err := RunSource(t.Context(), &Resources{Runtime: rt}, source.New("empty.fql", "RETURN 42"), nil)
-	if err != nil || reader == nil {
-		t.Fatalf("successful empty output lost: %v", err)
-	}
-
-	data, _ := io.ReadAll(reader)
-	_ = reader.Close()
-	if len(data) != 0 {
-		t.Fatalf("manufactured output: %q", data)
+func TestSourceAdmissionFailure(t *testing.T) {
+	failure := errors.New("preparation failed")
+	rt := &scriptedRuntime{err: failure}
+	output, err := RunSource(t.Context(), &Resources{Runtime: rt}, source.New("bad.fql", "RETURN )"), nil)
+	if output != nil || !errors.Is(err, failure) || rt.closed != 0 {
+		t.Fatalf("borrowed source execution: output=%v error=%v closed=%d", output, err, rt.closed)
 	}
 }
 
@@ -122,13 +77,13 @@ func TestWireConfiguredRuntimeAndOwnership(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if resources.builtin != nil || resources.Legacy != nil {
-		t.Fatal("Wire construction created a local or legacy runtime")
+	if resources.builtin != nil {
+		t.Fatal("Wire construction created a local runtime")
 	}
 
 	for _, value := range []any{nil, true, 42.0, "123", []any{1.0, false}, map[string]any{"value": nil}} {
 		output, err := resources.Runtime.Run(ctx, api.NewSource("host.fql", "RETURN DEMO::IDENTITY(@value)"), api.WithParams(map[string]any{"value": value}))
-		if err != nil || output == nil {
+		if _, err := collectOutput(t, output, err); err != nil {
 			t.Fatalf("run %v: %v", value, err)
 		}
 	}
@@ -143,7 +98,8 @@ func TestWireConfiguredRuntimeAndOwnership(t *testing.T) {
 		}
 	}
 
-	if _, err := host.Runtime.Run(ctx, api.NewSource("still-owned.fql", "RETURN DEMO::IDENTITY(42)")); err != nil {
+	output, runErr := host.Runtime.Run(ctx, api.NewSource("still-owned.fql", "RETURN DEMO::IDENTITY(42)"))
+	if _, err := collectOutput(t, output, runErr); err != nil {
 		t.Fatalf("client closed host runtime: %v", err)
 	}
 }
@@ -158,7 +114,8 @@ func TestWireExecutionCancellation(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := resources.Runtime.Run(ctx, api.NewSource("wait.fql", "RETURN DEMO::WAIT()"))
+		output, err := resources.Runtime.Run(ctx, api.NewSource("wait.fql", "RETURN DEMO::WAIT()"))
+		_, err = collectOutput(t, output, err)
 		done <- err
 	}()
 	waitSignal(t, host.WaitStarted)

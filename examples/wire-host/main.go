@@ -49,7 +49,7 @@ func run() (err error) {
 	defer func() { err = errors.Join(err, engine.Close()) }()
 	hosted := uapi.Wrap(engine, api.Version(version))
 	defer func() { err = errors.Join(err, hosted.Close()) }()
-	wire, err := server.NewServer(hosted)
+	wire, err := server.New(hosted)
 	if err != nil {
 		return err
 	}

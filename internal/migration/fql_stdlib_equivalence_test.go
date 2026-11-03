@@ -83,18 +83,23 @@ return [result, ` + test.check + `, a, b, random::float()]`
 			for _, query := range []string{input, string(migrated.Data)} {
 				calls = nil
 
-				output, err := engine.Run(t.Context(), source.New("query.fql", query), ferret.WithSessionRandomSeed(42))
+				handle, err := engine.Run(t.Context(), source.New("query.fql", query), ferret.WithSessionRandomSeed(42))
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				output, err := handle.Collect(t.Context())
 				if err != nil {
 					t.Fatal(err)
 				}
 
 				var parts []json.RawMessage
-				if err := json.Unmarshal(output.Content, &parts); err != nil {
+				if err := json.Unmarshal(output.Data, &parts); err != nil {
 					t.Fatal(err)
 				}
 
 				if len(parts) != 5 || string(parts[1]) != "true" || string(parts[2]) != "[3,1,3,2]" || string(parts[3]) != "[3,4,4]" {
-					t.Fatalf("type or source immutability changed: %s", output.Content)
+					t.Fatalf("type or source immutability changed: %s", output.Data)
 				}
 
 				if test.want != "" && string(parts[0]) != test.want {
@@ -105,11 +110,11 @@ return [result, ` + test.check + `, a, b, random::float()]`
 					t.Fatalf("evaluation order/count = %v, want %v", calls, test.calls)
 				}
 
-				if previous != "" && previous != string(output.Content) {
-					t.Fatalf("runtime result or RNG consumption changed: old=%s new=%s", previous, output.Content)
+				if previous != "" && previous != string(output.Data) {
+					t.Fatalf("runtime result or RNG consumption changed: old=%s new=%s", previous, output.Data)
 				}
 
-				previous = string(output.Content)
+				previous = string(output.Data)
 			}
 		})
 	}
@@ -150,13 +155,18 @@ func TestFQLStdlibHistoricalKeysModes(t *testing.T) {
 					t.Fatalf("migrate keys: %#v, %v", result, err)
 				}
 
-				output, err := engine.Run(t.Context(), source.New("query.fql", string(result.Data)))
+				handle, err := engine.Run(t.Context(), source.New("query.fql", string(result.Data)))
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				output, err := handle.Collect(t.Context())
 				if err != nil {
 					t.Fatal(err)
 				}
 
 				var keys []string
-				if err := json.Unmarshal(output.Content, &keys); err != nil {
+				if err := json.Unmarshal(output.Data, &keys); err != nil {
 					t.Fatal(err)
 				}
 

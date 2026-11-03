@@ -25,10 +25,11 @@ RETURN true
 `),
 		nil,
 	)
+
+	_, err = collectOutput(t, out, err)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer out.Close()
 
 	content, err := os.ReadFile(filepath.Join(root, "output.txt"))
 	if err != nil {
@@ -53,10 +54,11 @@ func TestBuiltinFilesystemPolicyUsesConfiguredRoot(t *testing.T) {
 		source.NewAnonymous(`RETURN TO_STRING(IO::FS::READ("fixture.txt"))`),
 		nil,
 	)
+
+	_, err = collectOutput(t, out, err)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer out.Close()
 }
 
 func TestBuiltinFilesystemPolicyRejectsRootEscape(t *testing.T) {
@@ -71,12 +73,14 @@ func TestBuiltinFilesystemPolicyRejectsRootEscape(t *testing.T) {
 
 	opts := NewDefaultOptions()
 	opts.FSPolicy = &FileSystemPolicy{Root: root}
-	_, err := Run(
+	out, err := Run(
 		context.Background(),
 		opts,
 		source.NewAnonymous(`RETURN IO::FS::READ("../outside.txt")`),
 		nil,
 	)
+
+	_, err = collectOutput(t, out, err)
 	if err == nil {
 		t.Fatal("expected root escape to fail")
 	}
@@ -87,7 +91,7 @@ func TestBuiltinFilesystemPolicyEnforcesReadOnly(t *testing.T) {
 	opts := NewDefaultOptions()
 	opts.FSPolicy = &FileSystemPolicy{Root: root, ReadOnly: true}
 
-	_, err := Run(
+	out, err := Run(
 		context.Background(),
 		opts,
 		source.NewAnonymous(`
@@ -96,6 +100,8 @@ RETURN true
 `),
 		nil,
 	)
+
+	_, err = collectOutput(t, out, err)
 	if err == nil || !strings.Contains(err.Error(), "filesystem is read-only") {
 		t.Fatalf("expected read-only error, got %v", err)
 	}

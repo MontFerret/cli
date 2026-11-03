@@ -80,7 +80,12 @@ func TestWireReplBannerWriteFailureReleasesClient(t *testing.T) {
 				t.Fatalf("banner failure leaked client transport: %v", err)
 			}
 
-			if _, err := host.Runtime.Run(ctx, api.NewSource("survivor.fql", "RETURN DEMO::IDENTITY(42)")); err != nil {
+			handle, err := host.Runtime.Run(ctx, api.NewSource("survivor.fql", "RETURN DEMO::IDENTITY(42)"))
+			if err == nil {
+				_, err = handle.Collect(ctx)
+				err = errors.Join(err, handle.Close())
+			}
+			if err != nil {
 				t.Fatalf("banner failure closed the host runtime: %v", err)
 			}
 		})
