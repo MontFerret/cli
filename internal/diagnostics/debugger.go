@@ -44,7 +44,5 @@ func DebuggerUnavailable(err error) bool {
 		return status.Code(rpc) == codes.Unavailable || status.Code(rpc) == codes.DataLoss
 	}
 
-	// A hosted command that failed without returning a stop has terminated.
-	var hosted *failure.Failure
-	return errors.As(err, &hosted) && hosted.Category == failure.CategoryInternalRuntime
+	return false
 }

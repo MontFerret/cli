@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -94,7 +95,6 @@ func TestRunDispatchesCommandsAndClosesSession(t *testing.T) {
 func TestRunReportsCommandErrorsAndContinues(t *testing.T) {
 	session := &fakeSession{
 		startEvent:  debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
-		continueErr: errors.New("cannot resume while debug session is completed"),
 		evaluateErr: errors.New("expression is not supported by the safe debugger evaluator"),
 	}
 	var out bytes.Buffer
@@ -104,7 +104,6 @@ func TestRunReportsCommandErrorsAndContinues(t *testing.T) {
 			{line: "wat"},
 			{line: "delete 99"},
 			{line: "print LENGTH([1])"},
-			{line: "continue"},
 			{line: "q"},
 		},
 	}, &out)
@@ -117,7 +116,6 @@ func TestRunReportsCommandErrorsAndContinues(t *testing.T) {
 		"unknown command: wat",
 		"Unknown breakpoint: 99",
 		"Evaluation error: expression is not supported by the safe debugger evaluator",
-		"Debugger error: cannot resume while debug session is completed",
 	} {
 		if !strings.Contains(got, expected) {
 			t.Fatalf("expected %q in %q", expected, got)
@@ -413,20 +411,47 @@ func TestRunKeepsRuntimeErrorEventActive(t *testing.T) {
 	}
 }
 
-func TestRunResumeErrorPreservesState(t *testing.T) {
-	session := &fakeSession{
-		startEvent:  debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
-		continueErr: errors.New("resume failed"),
-	}
+func TestRunRequiresExecutionEvent(t *testing.T) {
+	for _, command := range []string{"start", "continue", "step", "next", "out"} {
+		for _, opErr := range []error{nil, errors.New("result unavailable")} {
+			t.Run(command+"/"+fmt.Sprint(opErr), func(t *testing.T) {
+				session := &fakeSession{
+					startEvent:  debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{}),
+					continueErr: opErr,
+				}
+				if command == "start" {
+					session.startEvent, session.startErr = nil, opErr
+				}
 
-	err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
-		results: []lineResult{{line: "continue"}, {line: "where"}, {line: "q"}},
-	}, io.Discard)
-	if err != nil {
-		t.Fatal(err)
+				input := &fakeLineReader{results: []lineResult{{line: command}, {line: "where"}, {line: "q"}}}
+				err := Run(t.Context(), session, source.New("demo.fql", "RETURN 1"), input, io.Discard)
+				if err == nil || session.framesCalls != 0 || session.closeCalls != 1 {
+					t.Fatalf("error=%v frames=%d closes=%d", err, session.framesCalls, session.closeCalls)
+				}
+
+				if opErr != nil && !errors.Is(err, opErr) {
+					t.Fatalf("lost operation error: %v", err)
+				}
+
+				if opErr == nil && !strings.Contains(err.Error(), "no event") {
+					t.Fatalf("missing protocol error: %v", err)
+				}
+			})
+		}
 	}
-	if session.continueCalls != 1 || session.framesCalls != 1 {
-		t.Fatalf("expected resume error to preserve active state: %#v", session)
+}
+
+func TestRunStoppedEventWithSessionLoss(t *testing.T) {
+	session := &fakeSession{
+		startEvent:    debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{}),
+		continueEvent: debugEvent(apidebug.ReasonStep, "demo.fql", 2, source.Span{}),
+		continueErr:   client.ErrClosed,
+	}
+	input := &fakeLineReader{results: []lineResult{{line: "step"}, {line: "where"}}}
+	var out bytes.Buffer
+	err := Run(t.Context(), session, source.New("demo.fql", "LET x = 1\nRETURN x"), input, &out)
+	if !errors.Is(err, client.ErrClosed) || session.framesCalls != 0 || !strings.Contains(out.String(), "Paused after step") {
+		t.Fatalf("error=%v frames=%d transcript=%s", err, session.framesCalls, &out)
 	}
 }
 
@@ -473,7 +498,7 @@ func TestRunStoppedEventWithErrorStaysInspectable(t *testing.T) {
 	session := &fakeSession{
 		startEvent:    debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{}),
 		continueEvent: debugEvent(apidebug.ReasonStep, "demo.fql", 2, source.Span{}),
-		continueErr:   errors.New("command warning"),
+		continueErr:   &failure.Failure{Category: failure.CategoryInternalRuntime, Message: "command warning"},
 	}
 	var out bytes.Buffer
 	input := &fakeLineReader{results: []lineResult{{line: "step"}, {line: "where"}, {line: "q"}}}

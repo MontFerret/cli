@@ -13,7 +13,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/MontFerret/api"
+	"github.com/MontFerret/api/diagnostics"
 	"github.com/MontFerret/cli/v2/cmd/internal/testutil"
+	inputtest "github.com/MontFerret/cli/v2/internal/testutil"
 	"github.com/MontFerret/cli/v2/internal/testutil/wirehost"
 	"github.com/MontFerret/cli/v2/pkg/config"
 	"github.com/MontFerret/ferret/v2"
@@ -130,6 +132,67 @@ func TestWireDebugTerminalErrorKeepsOutput(t *testing.T) {
 	waitForDisconnect(t, host)
 }
 
+func TestWireDebugUndeliveredCompletion(t *testing.T) {
+	host := wirehost.New(t, ferret.WithAfterRunHook(func(context.Context, error) error {
+		// The runtime completes but Wire cannot deliver this command result.
+		return diagnostics.Diagnostics{{Message: strings.Repeat("x", 5<<20)}}
+	}))
+	cmd, ctx := scriptCommand(t, "RETURN 42", "--runtime=wire", "--runtime-endpoint="+host.Endpoint)
+	cmd.SetIn(strings.NewReader("c\nhelp\nwhere\nc\nq\n"))
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(io.Discard)
+
+	err := cmd.ExecuteContext(ctx)
+	if err == nil || !strings.Contains(err.Error(), "outbound message limit exceeded") {
+		t.Fatalf("expected command delivery failure, got %v", err)
+	}
+
+	if strings.Contains(out.String(), "Commands:") || strings.Contains(out.String(), "Debug session terminated.") {
+		t.Fatalf("accepted input after losing the execution result: %s", &out)
+	}
+
+	waitForDisconnect(t, host)
+}
+
+func TestTerminalBreakpoints(t *testing.T) {
+	for _, backend := range []string{"builtin", "wire"} {
+		t.Run(backend, func(t *testing.T) {
+			flags := []string{"--runtime=" + backend}
+			if backend == "wire" {
+				host := wirehost.New(t)
+				flags = append(flags, "--runtime-endpoint="+host.Endpoint)
+				defer waitForDisconnect(t, host)
+			}
+
+			cmd, ctx := scriptCommand(t, "RETURN 42", flags...)
+			cmd.SetIn(strings.NewReader("b 1\nc\nbl\nb 1\nd 1\nq\n"))
+			var out bytes.Buffer
+			cmd.SetOut(&out)
+
+			if err := cmd.ExecuteContext(ctx); err != nil {
+				t.Fatal(err)
+			}
+
+			_, after, ok := strings.Cut(out.String(), "Result:\n42\n")
+			if !ok || !strings.Contains(after, "Requested") || !strings.Contains(after, "next-file") {
+				t.Fatalf("missing retained breakpoint: %s", &out)
+			}
+
+			want := []string{"Breakpoint 2 set", "Breakpoint 1 deleted."}
+			if backend == "wire" {
+				want = []string{"Breakpoint error: debug session is terminal", "Delete breakpoint error: debug session is terminal"}
+			}
+
+			for _, message := range want {
+				if !strings.Contains(after, message) {
+					t.Fatalf("expected %q after completion: %s", message, after)
+				}
+			}
+		})
+	}
+}
+
 func TestWireDebugPreparationFailures(t *testing.T) {
 	for _, mode := range []string{"compile", "handshake", "browser", "filesystem", "http"} {
 		t.Run(mode, func(t *testing.T) {
@@ -205,36 +268,38 @@ func TestWireDebugEarlyExit(t *testing.T) {
 
 func TestWireDebugInterrupted(t *testing.T) {
 	for _, state := range []string{"idle", "executing"} {
-		for _, action := range []string{"cancel", "disconnect"} {
+		for _, action := range []string{"cancel", "disconnect", "end Connect"} {
 			t.Run(state+"/"+action, func(t *testing.T) {
-				host := wirehost.New(t)
+				lifetime, endConnect := context.WithCancel(t.Context())
+				defer endConnect()
+				host := wirehost.NewWithConnectContext(lifetime, t)
 				cmd, parent := scriptCommand(t, "RETURN DEMO::WAIT()", "--runtime=wire", "--runtime-endpoint="+host.Endpoint)
 				ctx, cancel := context.WithCancel(parent)
 				defer cancel()
 
-				reader, writer := io.Pipe()
-				defer reader.Close()
-				defer writer.Close()
-				cmd.SetIn(reader)
-				cmd.SetOut(io.Discard)
-				cmd.SetErr(io.Discard)
-
-				done := make(chan error, 1)
-				go func() { done <- cmd.ExecuteContext(ctx) }()
+				var input io.Reader = strings.NewReader("c\n")
 				ready := host.WaitStarted
 				if state == "idle" {
-					ready = make(chan struct{})
+					reading := make(chan struct{})
+					ready = reading
+					next := strings.NewReader("c\nq\n")
+					input = inputtest.ContextReader(func(ctx context.Context, b []byte) (int, error) {
+						select {
+						case <-reading:
+							return next.Read(b)
+						default:
+							close(reading)
+							<-ctx.Done()
+							return 0, ctx.Err()
+						}
+					})
 				}
 
-				go func() {
-					if state == "idle" {
-						// Consuming one byte without a newline proves the prompt is waiting for input.
-						_, _ = io.WriteString(writer, "h")
-						close(ready)
-					} else {
-						_, _ = io.WriteString(writer, "c\n")
-					}
-				}()
+				cmd.SetIn(input)
+				cmd.SetOut(io.Discard)
+				cmd.SetErr(io.Discard)
+				done := make(chan error, 1)
+				go func() { done <- cmd.ExecuteContext(ctx) }()
 
 				select {
 				case <-ready:
@@ -244,9 +309,12 @@ func TestWireDebugInterrupted(t *testing.T) {
 					t.Fatalf("debugger never reached %s", state)
 				}
 
-				if action == "cancel" {
+				switch action {
+				case "cancel":
 					cancel()
-				} else {
+				case "end Connect":
+					endConnect()
+				default:
 					host.StopTransport()
 				}
 
@@ -268,6 +336,16 @@ func TestWireDebugInterrupted(t *testing.T) {
 				}
 
 				waitForDisconnect(t, host)
+
+				if state == "idle" {
+					next, ctx := scriptCommand(t, "RETURN 42")
+					var out bytes.Buffer
+					next.SetIn(input)
+					next.SetOut(&out)
+					if err := next.ExecuteContext(ctx); err != nil || !strings.Contains(out.String(), "Result:\n42\n") {
+						t.Fatalf("next prompt lost its input: err=%v transcript=%s", err, &out)
+					}
+				}
 			})
 		}
 	}

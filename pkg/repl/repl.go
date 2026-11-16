@@ -25,14 +25,17 @@ func Start(ctx context.Context, opts runtime.Options, params map[string]interfac
 
 // StartWithIO borrows command streams and owns its readline and runtime resources.
 // Parent cancellation interrupts input and execution; active execution settles
-// before the runtime and physical transport are released.
+// before the runtime and physical transport are released. A blocking injected
+// reader must implement ReadContext(context.Context, []byte) (int, error) or be
+// woken by its owner before StartWithIO can return.
 func StartWithIO(ctx context.Context, opts runtime.Options, params map[string]any, stdin io.Reader, stdout, stderr io.Writer) (err error) {
 	resources, err := runtime.New(ctx, opts)
 	if err != nil {
 		return err
 	}
 
-	defer func() { err = errors.Join(err, resources.Close()) }()
+	var rl *prompt.Prompt
+	defer func() { err = errors.Join(err, resources.Close(), rl.Close()) }()
 
 	version, err := resources.Runtime.Version(ctx)
 	if err != nil {
@@ -56,14 +59,12 @@ func StartWithIO(ctx context.Context, opts runtime.Options, params map[string]an
 	ctx, stop := resources.CommandContext(ctx, opts.Endpoint)
 	defer stop()
 
-	rl, closePrompt, err := prompt.Open(ctx, &readline.Config{
+	rl, err = prompt.Open(ctx, &readline.Config{
 		Prompt: "> ", InterruptPrompt: "^C", EOFPrompt: "exit",
 	}, stdin, stdout, stderr)
 	if err != nil {
 		return err
 	}
-
-	defer func() { err = errors.Join(err, closePrompt()) }()
 
 	var commands []string
 	var multiline bool

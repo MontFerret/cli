@@ -634,6 +634,10 @@ With the builtin runtime, enter `pause` while stopped to request a pause on
 the next resume. Wire alpha.4 accepts pause requests only while running. A
 `pause` at the stopped prompt reports an error and you can still step or continue.
 
+After completion, both runtimes can list retained breakpoints. The builtin
+runtime also accepts breakpoint creation and deletion. Wire rejects these
+mutations once execution has ended.
+
 Debugging requires a local FQL source file and either the builtin runtime or
 Wire. Compiled artifacts, inline or stdin source, the HTTP Worker, DAP,
 conditional breakpoints, hit-count breakpoints, and logpoints are unsupported.

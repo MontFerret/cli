@@ -30,8 +30,11 @@ func Start(ctx context.Context, session Session, src source.Source) error {
 }
 
 // StartWithIO borrows the command streams and closes the session on every exit.
+// A blocking injected reader must implement ReadContext(context.Context, []byte)
+// (int, error) or be woken by its owner before StartWithIO can return.
 func StartWithIO(ctx context.Context, session Session, src source.Source, stdin io.Reader, stdout, stderr io.Writer) (err error) {
-	defer func() { err = errors.Join(err, session.Close()) }()
+	var rl *prompt.Prompt
+	defer func() { err = errors.Join(err, session.Close(), rl.Close()) }()
 
 	renderer := NewRenderer(stdout, src)
 	state, err := startSession(ctx, session, renderer)
@@ -39,14 +42,13 @@ func StartWithIO(ctx context.Context, session Session, src source.Source, stdin 
 		return err
 	}
 
-	rl, cleanup, err := prompt.Open(ctx, &readline.Config{
+	rl, err = prompt.Open(ctx, &readline.Config{
 		Prompt: "(fdb) ", InterruptPrompt: "^C", EOFPrompt: "\n",
 	}, stdin, stdout, stderr)
 	if err != nil {
 		return err
 	}
 
-	defer func() { err = errors.Join(err, cleanup()) }()
 	renderer.out = rl.Stdout()
 
 	return runCommands(ctx, session, src.Name, renderer, state, rl)
@@ -70,9 +72,6 @@ func startSession(ctx context.Context, session Session, renderer *Renderer) (rep
 	fmt.Fprintln(renderer.out, "Ferret debugger started.")
 	event, err := session.Start(ctx)
 	state := nextReplState(replStateReady, event)
-	if event == nil && err != nil {
-		return state, executionError(ctx, err)
-	}
 
 	if err := presentEvent(ctx, renderer, event, err); err != nil {
 		return state, err
@@ -236,15 +235,15 @@ func commandError(ctx context.Context, renderer *Renderer, prefix string, err er
 // A stop and an operation failure are independent UAPI results. In particular,
 // completion content belongs to the user even if materialization cleanup failed.
 func presentEvent(ctx context.Context, renderer *Renderer, event *apidebug.Event, err error) error {
+	err = executionError(ctx, err)
 	if event == nil {
 		if err == nil {
 			return errors.New("debugger returned no event")
 		}
 
-		return commandError(ctx, renderer, "Debugger error", err)
+		// Execution may already have advanced past the previous stop.
+		return err
 	}
-
-	err = executionError(ctx, err)
 
 	// A terminated event may carry the very failure returned by the operation.
 	// Render its location/status now and let the command boundary print that error.
@@ -256,7 +255,7 @@ func presentEvent(ctx context.Context, renderer *Renderer, event *apidebug.Event
 		renderer.Event(event)
 	}
 
-	if ctx.Err() != nil || event.Reason == apidebug.ReasonCompleted || event.Reason == apidebug.ReasonTerminated {
+	if ctx.Err() != nil || diagnostics.DebuggerUnavailable(err) || event.Reason == apidebug.ReasonCompleted || event.Reason == apidebug.ReasonTerminated {
 		return err
 	}
 
