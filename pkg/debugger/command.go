@@ -7,7 +7,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/MontFerret/ferret/v2"
+	apidebug "github.com/MontFerret/api/debugger"
+	"github.com/MontFerret/api/source"
 )
 
 type CommandName string
@@ -32,9 +33,9 @@ const (
 type Command struct {
 	Name              CommandName
 	Argument          string
-	Location          ferret.DebugSourceLocation
-	BreakpointOptions ferret.DebugBreakpointOptions
-	BreakpointID      ferret.DebugBreakpointID
+	Location          source.Location
+	BreakpointOptions apidebug.BreakpointOptions
+	BreakpointID      apidebug.BreakpointID
 }
 
 var aliases = map[string]CommandName{
@@ -93,7 +94,7 @@ func ParseCommand(input string) (Command, error) {
 			return Command{}, err
 		}
 
-		command.BreakpointID = ferret.DebugBreakpointID(id)
+		command.BreakpointID = apidebug.BreakpointID(id)
 	case CommandPrint:
 		if argument == "" {
 			return Command{}, fmt.Errorf("usage: print <expression>")
@@ -107,9 +108,9 @@ func ParseCommand(input string) (Command, error) {
 
 const breakpointUsage = "usage: break [--exact|--next|--in-function] <line>[:<column>] or <file>:<line>[:<column>]"
 
-func parseBreakpoint(argument string) (ferret.DebugSourceLocation, ferret.DebugBreakpointOptions, error) {
-	var location ferret.DebugSourceLocation
-	options := ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource}
+func parseBreakpoint(argument string) (source.Location, apidebug.BreakpointOptions, error) {
+	var location source.Location
+	options := apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindNextExecutableInSource}
 	tokens := strings.Fields(argument)
 
 	if len(tokens) == 0 {
@@ -120,14 +121,14 @@ func parseBreakpoint(argument string) (ferret.DebugSourceLocation, ferret.DebugB
 	modeSet := false
 
 	for _, token := range tokens {
-		var mode ferret.DebugBreakpointBindingMode
+		var mode apidebug.BreakpointBindingMode
 		switch token {
 		case "--exact":
-			mode = ferret.DebugBreakpointBindExact
+			mode = apidebug.BreakpointBindExact
 		case "--next":
-			mode = ferret.DebugBreakpointBindNextExecutableInSource
+			mode = apidebug.BreakpointBindNextExecutableInSource
 		case "--in-function":
-			mode = ferret.DebugBreakpointBindNextExecutableInFunction
+			mode = apidebug.BreakpointBindNextExecutableInFunction
 		default:
 			if strings.HasPrefix(token, "--") {
 				return location, options, fmt.Errorf("unknown break option: %s", token)
@@ -156,14 +157,14 @@ func parseBreakpoint(argument string) (ferret.DebugSourceLocation, ferret.DebugB
 
 	location, err := parseBreakpointLocation(locationText)
 	if err != nil {
-		return ferret.DebugSourceLocation{}, options, err
+		return source.Location{}, options, err
 	}
 
 	return location, options, nil
 }
 
-func parseBreakpointLocation(value string) (ferret.DebugSourceLocation, error) {
-	var location ferret.DebugSourceLocation
+func parseBreakpointLocation(value string) (source.Location, error) {
+	var location source.Location
 	lastColon := strings.LastIndex(value, ":")
 
 	if lastColon < 0 {
@@ -206,7 +207,7 @@ func parseBreakpointLocation(value string) (ferret.DebugSourceLocation, error) {
 			location.SourceName = prefix[:previousColon]
 
 			if location.SourceName == "" {
-				return ferret.DebugSourceLocation{}, errors.New(breakpointUsage)
+				return source.Location{}, errors.New(breakpointUsage)
 			}
 		}
 

@@ -1,9 +1,11 @@
 package debug
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/MontFerret/cli/v2/cmd/internal/execution"
@@ -31,19 +33,24 @@ func TestDebugCommandRequiresExactlyOneScript(t *testing.T) {
 	}
 }
 
-func TestDebugRejectsWireBeforeConnecting(t *testing.T) {
+func TestDebugUsesWireHostAndParameters(t *testing.T) {
 	host := wirehost.New(t)
 	path := filepath.Join(t.TempDir(), "script.fql")
-	testutil.WriteQuery(t, path, "RETURN DEMO::IDENTITY(42)")
+	testutil.WriteQuery(t, path, "RETURN DEMO::IDENTITY(@limit)")
 	store := testutil.NewStore(t)
 	cmd := New(store)
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
-	cmd.SetArgs([]string{"--runtime=wire", "--runtime-endpoint=" + host.Endpoint, path})
+	var out bytes.Buffer
+	cmd.SetIn(strings.NewReader("c\nq\n"))
+	cmd.SetOut(&out)
+	cmd.SetArgs([]string{"--runtime=wire", "--runtime-endpoint=" + host.Endpoint, "--param=limit=10", path})
 	err := cmd.ExecuteContext(config.With(t.Context(), store))
-	if !errors.Is(err, cliruntime.ErrDebugRequiresBuiltinRuntime) || host.Connections() != 0 {
-		t.Fatalf("error=%v connections=%d", err, host.Connections())
+	if err != nil || host.Connections() != 1 || !strings.Contains(out.String(), "Result:\n10\n") {
+		t.Fatalf("error=%v connections=%d stdout=%q", err, host.Connections(), out.String())
 	}
+
+	waitForDisconnect(t, host)
 }
 
 func TestExecuteDebugRejectsRemoteRuntimeBeforeStarting(t *testing.T) {
@@ -57,11 +64,11 @@ func TestExecuteDebugRejectsRemoteRuntimeBeforeStarting(t *testing.T) {
 		nil,
 		[]string{path},
 	)
-	if !errors.Is(err, cliruntime.ErrDebugRequiresBuiltinRuntime) {
-		t.Fatalf("expected builtin runtime error, got %v", err)
+	if !errors.Is(err, errors.ErrUnsupported) {
+		t.Fatalf("expected unsupported Worker error, got %v", err)
 	}
-	if got := err.Error(); got != "debug currently supports only the builtin runtime" {
-		t.Fatalf("unexpected builtin runtime error: %q", got)
+	if got := err.Error(); !strings.Contains(got, "use builtin or Wire") {
+		t.Fatalf("unexpected unsupported Worker error: %q", got)
 	}
 }
 
@@ -74,15 +81,16 @@ func TestExecuteDebugRejectsArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := execute(
-		testutil.NewCommand(),
-		cliruntime.NewDefaultOptions(),
-		browser.Options{},
-		nil,
-		[]string{artifactPath},
-	)
-	if err == nil || err.Error() != "debugging compiled artifacts is not supported yet; run debug with the original .fql source file" {
-		t.Fatalf("unexpected error: %v", err)
+	host := wirehost.New(t)
+	for _, opts := range []cliruntime.Options{cliruntime.NewDefaultOptions(), {Type: "wire", Endpoint: host.Endpoint}} {
+		err := execute(testutil.NewCommand(), opts, browser.Options{}, nil, []string{artifactPath})
+		if err == nil || err.Error() != "debugging compiled artifacts is not supported yet; run debug with the original .fql source file" {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+
+	if host.Connections() != 0 {
+		t.Fatal("compiled artifact opened a Wire connection")
 	}
 }
 

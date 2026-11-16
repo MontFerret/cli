@@ -7,9 +7,10 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/MontFerret/ferret/v2"
-	"github.com/MontFerret/ferret/v2/pkg/diagnostics"
-	"github.com/MontFerret/ferret/v2/pkg/source"
+	apidebug "github.com/MontFerret/api/debugger"
+	"github.com/MontFerret/api/source"
+	"github.com/MontFerret/cli/v2/internal/diagnostics"
+	native "github.com/MontFerret/ferret/v2/pkg/source"
 )
 
 const helpText = `Commands:
@@ -23,7 +24,7 @@ const helpText = `Commands:
   step, s                       Step into next source location
   next, n                       Step over current source location
   out                           Step out of current frame
-  pause                         Request pause after the next resume
+  pause                         Request pause after the next resume (Wire alpha.4 rejects this while stopped)
   where, w, bt                  Show stack trace
   locals, l                     Show local variables
   print, p, eval, e <expr>      Evaluate a safe expression (no calls, queries, or mutation)
@@ -31,30 +32,32 @@ const helpText = `Commands:
 
 Locations: 12, 12:4, file.fql:12, file.fql:12:4`
 
+// Renderer presents portable debugger responses against the original source file.
 type Renderer struct {
 	out    io.Writer
-	source source.Source
+	source native.Source
 }
 
+// NewRenderer indexes the source once for snippets throughout this session.
 func NewRenderer(out io.Writer, src source.Source) *Renderer {
-	return &Renderer{out: out, source: src}
+	return &Renderer{out: out, source: native.New(src.Name, src.Content)}
 }
 
 func (r *Renderer) Help() {
 	fmt.Fprintln(r.out, helpText)
 }
 
-func (r *Renderer) Event(event *ferret.DebugEvent) {
+func (r *Renderer) Event(event *apidebug.Event) {
 	if event == nil {
 		fmt.Fprintln(r.out, "Debugger returned no event.")
 		return
 	}
 
 	switch event.Reason {
-	case ferret.DebugReasonEntry:
+	case apidebug.ReasonEntry:
 		fmt.Fprintf(r.out, "Paused at %s\n", formatLocation(event.Location.Location))
 		r.snippet(event.Location)
-	case ferret.DebugReasonBreakpoint:
+	case apidebug.ReasonBreakpoint:
 		switch len(event.HitBreakpointIDs) {
 		case 0:
 			fmt.Fprintf(r.out, "Paused on breakpoint at %s\n", formatLocation(event.Location.Location))
@@ -65,30 +68,31 @@ func (r *Renderer) Event(event *ferret.DebugEvent) {
 		}
 
 		r.snippet(event.Location)
-	case ferret.DebugReasonStep:
+	case apidebug.ReasonStep:
 		fmt.Fprintf(r.out, "Paused after step at %s\n", formatLocation(event.Location.Location))
 		r.snippet(event.Location)
-	case ferret.DebugReasonPause:
+	case apidebug.ReasonPause:
 		fmt.Fprintf(r.out, "Paused on pause request at %s\n", formatLocation(event.Location.Location))
 		r.snippet(event.Location)
-	case ferret.DebugReasonRuntimeError:
+	case apidebug.ReasonRuntimeError:
 		fmt.Fprintln(r.out, "Paused on runtime error.")
-		r.error(event.Error)
-	case ferret.DebugReasonCompleted:
+	case apidebug.ReasonCompleted:
 		fmt.Fprintln(r.out, "Program completed.")
-		if event.Output != nil {
-			fmt.Fprintln(r.out, "Result:")
-			fmt.Fprintln(r.out, string(event.Output.Data))
-		}
-	case ferret.DebugReasonTerminated:
+	case apidebug.ReasonTerminated:
 		fmt.Fprintln(r.out, "Program terminated.")
-		r.error(event.Error)
 	default:
 		fmt.Fprintf(r.out, "Debugger stopped: %s\n", event.Reason)
 	}
+
+	if event.Output != nil {
+		fmt.Fprintln(r.out, "Result:")
+		fmt.Fprintln(r.out, string(event.Output.Data))
+	}
+
+	diagnostics.Print(r.out, event.Error)
 }
 
-func (r *Renderer) BreakpointSet(breakpoint ferret.DebugBreakpoint) {
+func (r *Renderer) BreakpointSet(breakpoint apidebug.Breakpoint) {
 	requested := formatLocation(breakpoint.RequestedLocation)
 	mode := formatBindingMode(breakpoint.BindingMode)
 
@@ -106,7 +110,7 @@ func (r *Renderer) BreakpointSet(breakpoint ferret.DebugBreakpoint) {
 	fmt.Fprintf(r.out, "Breakpoint %d set at %s (requested %s, %s).\n", breakpoint.ID, bound, requested, mode)
 }
 
-func (r *Renderer) Breakpoints(breakpoints []ferret.DebugBreakpoint) {
+func (r *Renderer) Breakpoints(breakpoints []apidebug.Breakpoint) {
 	if len(breakpoints) == 0 {
 		fmt.Fprintln(r.out, "No breakpoints.")
 		return
@@ -131,7 +135,7 @@ func (r *Renderer) Breakpoints(breakpoints []ferret.DebugBreakpoint) {
 	_ = table.Flush()
 }
 
-func (r *Renderer) Frames(frames []ferret.DebugFrame) {
+func (r *Renderer) Frames(frames []apidebug.Frame) {
 	if len(frames) == 0 {
 		fmt.Fprintln(r.out, "No stack frames available.")
 		return
@@ -142,9 +146,9 @@ func (r *Renderer) Frames(frames []ferret.DebugFrame) {
 	}
 }
 
-func (r *Renderer) Locals(variables []ferret.DebugVariable) {
-	locals := make([]ferret.DebugVariable, 0, len(variables))
-	params := make([]ferret.DebugVariable, 0, len(variables))
+func (r *Renderer) Locals(variables []apidebug.Variable) {
+	locals := make([]apidebug.Variable, 0, len(variables))
+	params := make([]apidebug.Variable, 0, len(variables))
 
 	for _, variable := range variables {
 		if variable.Param {
@@ -170,7 +174,7 @@ func (r *Renderer) Locals(variables []ferret.DebugVariable) {
 	}
 }
 
-func (r *Renderer) Evaluation(value ferret.DebugValue) {
+func (r *Renderer) Evaluation(value apidebug.Value) {
 	fmt.Fprintln(r.out, value.Display)
 }
 
@@ -179,16 +183,10 @@ func (r *Renderer) Error(prefix string, err error) {
 		return
 	}
 
-	fmt.Fprintf(r.out, "%s: %s\n", prefix, err)
+	fmt.Fprintf(r.out, "%s: %s\n", prefix, diagnostics.Format(err))
 }
 
-func (r *Renderer) error(err error) {
-	if err != nil {
-		fmt.Fprintln(r.out, diagnostics.Format(err))
-	}
-}
-
-func (r *Renderer) snippet(location ferret.DebugLocation) {
+func (r *Renderer) snippet(location source.Range) {
 	if location.SourceName != r.source.Name() || location.Line <= 0 {
 		return
 	}
@@ -207,43 +205,4 @@ func (r *Renderer) snippet(location ferret.DebugLocation) {
 
 		return
 	}
-}
-
-func renderVariables(out io.Writer, variables []ferret.DebugVariable) {
-	for _, variable := range variables {
-		fmt.Fprintf(out, "  %s = %s\n", variable.Name, variable.Value.Display)
-	}
-}
-
-func formatBreakpointIDs(ids []ferret.DebugBreakpointID) string {
-	values := make([]string, 0, len(ids))
-
-	for _, id := range ids {
-		values = append(values, strconv.Itoa(int(id)))
-	}
-
-	return strings.Join(values, ", ")
-}
-
-func formatBindingMode(mode ferret.DebugBreakpointBindingMode) string {
-	switch mode {
-	case ferret.DebugBreakpointBindExact:
-		return "exact"
-	case ferret.DebugBreakpointBindNextExecutableInFunction:
-		return "in-function"
-	default:
-		return "next-file"
-	}
-}
-
-func formatLocation(location source.Location) string {
-	if location.Column > 0 {
-		return fmt.Sprintf("%s:%d:%d", location.SourceName, location.Line, location.Column)
-	}
-
-	if location.Line > 0 {
-		return fmt.Sprintf("%s:%d", location.SourceName, location.Line)
-	}
-
-	return location.SourceName
 }

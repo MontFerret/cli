@@ -49,4 +49,14 @@ jobs:
         run: make test
 
       - name: Race-test execution paths
-        run: go test -race ./pkg/runtime/... ./pkg/run/... ./pkg/repl/... ./cmd/... ./internal/diagnostics/...
+        run: go test -race ./pkg/runtime/... ./pkg/run/... ./pkg/repl/... ./pkg/debugger ./cmd/... ./internal/diagnostics/... ./internal/prompt
+
+  windows-prompt:
+    name: Windows console and redirected input
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '>=1.26'
+      - run: go test -count=1 -timeout=1m ./internal/prompt

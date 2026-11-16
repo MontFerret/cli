@@ -98,6 +98,12 @@ func TestWireConfiguredRuntimeAndOwnership(t *testing.T) {
 		}
 	}
 
+	select {
+	case <-resources.Disconnected:
+		t.Fatal("intentional close signaled unexpected Wire connection loss")
+	default:
+	}
+
 	output, runErr := host.Runtime.Run(ctx, api.NewSource("still-owned.fql", "RETURN DEMO::IDENTITY(42)"))
 	if _, err := collectOutput(t, output, runErr); err != nil {
 		t.Fatalf("client closed host runtime: %v", err)

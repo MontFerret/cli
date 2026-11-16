@@ -126,7 +126,7 @@ func (rt *Remote) CompileDebug(ctx context.Context, _ api.Source, _ ...api.PlanO
 		return nil, err
 	}
 
-	return nil, fmt.Errorf("HTTP Worker runtime does not support debug compilation; use builtin for CLI debugging: %w", errors.ErrUnsupported)
+	return nil, fmt.Errorf("HTTP Worker runtime does not support debug compilation; use builtin or Wire for debugging: %w", errors.ErrUnsupported)
 }
 
 // Close is an idempotent no-op: Remote borrows the shared HTTP client and closes

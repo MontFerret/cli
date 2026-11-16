@@ -1,11 +1,12 @@
 package debug
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
-	"github.com/MontFerret/cli/v2/cmd/internal/diagnostics"
+	"github.com/MontFerret/api/source"
 	"github.com/MontFerret/cli/v2/cmd/internal/execution"
 	"github.com/MontFerret/cli/v2/pkg/browser"
 	"github.com/MontFerret/cli/v2/pkg/config"
@@ -18,13 +19,16 @@ func New(store *config.Store) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "debug <script.fql>",
 		Short: "Debug a FQL script interactively",
-		Long: `Debug a local FQL source script using the interactive Ferret debugger.
+		Long: `Debug a local FQL source file using the builtin runtime or an external Wire runtime.
 
 Prompt commands: help, break, delete, breakpoints, continue, step, next, out,
 pause, where, locals, print, and quit.
 
-Debugging currently requires the builtin runtime and does not support compiled
-artifacts, stdin, inline evaluation, remote runtimes, or conditional breakpoints.`,
+The builtin runtime can queue a pause while stopped. Wire alpha.4 only accepts
+pause while running, so a pause request at the prompt is rejected.
+Compiled artifacts, stdin, inline evaluation, and conditional breakpoints are unsupported.`,
+		Example: `  ferret debug script.fql
+  ferret debug --runtime wire --runtime-endpoint tcp://127.0.0.1:54321 --param limit=10 script.fql`,
 		Args: cobra.ExactArgs(1),
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			store.BindFlags(cmd)
@@ -46,7 +50,11 @@ artifacts, stdin, inline evaluation, remote runtimes, or conditional breakpoints
 				return err
 			}
 
-			return execute(cmd, rtOpts, store.GetBrowserOptions(), params, args)
+			if err := execute(cmd, rtOpts, store.GetBrowserOptions(), params, args); err != nil {
+				return &diagnosticError{cause: err}
+			}
+
+			return nil
 		},
 	}
 
@@ -74,21 +82,19 @@ func execute(cmd *cobra.Command, rtOpts cliruntime.Options, brOpts browser.Optio
 		return err
 	}
 
-	if !cliruntime.IsBuiltinType(rtOpts.Type) {
-		return cliruntime.ErrDebugRequiresBuiltinRuntime
-	}
-
-	cleanup, err := browser.EnsureBrowser(cmd.Context(), rtOpts, brOpts)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
 	session, err := cliruntime.NewDebugSession(cmd.Context(), rtOpts, params, input.Source)
 	if err != nil {
-		diagnostics.PrintError(err)
 		return err
 	}
 
-	return debugger.Start(cmd.Context(), session, input.Source)
+	cleanup, err := browser.EnsureBrowser(session.Context(), rtOpts, brOpts)
+	if err != nil {
+		return errors.Join(err, session.Close())
+	}
+
+	defer cleanup()
+
+	src := source.New(input.Source.Name(), input.Source.Content())
+
+	return debugger.StartWithIO(session.Context(), session, src, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr())
 }

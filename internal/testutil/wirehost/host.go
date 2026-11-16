@@ -17,6 +17,7 @@ import (
 	"github.com/MontFerret/ferret/v2"
 	native "github.com/MontFerret/ferret/v2/pkg/runtime"
 	"github.com/MontFerret/ferret/v2/uapi"
+	wirev1 "github.com/MontFerret/wire/gen/ferret/wire/v1"
 	"github.com/MontFerret/wire/server"
 )
 
@@ -35,31 +36,49 @@ type Host struct {
 }
 
 // New starts a bounded, test-owned host with DEMO::IDENTITY and DEMO::WAIT.
-func New(t testing.TB) *Host {
-	return NewWithVersion(t, "test-core-version")
+func New(t testing.TB, opts ...ferret.Option) *Host {
+	return newHost(t, "test-core-version", nil, nil, opts)
 }
 
 // NewWithVersion hosts an opaque runtime version, including an empty value.
 func NewWithVersion(t testing.TB, version api.Version) *Host {
-	return newHost(t, version, nil, nil)
+	return newHost(t, version, nil, nil, nil)
 }
 
 // NewWithVersionFunc controls hosted metadata retrieval for handshake failure tests.
 func NewWithVersionFunc(t testing.TB, version func(context.Context) (api.Version, error)) *Host {
-	return newHost(t, "", version, nil)
+	return newHost(t, "", version, nil, nil)
 }
 
 // NewWithRun hosts a scripted execution over the same real Wire transport.
 func NewWithRun(t testing.TB, run func(context.Context, api.Source, ...api.SessionOption) (api.Output, error)) *Host {
-	return newHost(t, "test-core-version", nil, run)
+	return newHost(t, "test-core-version", nil, run, nil)
 }
 
-func newHost(t testing.TB, version api.Version, retrieve func(context.Context) (api.Version, error), run func(context.Context, api.Source, ...api.SessionOption) (api.Output, error)) *Host {
+// NewWithConnectContext lets a test end just the logical Connect stream.
+func NewWithConnectContext(lifetime context.Context, t testing.TB) *Host {
+	option := server.WithStreamInterceptors(func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, next grpc.StreamHandler) error {
+		if info.FullMethod != wirev1.RuntimeService_Connect_FullMethodName {
+			return next(srv, stream)
+		}
+
+		ctx, cancel := context.WithCancel(stream.Context())
+		defer cancel()
+		stop := context.AfterFunc(lifetime, cancel)
+		defer stop()
+
+		return next(srv, &connectStream{ServerStream: stream, ctx: ctx})
+	})
+
+	return newHost(t, "test-core-version", nil, nil, nil, option)
+}
+
+func newHost(t testing.TB, version api.Version, retrieve func(context.Context) (api.Version, error), run func(context.Context, api.Source, ...api.SessionOption) (api.Output, error), opts []ferret.Option, serverOpts ...server.Option) *Host {
 	t.Helper()
 	h := &Host{WaitStarted: make(chan struct{}), WaitFinished: make(chan struct{})}
 	var started, finished sync.Once
 	var err error
-	h.engine, err = ferret.New(ferret.WithFSRoot(t.TempDir()), ferret.WithFunctionsRegistrar(func(ns native.Namespace) {
+	opts = append(opts, ferret.WithFSRoot(t.TempDir()), ferret.WithFunctionsRegistrar(func(ns native.Namespace) {
 		demo := ns.Namespace("DEMO")
 		demo.Function().A1().Add("IDENTITY", func(_ context.Context, value native.Value) (native.Value, error) {
 			return value, nil
@@ -76,6 +95,8 @@ func newHost(t testing.TB, version api.Version, retrieve func(context.Context) (
 			return nil, ctx.Err()
 		})
 	}))
+
+	h.engine, err = ferret.New(opts...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +115,7 @@ func newHost(t testing.TB, version api.Version, retrieve func(context.Context) (
 		h.Runtime = &runRuntime{Runtime: h.Runtime, run: run}
 	}
 
-	h.server, err = server.New(h.Runtime)
+	h.server, err = server.New(h.Runtime, serverOpts...)
 	if err != nil {
 		t.Fatal(err)
 	}

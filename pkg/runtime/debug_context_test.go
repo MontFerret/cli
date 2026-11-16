@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/MontFerret/ferret/v2"
+	apidebug "github.com/MontFerret/api/debugger"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
@@ -24,8 +24,8 @@ func TestDebugSessionCanceledOperationsPreserveBreakpoints(t *testing.T) {
 		}
 	})
 
-	location := ferret.DebugSourceLocation{Position: ferret.Position{Line: 2}}
-	options := ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindExact}
+	location := source.Location{Position: source.Position{Line: 2}}
+	options := apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindExact}
 
 	breakpoint, err := session.SetBreakpointAt(ctx, location, options)
 	if err != nil {
@@ -78,7 +78,7 @@ func TestDebugSessionCanceledOperationsPreserveBreakpoints(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if !slices.Equal(breakpoints, []ferret.DebugBreakpoint{breakpoint}) {
+			if !slices.Equal(breakpoints, []apidebug.Breakpoint{breakpoint}) {
 				t.Fatalf("canceled operation changed breakpoints: %#v", breakpoints)
 			}
 		})

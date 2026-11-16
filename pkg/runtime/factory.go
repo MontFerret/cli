@@ -15,6 +15,7 @@ import (
 	"github.com/MontFerret/api"
 	"github.com/MontFerret/ferret/v2/uapi"
 	"github.com/MontFerret/wire/client"
+	wirev1 "github.com/MontFerret/wire/gen/ferret/wire/v1"
 )
 
 // New creates the selected runtime and owns its resources for one invocation or REPL.
@@ -66,9 +67,25 @@ func openWire(ctx context.Context, opts Options) (*Resources, error) {
 	defer cancel()
 	var dialed atomic.Bool
 
+	disconnected := make(chan struct{})
+	resources := &Resources{Disconnected: disconnected}
+
 	connection, err := grpc.NewClient("passthrough:///"+address,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithStreamInterceptor(func(ctx context.Context, desc *grpc.StreamDesc, conn *grpc.ClientConn, method string, next grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+			// One Connect stream owns the Wire lifetime, including when the host
+			// ends it successfully while the physical transport is still ready.
+			if method == wirev1.RuntimeService_Connect_FullMethodName {
+				opts = append(opts, grpc.OnFinish(func(error) {
+					if !resources.closing.Load() {
+						close(disconnected)
+					}
+				}))
+			}
+
+			return next(ctx, desc, conn, method, opts...)
+		}),
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			// gRPC reconnects transports by default. One Wire invocation owns
 			// one physical connection; transport loss requires a new command.
@@ -101,7 +118,8 @@ func openWire(ctx context.Context, opts Options) (*Resources, error) {
 		err = errors.Join(err, ctxErr)
 	}
 
-	resources := &Resources{Runtime: rt, owners: []io.Closer{physical}}
+	resources.Runtime = rt
+	resources.owners = []io.Closer{physical}
 	if rt != nil {
 		resources.owners = []io.Closer{rt, physical}
 	}
@@ -109,8 +127,6 @@ func openWire(ctx context.Context, opts Options) (*Resources, error) {
 	if err != nil {
 		return nil, errors.Join(fmt.Errorf("connect Wire runtime %s: %w", opts.Endpoint, err), resources.Close())
 	}
-
-	resources.Disconnected = physical.watch(connection)
 
 	return resources, nil
 }

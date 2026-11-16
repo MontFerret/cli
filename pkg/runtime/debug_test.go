@@ -5,17 +5,28 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
-	"github.com/MontFerret/ferret/v2"
+	apidebug "github.com/MontFerret/api/debugger"
+	"github.com/MontFerret/cli/v2/internal/testutil/wirehost"
 	"github.com/MontFerret/ferret/v2/pkg/source"
 )
 
 func TestNewDebugSessionIntegration(t *testing.T) {
-	ctx := context.Background()
+	t.Run("builtin", func(t *testing.T) { testBreakpointBinding(t, NewDefaultOptions()) })
+	t.Run("wire", func(t *testing.T) {
+		host := wirehost.New(t)
+		testBreakpointBinding(t, Options{Type: "wire", Endpoint: host.Endpoint})
+	})
+}
+
+func testBreakpointBinding(t *testing.T, opts Options) {
+	t.Helper()
+	ctx := t.Context()
 	session, err := NewDebugSession(
 		ctx,
-		NewDefaultOptions(),
+		opts,
 		map[string]any{"limit": 2},
 		source.New("debug.fql", "LET x = 1\nVAR y = @limit\n\ny = y + x\nRETURN y"),
 	)
@@ -26,8 +37,8 @@ func TestNewDebugSessionIntegration(t *testing.T) {
 
 	nextBreakpoint, err := session.SetBreakpointAt(
 		ctx,
-		ferret.DebugSourceLocation{Position: ferret.Position{Line: 3}},
-		ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource},
+		source.Location{Position: source.Position{Line: 3}},
+		apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindNextExecutableInSource},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -37,8 +48,8 @@ func TestNewDebugSessionIntegration(t *testing.T) {
 	}
 	exactBreakpoint, err := session.SetBreakpointAt(
 		ctx,
-		ferret.DebugSourceLocation{Position: ferret.Position{Line: 3}},
-		ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindExact},
+		source.Location{Position: source.Position{Line: 3}},
+		apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindExact},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -48,8 +59,8 @@ func TestNewDebugSessionIntegration(t *testing.T) {
 	}
 	functionBreakpoint, err := session.SetBreakpointAt(
 		ctx,
-		ferret.DebugSourceLocation{Position: ferret.Position{Line: 3}},
-		ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFunction},
+		source.Location{Position: source.Position{Line: 3}},
+		apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindNextExecutableInFunction},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +73,7 @@ func TestNewDebugSessionIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Reason != ferret.DebugReasonEntry {
+	if event.Reason != apidebug.ReasonEntry {
 		t.Fatalf("unexpected start event: %#v", event)
 	}
 
@@ -70,7 +81,7 @@ func TestNewDebugSessionIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Reason != ferret.DebugReasonBreakpoint || event.Location.Line != 4 ||
+	if event.Reason != apidebug.ReasonBreakpoint || event.Location.Line != 4 ||
 		len(event.HitBreakpointIDs) != 2 ||
 		event.HitBreakpointIDs[0] != nextBreakpoint.ID ||
 		event.HitBreakpointIDs[1] != functionBreakpoint.ID {
@@ -92,7 +103,7 @@ func TestNewDebugSessionIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Reason != ferret.DebugReasonCompleted || event.Output == nil || string(event.Output.Data) != "3" {
+	if event.Reason != apidebug.ReasonCompleted || event.Output == nil || string(event.Output.Data) != "3" {
 		t.Fatalf("unexpected completion event: %#v", event)
 	}
 
@@ -127,7 +138,7 @@ func TestNewDebugSessionDocumentSurvivesResume(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Reason != ferret.DebugReasonEntry || event.Location.Line != 1 {
+	if event.Reason != apidebug.ReasonEntry || event.Location.Line != 1 {
 		t.Fatalf("unexpected start event: %#v", event)
 	}
 
@@ -135,7 +146,7 @@ func TestNewDebugSessionDocumentSurvivesResume(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Reason != ferret.DebugReasonStep || event.Location.Line != 2 {
+	if event.Reason != apidebug.ReasonStep || event.Location.Line != 2 {
 		t.Fatalf("expected next statement after DOCUMENT, got %#v", event)
 	}
 
@@ -143,7 +154,7 @@ func TestNewDebugSessionDocumentSurvivesResume(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Reason != ferret.DebugReasonCompleted || event.Output == nil || string(event.Output.Data) != "true" {
+	if event.Reason != apidebug.ReasonCompleted || event.Output == nil || string(event.Output.Data) != "true" {
 		t.Fatalf("unexpected completion event: %#v", event)
 	}
 }
@@ -156,11 +167,11 @@ func TestNewDebugSessionRejectsRemoteRuntime(t *testing.T) {
 		source.NewAnonymous("RETURN 1"),
 	)
 
-	if !errors.Is(err, ErrDebugRequiresBuiltinRuntime) {
-		t.Fatalf("expected builtin runtime error, got %v", err)
+	if !errors.Is(err, errors.ErrUnsupported) {
+		t.Fatalf("expected unsupported Worker error, got %v", err)
 	}
 
-	if got := err.Error(); got != "debug currently supports only the builtin runtime" {
-		t.Fatalf("unexpected builtin runtime error: %q", got)
+	if got := err.Error(); !strings.Contains(got, "use builtin or Wire") {
+		t.Fatalf("unexpected unsupported Worker error: %q", got)
 	}
 }

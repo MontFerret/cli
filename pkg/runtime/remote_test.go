@@ -159,7 +159,7 @@ func TestRemoteCompilationUnsupportedAndCancellation(t *testing.T) {
 	}))
 	for _, compile := range []func(context.Context, api.Source, ...api.PlanOption) (api.Plan, error){rt.Compile, rt.CompileDebug} {
 		plan, err := compile(t.Context(), api.NewAnonymousSource("RETURN )"))
-		if plan != nil || !errors.Is(err, errors.ErrUnsupported) || !strings.Contains(err.Error(), "HTTP Worker") || !strings.Contains(err.Error(), "builtin") {
+		if plan != nil || !errors.Is(err, errors.ErrUnsupported) || !strings.Contains(err.Error(), "HTTP Worker") || !strings.Contains(err.Error(), "builtin or Wire") {
 			t.Fatalf("plan=%v error=%v", plan, err)
 		}
 	}

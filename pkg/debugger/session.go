@@ -3,26 +3,27 @@ package debugger
 import (
 	"context"
 
-	"github.com/MontFerret/ferret/v2"
+	apidebug "github.com/MontFerret/api/debugger"
+	"github.com/MontFerret/api/source"
 )
 
 type (
-	// Session is the core debugger contract consumed by the CLI. Run closes the
+	// Session is the portable debugger contract consumed by the CLI. Run closes the
 	// session when the interactive loop exits. Operations receive the caller's
-	// context, which must be non-nil, and preserve core cancellation behavior.
+	// context, which must be non-nil, and preserve cancellation behavior.
 	Session interface {
-		Start(context.Context) (*ferret.DebugEvent, error)
-		Continue(context.Context) (*ferret.DebugEvent, error)
-		StepIn(context.Context) (*ferret.DebugEvent, error)
-		StepOver(context.Context) (*ferret.DebugEvent, error)
-		StepOut(context.Context) (*ferret.DebugEvent, error)
+		Start(context.Context) (*apidebug.Event, error)
+		Continue(context.Context) (*apidebug.Event, error)
+		StepIn(context.Context) (*apidebug.Event, error)
+		StepOver(context.Context) (*apidebug.Event, error)
+		StepOut(context.Context) (*apidebug.Event, error)
 		Pause(context.Context) error
-		SetBreakpointAt(context.Context, ferret.DebugSourceLocation, ferret.DebugBreakpointOptions) (ferret.DebugBreakpoint, error)
-		DeleteBreakpoint(context.Context, ferret.DebugBreakpointID) error
-		Breakpoints(context.Context) ([]ferret.DebugBreakpoint, error)
-		Frames(context.Context) ([]ferret.DebugFrame, error)
-		Locals(context.Context) ([]ferret.DebugVariable, error)
-		Evaluate(context.Context, string) (ferret.DebugValue, error)
+		SetBreakpointAt(context.Context, source.Location, apidebug.BreakpointOptions) (apidebug.Breakpoint, error)
+		DeleteBreakpoint(context.Context, apidebug.BreakpointID) error
+		Breakpoints(context.Context) ([]apidebug.Breakpoint, error)
+		Frames(context.Context) ([]apidebug.Frame, error)
+		Locals(context.Context) ([]apidebug.Variable, error)
+		Evaluate(context.Context, string) (apidebug.Value, error)
 		Close() error
 	}
 
