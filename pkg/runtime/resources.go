@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -42,4 +43,29 @@ func (r *Resources) Close() error {
 	})
 
 	return r.err
+}
+
+// CommandContext interrupts interactive input and execution on transport loss.
+// The caller must stop the watcher after active commands settle.
+func (r *Resources) CommandContext(parent context.Context, endpoint string) (context.Context, context.CancelFunc) {
+	if r.Disconnected == nil {
+		return parent, func() {}
+	}
+
+	ctx, cancel := context.WithCancelCause(parent)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		select {
+		case <-ctx.Done():
+		case <-r.Disconnected:
+			cancel(fmt.Errorf("wire runtime %s disconnected; check the runtime host", endpoint))
+		}
+	}()
+
+	return ctx, func() {
+		cancel(nil)
+		<-done
+	}
 }

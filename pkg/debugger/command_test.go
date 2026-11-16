@@ -4,7 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MontFerret/ferret/v2"
+	apidebug "github.com/MontFerret/api/debugger"
+	"github.com/MontFerret/api/source"
 )
 
 func TestParseCommand(t *testing.T) {
@@ -21,8 +22,8 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "12",
-				Location:          ferret.DebugSourceLocation{Position: ferret.Position{Line: 12}},
-				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource},
+				Location:          source.Location{Position: source.Position{Line: 12}},
+				BreakpointOptions: apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindNextExecutableInSource},
 			},
 		},
 		{
@@ -31,8 +32,8 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "12:4",
-				Location:          ferret.DebugSourceLocation{Position: ferret.Position{Line: 12, Column: 4}},
-				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource},
+				Location:          source.Location{Position: source.Position{Line: 12, Column: 4}},
+				BreakpointOptions: apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindNextExecutableInSource},
 			},
 		},
 		{
@@ -41,8 +42,8 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "examples/demo.fql:12",
-				Location:          ferret.DebugSourceLocation{SourceName: "examples/demo.fql", Position: ferret.Position{Line: 12}},
-				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource},
+				Location:          source.Location{SourceName: "examples/demo.fql", Position: source.Position{Line: 12}},
+				BreakpointOptions: apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindNextExecutableInSource},
 			},
 		},
 		{
@@ -51,8 +52,8 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "examples/demo.fql:12:4",
-				Location:          ferret.DebugSourceLocation{SourceName: "examples/demo.fql", Position: ferret.Position{Line: 12, Column: 4}},
-				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource},
+				Location:          source.Location{SourceName: "examples/demo.fql", Position: source.Position{Line: 12, Column: 4}},
+				BreakpointOptions: apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindNextExecutableInSource},
 			},
 		},
 		{
@@ -61,8 +62,8 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          `C:\work\demo.fql:12:4`,
-				Location:          ferret.DebugSourceLocation{SourceName: `C:\work\demo.fql`, Position: ferret.Position{Line: 12, Column: 4}},
-				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource},
+				Location:          source.Location{SourceName: `C:\work\demo.fql`, Position: source.Position{Line: 12, Column: 4}},
+				BreakpointOptions: apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindNextExecutableInSource},
 			},
 		},
 		{
@@ -71,8 +72,8 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "--exact 12:4",
-				Location:          ferret.DebugSourceLocation{Position: ferret.Position{Line: 12, Column: 4}},
-				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindExact},
+				Location:          source.Location{Position: source.Position{Line: 12, Column: 4}},
+				BreakpointOptions: apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindExact},
 			},
 		},
 		{
@@ -81,8 +82,8 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "12 --next",
-				Location:          ferret.DebugSourceLocation{Position: ferret.Position{Line: 12}},
-				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource},
+				Location:          source.Location{Position: source.Position{Line: 12}},
+				BreakpointOptions: apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindNextExecutableInSource},
 			},
 		},
 		{
@@ -91,11 +92,11 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "--in-function demo.fql:12",
-				Location:          ferret.DebugSourceLocation{SourceName: "demo.fql", Position: ferret.Position{Line: 12}},
-				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInFunction},
+				Location:          source.Location{SourceName: "demo.fql", Position: source.Position{Line: 12}},
+				BreakpointOptions: apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindNextExecutableInFunction},
 			},
 		},
-		{name: "delete", input: "delete 1", want: Command{Name: CommandDelete, Argument: "1", BreakpointID: ferret.DebugBreakpointID(1)}},
+		{name: "delete", input: "delete 1", want: Command{Name: CommandDelete, Argument: "1", BreakpointID: apidebug.BreakpointID(1)}},
 		{name: "print expression", input: "print users[0].name + \" value\"", want: Command{Name: CommandPrint, Argument: `users[0].name + " value"`}},
 		{name: "help", input: "help", want: Command{Name: CommandHelp}},
 		{name: "breakpoints", input: "breakpoints", want: Command{Name: CommandBreakpoints}},
@@ -114,14 +115,14 @@ func TestParseCommand(t *testing.T) {
 			want: Command{
 				Name:              CommandBreak,
 				Argument:          "4",
-				Location:          ferret.DebugSourceLocation{Position: ferret.Position{Line: 4}},
-				BreakpointOptions: ferret.DebugBreakpointOptions{BindingMode: ferret.DebugBreakpointBindNextExecutableInSource},
+				Location:          source.Location{Position: source.Position{Line: 4}},
+				BreakpointOptions: apidebug.BreakpointOptions{BindingMode: apidebug.BreakpointBindNextExecutableInSource},
 			},
 		},
 		{name: "continue alias", input: "c", want: Command{Name: CommandContinue}},
 		{name: "step alias", input: "s", want: Command{Name: CommandStep}},
 		{name: "next alias", input: "n", want: Command{Name: CommandNext}},
-		{name: "delete alias", input: "d 1", want: Command{Name: CommandDelete, Argument: "1", BreakpointID: ferret.DebugBreakpointID(1)}},
+		{name: "delete alias", input: "d 1", want: Command{Name: CommandDelete, Argument: "1", BreakpointID: apidebug.BreakpointID(1)}},
 		{name: "breakpoints bp alias", input: "bp", want: Command{Name: CommandBreakpoints}},
 		{name: "breakpoints bl alias", input: "bl", want: Command{Name: CommandBreakpoints}},
 		{name: "where w alias", input: "w", want: Command{Name: CommandWhere}},

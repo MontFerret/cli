@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MontFerret/ferret/v2"
-	"github.com/MontFerret/ferret/v2/pkg/encoding"
-	"github.com/MontFerret/ferret/v2/pkg/source"
+	apidebug "github.com/MontFerret/api/debugger"
+	"github.com/MontFerret/api/result"
+	"github.com/MontFerret/api/source"
 )
 
 func TestRendererEventPauseAndCompletion(t *testing.T) {
@@ -16,10 +16,10 @@ func TestRendererEventPauseAndCompletion(t *testing.T) {
 	var out bytes.Buffer
 	renderer := NewRenderer(&out, src)
 
-	renderer.Event(&ferret.DebugEvent{
-		Reason:           ferret.DebugReasonBreakpoint,
+	renderer.Event(&apidebug.Event{
+		Reason:           apidebug.ReasonBreakpoint,
 		Location:         debugLocation("demo.fql", 2, 1, source.Span{Start: 10, End: 16}),
-		HitBreakpointIDs: []ferret.DebugBreakpointID{3},
+		HitBreakpointIDs: []apidebug.BreakpointID{3},
 	})
 
 	got := out.String()
@@ -30,9 +30,9 @@ func TestRendererEventPauseAndCompletion(t *testing.T) {
 	}
 
 	out.Reset()
-	renderer.Event(&ferret.DebugEvent{
-		Reason: ferret.DebugReasonCompleted,
-		Output: &encoding.Content{Data: []byte(`["Ada"]`)},
+	renderer.Event(&apidebug.Event{
+		Reason: apidebug.ReasonCompleted,
+		Output: &result.Content{Data: []byte(`["Ada"]`)},
 	})
 	if got := out.String(); !strings.Contains(got, "Program completed.\nResult:\n[\"Ada\"]") {
 		t.Fatalf("unexpected completion output: %q", got)
@@ -43,27 +43,27 @@ func TestRendererCollectionsAndErrors(t *testing.T) {
 	var out bytes.Buffer
 	renderer := NewRenderer(&out, source.Source{})
 
-	renderer.Breakpoints([]ferret.DebugBreakpoint{
+	renderer.Breakpoints([]apidebug.Breakpoint{
 		{
 			ID:                1,
 			RequestedLocation: debugSourceLocation("demo.fql", 4, 3),
 			Location:          debugLocation("demo.fql", 7, 5, source.Span{}),
-			BindingMode:       ferret.DebugBreakpointBindNextExecutableInSource,
+			BindingMode:       apidebug.BreakpointBindNextExecutableInSource,
 			Bound:             true,
 		},
 		{
 			ID:                2,
 			RequestedLocation: debugSourceLocation("other.fql", 9, 0),
-			BindingMode:       ferret.DebugBreakpointBindExact,
+			BindingMode:       apidebug.BreakpointBindExact,
 		},
 	})
-	renderer.Frames([]ferret.DebugFrame{{Name: "normalize", Location: debugSourceLocation("demo.fql", 7, 3)}})
-	renderer.Locals([]ferret.DebugVariable{
-		{Name: "user", Value: ferret.DebugValue{Display: `{"name": "Ada"}`}},
-		{Name: "@limit", Param: true, Value: ferret.DebugValue{Display: "10"}},
+	renderer.Frames([]apidebug.Frame{{Name: "normalize", Location: debugSourceLocation("demo.fql", 7, 3)}})
+	renderer.Locals([]apidebug.Variable{
+		{Name: "user", Value: apidebug.Value{Display: `{"name": "Ada"}`}},
+		{Name: "@limit", Param: true, Value: apidebug.Value{Display: "10"}},
 	})
 	renderer.Error("Evaluation error", errors.New("expected expression"))
-	renderer.Event(&ferret.DebugEvent{Reason: ferret.DebugReasonRuntimeError, Error: errors.New("division by zero")})
+	renderer.Event(&apidebug.Event{Reason: apidebug.ReasonRuntimeError, Error: errors.New("division by zero")})
 
 	got := out.String()
 	for _, expected := range []string{
@@ -84,30 +84,30 @@ func TestRendererBreakpointHitsAndSetMessages(t *testing.T) {
 	var out bytes.Buffer
 	renderer := NewRenderer(&out, source.Source{})
 
-	renderer.Event(&ferret.DebugEvent{
-		Reason:           ferret.DebugReasonBreakpoint,
+	renderer.Event(&apidebug.Event{
+		Reason:           apidebug.ReasonBreakpoint,
 		Location:         debugLocation("demo.fql", 12, 4, source.Span{}),
-		HitBreakpointIDs: []ferret.DebugBreakpointID{3, 7},
+		HitBreakpointIDs: []apidebug.BreakpointID{3, 7},
 	})
-	renderer.Event(&ferret.DebugEvent{
-		Reason:   ferret.DebugReasonPause,
+	renderer.Event(&apidebug.Event{
+		Reason:   apidebug.ReasonPause,
 		Location: debugLocation("demo.fql", 13, 1, source.Span{}),
 	})
-	renderer.Event(&ferret.DebugEvent{
-		Reason:   ferret.DebugReasonStep,
+	renderer.Event(&apidebug.Event{
+		Reason:   apidebug.ReasonStep,
 		Location: debugLocation("demo.fql", 14, 2, source.Span{}),
 	})
-	renderer.BreakpointSet(ferret.DebugBreakpoint{
+	renderer.BreakpointSet(apidebug.Breakpoint{
 		ID:                8,
 		RequestedLocation: debugSourceLocation("demo.fql", 10, 2),
 		Location:          debugLocation("demo.fql", 12, 4, source.Span{}),
-		BindingMode:       ferret.DebugBreakpointBindNextExecutableInFunction,
+		BindingMode:       apidebug.BreakpointBindNextExecutableInFunction,
 		Bound:             true,
 	})
-	renderer.BreakpointSet(ferret.DebugBreakpoint{
+	renderer.BreakpointSet(apidebug.Breakpoint{
 		ID:                9,
 		RequestedLocation: debugSourceLocation("demo.fql", 20, 0),
-		BindingMode:       ferret.DebugBreakpointBindExact,
+		BindingMode:       apidebug.BreakpointBindExact,
 	})
 
 	got := out.String()
@@ -162,18 +162,18 @@ func TestRendererHelpIncludesAliasesAndPauseBehavior(t *testing.T) {
 	}
 }
 
-func debugSourceLocation(file string, line, column int) ferret.DebugSourceLocation {
-	return ferret.DebugSourceLocation{
+func debugSourceLocation(file string, line, column int) source.Location {
+	return source.Location{
 		SourceName: file,
-		Position: ferret.Position{
+		Position: source.Position{
 			Line:   line,
 			Column: column,
 		},
 	}
 }
 
-func debugLocation(file string, line, column int, span source.Span) ferret.DebugLocation {
-	return ferret.DebugLocation{
+func debugLocation(file string, line, column int, span source.Span) source.Range {
+	return source.Range{
 		Location: debugSourceLocation(file, line, column),
 		Span:     span,
 	}

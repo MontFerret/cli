@@ -9,9 +9,10 @@ import (
 
 	"github.com/chzyer/readline"
 
-	"github.com/MontFerret/ferret/v2"
-	"github.com/MontFerret/ferret/v2/pkg/runtime"
-	"github.com/MontFerret/ferret/v2/pkg/source"
+	apidebug "github.com/MontFerret/api/debugger"
+	"github.com/MontFerret/api/source"
+	"github.com/MontFerret/cli/v2/internal/diagnostics"
+	"github.com/MontFerret/cli/v2/internal/prompt"
 )
 
 type replState int
@@ -23,46 +24,74 @@ const (
 	replStateTerminated
 )
 
+// Start debugs a source file interactively using the standard streams.
 func Start(ctx context.Context, session Session, src source.Source) error {
-	rl, err := readline.NewEx(&readline.Config{
-		Prompt:          "(fdb) ",
-		InterruptPrompt: "^C",
-		EOFPrompt:       "\n",
-		Stdin:           os.Stdin,
-		Stdout:          os.Stdout,
-		Stderr:          os.Stderr,
-	})
-
-	if err != nil {
-		return errors.Join(err, session.Close())
-	}
-	defer rl.Close()
-
-	return Run(ctx, session, src, rl, rl.Stdout())
+	return StartWithIO(ctx, session, src, os.Stdin, os.Stdout, os.Stderr)
 }
 
-func Run(ctx context.Context, session Session, src source.Source, input LineReader, out io.Writer) (err error) {
-	defer func() {
-		err = errors.Join(err, session.Close())
-	}()
+// StartWithIO borrows the command streams and closes the session on every exit.
+func StartWithIO(ctx context.Context, session Session, src source.Source, stdin io.Reader, stdout, stderr io.Writer) (err error) {
+	defer func() { err = errors.Join(err, session.Close()) }()
 
-	renderer := NewRenderer(out, src)
-
-	fmt.Fprintln(out, "Ferret debugger started.")
-	event, err := session.Start(ctx)
+	renderer := NewRenderer(stdout, src)
+	state, err := startSession(ctx, session, renderer)
 	if err != nil {
 		return err
 	}
 
-	renderer.Event(event)
+	rl, cleanup, err := prompt.Open(ctx, &readline.Config{
+		Prompt: "(fdb) ", InterruptPrompt: "^C", EOFPrompt: "\n",
+	}, stdin, stdout, stderr)
+	if err != nil {
+		return err
+	}
+
+	defer func() { err = errors.Join(err, cleanup()) }()
+	renderer.out = rl.Stdout()
+
+	return runCommands(ctx, session, src.Name, renderer, state, rl)
+}
+
+// Run consumes commands from input and closes the session on exit. A caller
+// supplying a blocking reader is responsible for waking it on cancellation.
+func Run(ctx context.Context, session Session, src source.Source, input LineReader, out io.Writer) (err error) {
+	defer func() { err = errors.Join(err, session.Close()) }()
+
+	renderer := NewRenderer(out, src)
+	state, err := startSession(ctx, session, renderer)
+	if err != nil {
+		return err
+	}
+
+	return runCommands(ctx, session, src.Name, renderer, state, input)
+}
+
+func startSession(ctx context.Context, session Session, renderer *Renderer) (replState, error) {
+	fmt.Fprintln(renderer.out, "Ferret debugger started.")
+	event, err := session.Start(ctx)
 	state := nextReplState(replStateReady, event)
+	if event == nil && err != nil {
+		return state, executionError(ctx, err)
+	}
 
-	fmt.Fprintln(out, `Type "help" for available commands.`)
+	if err := presentEvent(ctx, renderer, event, err); err != nil {
+		return state, err
+	}
 
+	fmt.Fprintln(renderer.out, `Type "help" for available commands.`)
+
+	return state, nil
+}
+
+func runCommands(ctx context.Context, session Session, sourceName string, renderer *Renderer, state replState, input LineReader) error {
+	out := renderer.out
 	var repeatCommand Command
 
 	for {
 		line, readErr := input.Readline()
+		if cause := context.Cause(ctx); cause != nil {
+			return cause
+		}
 
 		if errors.Is(readErr, readline.ErrInterrupt) {
 			continue
@@ -78,7 +107,6 @@ func Run(ctx context.Context, session Session, src source.Source, input LineRead
 		}
 
 		command, parseErr := ParseCommand(line)
-
 		if parseErr != nil {
 			fmt.Fprintln(out, parseErr)
 			continue
@@ -101,17 +129,21 @@ func Run(ctx context.Context, session Session, src source.Source, input LineRead
 			continue
 		}
 
-		quit, event := executeCommand(ctx, session, src.Name(), renderer, command)
-		state = nextReplState(state, event)
-
-		if quit {
+		if command.Name == CommandQuit {
 			fmt.Fprintln(out, "Debug session terminated.")
 			return nil
 		}
+
+		event, err := executeCommand(ctx, session, sourceName, renderer, command)
+		if err != nil {
+			return err
+		}
+
+		state = nextReplState(state, event)
 	}
 }
 
-func executeCommand(ctx context.Context, session Session, mainSourceName string, renderer *Renderer, command Command) (bool, *ferret.DebugEvent) {
+func executeCommand(ctx context.Context, session Session, mainSourceName string, renderer *Renderer, command Command) (*apidebug.Event, error) {
 	switch command.Name {
 	case CommandHelp:
 		renderer.Help()
@@ -124,93 +156,134 @@ func executeCommand(ctx context.Context, session Session, mainSourceName string,
 
 		breakpoint, err := session.SetBreakpointAt(ctx, location, command.BreakpointOptions)
 		if err != nil {
-			renderer.Error("Breakpoint error", err)
-		} else {
-			renderer.BreakpointSet(breakpoint)
+			return nil, commandError(ctx, renderer, "Breakpoint error", err)
 		}
+
+		renderer.BreakpointSet(breakpoint)
 	case CommandDelete:
-		if err := session.DeleteBreakpoint(ctx, command.BreakpointID); err != nil {
-			if errors.Is(err, runtime.ErrNotFound) {
-				fmt.Fprintf(renderer.out, "Unknown breakpoint: %d\n", command.BreakpointID)
-			} else {
-				renderer.Error("Delete breakpoint error", err)
-			}
-		} else {
-			fmt.Fprintf(renderer.out, "Breakpoint %d deleted.\n", command.BreakpointID)
+		err := session.DeleteBreakpoint(ctx, command.BreakpointID)
+		if diagnostics.BreakpointNotFound(err) {
+			fmt.Fprintf(renderer.out, "Unknown breakpoint: %d\n", command.BreakpointID)
+			break
 		}
+
+		if err != nil {
+			return nil, commandError(ctx, renderer, "Delete breakpoint error", err)
+		}
+
+		fmt.Fprintf(renderer.out, "Breakpoint %d deleted.\n", command.BreakpointID)
 	case CommandBreakpoints:
 		breakpoints, err := session.Breakpoints(ctx)
 		if err != nil {
-			renderer.Error("Breakpoints error", err)
-		} else {
-			renderer.Breakpoints(breakpoints)
+			return nil, commandError(ctx, renderer, "Breakpoints error", err)
 		}
+
+		renderer.Breakpoints(breakpoints)
 	case CommandContinue:
 		event, err := session.Continue(ctx)
-		return false, renderResume(event, err, renderer)
+		return event, presentEvent(ctx, renderer, event, err)
 	case CommandStep:
 		event, err := session.StepIn(ctx)
-		return false, renderResume(event, err, renderer)
+		return event, presentEvent(ctx, renderer, event, err)
 	case CommandNext:
 		event, err := session.StepOver(ctx)
-		return false, renderResume(event, err, renderer)
+		return event, presentEvent(ctx, renderer, event, err)
 	case CommandOut:
 		event, err := session.StepOut(ctx)
-		return false, renderResume(event, err, renderer)
+		return event, presentEvent(ctx, renderer, event, err)
 	case CommandPause:
 		if err := session.Pause(ctx); err != nil {
-			renderer.Error("Pause error", err)
-		} else {
-			fmt.Fprintln(renderer.out, "Pause requested.")
+			return nil, commandError(ctx, renderer, "Pause error", err)
 		}
+
+		fmt.Fprintln(renderer.out, "Pause requested.")
 	case CommandWhere:
 		frames, err := session.Frames(ctx)
 		if err != nil {
-			renderer.Error("Stack error", err)
-		} else {
-			renderer.Frames(frames)
+			return nil, commandError(ctx, renderer, "Stack error", err)
 		}
+
+		renderer.Frames(frames)
 	case CommandLocals:
 		locals, err := session.Locals(ctx)
 		if err != nil {
-			renderer.Error("Locals error", err)
-		} else {
-			renderer.Locals(locals)
+			return nil, commandError(ctx, renderer, "Locals error", err)
 		}
+
+		renderer.Locals(locals)
 	case CommandPrint:
 		value, err := session.Evaluate(ctx, command.Argument)
-
 		if err != nil {
-			renderer.Error("Evaluation error", err)
-		} else {
-			renderer.Evaluation(value)
+			return nil, commandError(ctx, renderer, "Evaluation error", err)
 		}
-	case CommandQuit:
-		return true, nil
+
+		renderer.Evaluation(value)
 	}
 
-	return false, nil
+	return nil, nil
 }
 
-func renderResume(event *ferret.DebugEvent, err error, renderer *Renderer) *ferret.DebugEvent {
-	if err != nil {
-		renderer.Error("Debugger error", err)
-		return nil
+func commandError(ctx context.Context, renderer *Renderer, prefix string, err error) error {
+	if ctx.Err() != nil || diagnostics.DebuggerUnavailable(err) {
+		return executionError(ctx, err)
 	}
 
-	renderer.Event(event)
-	return event
+	renderer.Error(prefix, err)
+
+	return nil
 }
 
-func nextReplState(current replState, event *ferret.DebugEvent) replState {
+// A stop and an operation failure are independent UAPI results. In particular,
+// completion content belongs to the user even if materialization cleanup failed.
+func presentEvent(ctx context.Context, renderer *Renderer, event *apidebug.Event, err error) error {
+	if event == nil {
+		if err == nil {
+			return errors.New("debugger returned no event")
+		}
+
+		return commandError(ctx, renderer, "Debugger error", err)
+	}
+
+	err = executionError(ctx, err)
+
+	// A terminated event may carry the very failure returned by the operation.
+	// Render its location/status now and let the command boundary print that error.
+	if event.Error != nil && err != nil && (errors.Is(err, event.Error) || diagnostics.Format(err) == diagnostics.Format(event.Error)) {
+		snapshot := *event
+		snapshot.Error = nil
+		renderer.Event(&snapshot)
+	} else {
+		renderer.Event(event)
+	}
+
+	if ctx.Err() != nil || event.Reason == apidebug.ReasonCompleted || event.Reason == apidebug.ReasonTerminated {
+		return err
+	}
+
+	// A returned stop is still inspectable, even if the operation reported an error.
+	renderer.Error("Debugger error", err)
+
+	return nil
+}
+
+func executionError(ctx context.Context, err error) error {
+	cause := context.Cause(ctx)
+	if cause == nil || errors.Is(err, cause) {
+		return err
+	}
+
+	return errors.Join(cause, err)
+}
+
+func nextReplState(current replState, event *apidebug.Event) replState {
 	if event == nil {
 		return current
 	}
 
 	switch event.Reason {
-	case ferret.DebugReasonCompleted:
+	case apidebug.ReasonCompleted:
 		return replStateCompleted
-	case ferret.DebugReasonTerminated:
+	case apidebug.ReasonTerminated:
 		return replStateTerminated
 	default:
 		return replStatePaused

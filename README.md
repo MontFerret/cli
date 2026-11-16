@@ -498,7 +498,7 @@ filesystem/HTTP policies and browser configuration, including settings in config
 or environment variables, are rejected in Wire mode. Untouched flag defaults do
 not count as explicit configuration.
 
-Each run owns one logical runtime and transport; the REPL reuses one pair. Active
+Each run or debug session owns one logical runtime and transport; the REPL reuses one pair. Active
 calls settle before runtime and transport cleanup. Wire performs detached cleanup
 bounded by its 30-second cleanup timeout after cancellation. The host owns its
 engine independently; closing a CLI connection does not close it.
@@ -598,6 +598,19 @@ Start the debugger for a local source file:
 ferret debug script.fql
 ```
 
+To debug the same file on a Wire host, start the [example host](#wire-source-execution)
+and use the endpoint it prints:
+
+```bash
+ferret debug --runtime wire --runtime-endpoint tcp://127.0.0.1:54321 \
+  --param limit=10 script.fql
+```
+
+For example, save `RETURN DEMO::IDENTITY(@limit)` in `script.fql` and enter
+`continue`. The example host runs its own function and the debugger prints
+`10`. The CLI reads the file locally. The host compiles it and supplies the
+functions, browser configuration, filesystem, and HTTP policies.
+
 Useful debugger commands:
 
 ```text
@@ -617,7 +630,13 @@ quit            Exit
 variable access and arithmetic. It does not execute function calls, queries, or
 mutation.
 
-The debugger currently supports local source scripts with the builtin runtime. Compiled artifacts, remote debugging, DAP, conditional breakpoints, hit-count breakpoints, and logpoints are not supported yet.
+With the builtin runtime, enter `pause` while stopped to request a pause on
+the next resume. Wire alpha.4 accepts pause requests only while running. A
+`pause` at the stopped prompt reports an error and you can still step or continue.
+
+Debugging requires a local FQL source file and either the builtin runtime or
+Wire. Compiled artifacts, inline or stdin source, the HTTP Worker, DAP,
+conditional breakpoints, hit-count breakpoints, and logpoints are unsupported.
 
 ## Filesystem policy
 

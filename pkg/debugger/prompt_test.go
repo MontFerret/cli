@@ -10,19 +10,22 @@ import (
 
 	"github.com/chzyer/readline"
 
-	"github.com/MontFerret/ferret/v2"
-	"github.com/MontFerret/ferret/v2/pkg/source"
+	apidebug "github.com/MontFerret/api/debugger"
+	"github.com/MontFerret/api/result"
+	"github.com/MontFerret/api/source"
+	"github.com/MontFerret/wire/client"
+	"github.com/MontFerret/wire/pkg/failure"
 )
 
 func TestRunDispatchesCommandsAndClosesSession(t *testing.T) {
 	ctx := t.Context()
 	src := source.New("demo.fql", "LET x = 1\nRETURN x")
 	session := &fakeSession{
-		startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 3}),
-		continueEvent: debugEvent(ferret.DebugReasonPause, "demo.fql", 2, source.Span{Start: 10, End: 16}),
-		locals:        []ferret.DebugVariable{{Name: "x", Value: ferret.DebugValue{Display: "1"}}},
-		frames:        []ferret.DebugFrame{{Name: "<main>", Location: debugSourceLocation("demo.fql", 1, 0)}},
-		evaluation:    ferret.DebugValue{Display: "2"},
+		startEvent:    debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 3}),
+		continueEvent: debugEvent(apidebug.ReasonPause, "demo.fql", 2, source.Span{Start: 10, End: 16}),
+		locals:        []apidebug.Variable{{Name: "x", Value: apidebug.Value{Display: "1"}}},
+		frames:        []apidebug.Frame{{Name: "<main>", Location: debugSourceLocation("demo.fql", 1, 0)}},
+		evaluation:    apidebug.Value{Display: "2"},
 	}
 	input := &fakeLineReader{results: []lineResult{
 		{line: ""},
@@ -60,7 +63,7 @@ func TestRunDispatchesCommandsAndClosesSession(t *testing.T) {
 	if session.breakpointLocation != debugSourceLocation("demo.fql", 2, 1) {
 		t.Fatalf("unexpected breakpoint location: %#v", session.breakpointLocation)
 	}
-	if session.breakpointOptions.BindingMode != ferret.DebugBreakpointBindExact {
+	if session.breakpointOptions.BindingMode != apidebug.BreakpointBindExact {
 		t.Fatalf("unexpected breakpoint options: %#v", session.breakpointOptions)
 	}
 	if session.expression != "x + 1" {
@@ -90,7 +93,7 @@ func TestRunDispatchesCommandsAndClosesSession(t *testing.T) {
 
 func TestRunReportsCommandErrorsAndContinues(t *testing.T) {
 	session := &fakeSession{
-		startEvent:  debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		startEvent:  debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
 		continueErr: errors.New("cannot resume while debug session is completed"),
 		evaluateErr: errors.New("expression is not supported by the safe debugger evaluator"),
 	}
@@ -125,14 +128,14 @@ func TestRunReportsCommandErrorsAndContinues(t *testing.T) {
 func TestRunReportsBreakpointListErrorsAndContinues(t *testing.T) {
 	for _, test := range []struct {
 		name        string
-		breakpoints []ferret.DebugBreakpoint
+		breakpoints []apidebug.Breakpoint
 	}{
 		{name: "empty result"},
-		{name: "partial result", breakpoints: []ferret.DebugBreakpoint{{ID: 1}}},
+		{name: "partial result", breakpoints: []apidebug.Breakpoint{{ID: 1}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			session := &fakeSession{
-				startEvent:     debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+				startEvent:     debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
 				breakpoints:    test.breakpoints,
 				breakpointsErr: context.Canceled,
 			}
@@ -164,7 +167,7 @@ func TestRunReportsBreakpointListErrorsAndContinues(t *testing.T) {
 func TestRunEOFAndCloseError(t *testing.T) {
 	closeErr := errors.New("close failed")
 	session := &fakeSession{
-		startEvent: debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		startEvent: debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
 		closeErr:   closeErr,
 	}
 	var out bytes.Buffer
@@ -196,8 +199,8 @@ func TestRunRepeatsPreviousResumeCommandOnEmptyInput(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			session := &fakeSession{
-				startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
-				continueEvent: debugEvent(ferret.DebugReasonStep, "demo.fql", 2, source.Span{Start: 9, End: 10}),
+				startEvent:    debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+				continueEvent: debugEvent(apidebug.ReasonStep, "demo.fql", 2, source.Span{Start: 9, End: 10}),
 			}
 
 			err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
@@ -244,8 +247,8 @@ func TestRunEmptyInputDoesNotRepeatNonRepeatableCommands(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			session := &fakeSession{
-				startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
-				continueEvent: debugEvent(ferret.DebugReasonStep, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+				startEvent:    debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+				continueEvent: debugEvent(apidebug.ReasonStep, "demo.fql", 1, source.Span{Start: 0, End: 1}),
 			}
 
 			err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
@@ -261,8 +264,8 @@ func TestRunEmptyInputDoesNotRepeatNonRepeatableCommands(t *testing.T) {
 
 func TestRunParseErrorsDoNotClearRepeatCommand(t *testing.T) {
 	session := &fakeSession{
-		startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
-		continueEvent: debugEvent(ferret.DebugReasonStep, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		startEvent:    debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		continueEvent: debugEvent(apidebug.ReasonStep, "demo.fql", 1, source.Span{Start: 0, End: 1}),
 	}
 
 	err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
@@ -278,8 +281,8 @@ func TestRunParseErrorsDoNotClearRepeatCommand(t *testing.T) {
 
 func TestRunBlocksCommandsAfterCompletionAndKeepsSafeCommandsAvailable(t *testing.T) {
 	session := &fakeSession{
-		startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
-		continueEvent: debugEvent(ferret.DebugReasonCompleted, "", 0, source.Span{}),
+		startEvent:    debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		continueEvent: debugEvent(apidebug.ReasonCompleted, "", 0, source.Span{}),
 	}
 	var out bytes.Buffer
 
@@ -330,8 +333,8 @@ func TestRunBlocksCommandsAfterCompletionAndKeepsSafeCommandsAvailable(t *testin
 
 func TestRunBlocksResumeCommandsAfterTermination(t *testing.T) {
 	session := &fakeSession{
-		startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
-		continueEvent: debugEvent(ferret.DebugReasonTerminated, "", 0, source.Span{}),
+		startEvent:    debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		continueEvent: debugEvent(apidebug.ReasonTerminated, "", 0, source.Span{}),
 	}
 	var out bytes.Buffer
 
@@ -365,11 +368,11 @@ func TestRunBlocksResumeCommandsAfterTermination(t *testing.T) {
 func TestRunTracksTerminalInitialEvent(t *testing.T) {
 	tests := []struct {
 		name    string
-		reason  ferret.DebugReason
+		reason  apidebug.Reason
 		message string
 	}{
-		{name: "completed", reason: ferret.DebugReasonCompleted, message: "Program has completed. Start a new debug session to continue debugging."},
-		{name: "terminated", reason: ferret.DebugReasonTerminated, message: "Program has terminated. Start a new debug session to continue debugging."},
+		{name: "completed", reason: apidebug.ReasonCompleted, message: "Program has completed. Start a new debug session to continue debugging."},
+		{name: "terminated", reason: apidebug.ReasonTerminated, message: "Program has terminated. Start a new debug session to continue debugging."},
 	}
 
 	for _, test := range tests {
@@ -395,8 +398,8 @@ func TestRunTracksTerminalInitialEvent(t *testing.T) {
 
 func TestRunKeepsRuntimeErrorEventActive(t *testing.T) {
 	session := &fakeSession{
-		startEvent:    debugEvent(ferret.DebugReasonRuntimeError, "demo.fql", 1, source.Span{Start: 0, End: 1}),
-		continueEvent: debugEvent(ferret.DebugReasonStep, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		startEvent:    debugEvent(apidebug.ReasonRuntimeError, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		continueEvent: debugEvent(apidebug.ReasonStep, "demo.fql", 1, source.Span{Start: 0, End: 1}),
 	}
 
 	err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
@@ -412,25 +415,93 @@ func TestRunKeepsRuntimeErrorEventActive(t *testing.T) {
 
 func TestRunResumeErrorPreservesState(t *testing.T) {
 	session := &fakeSession{
-		startEvent:    debugEvent(ferret.DebugReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
-		continueEvent: debugEvent(ferret.DebugReasonCompleted, "", 0, source.Span{}),
-		continueErr:   errors.New("resume failed"),
+		startEvent:  debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{Start: 0, End: 1}),
+		continueErr: errors.New("resume failed"),
 	}
 
 	err := Run(context.Background(), session, source.New("demo.fql", "RETURN 1"), &fakeLineReader{
-		results: []lineResult{{line: "continue"}, {line: "next"}, {line: "q"}},
+		results: []lineResult{{line: "continue"}, {line: "where"}, {line: "q"}},
 	}, io.Discard)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if session.continueCalls != 1 || session.nextCalls != 1 {
+	if session.continueCalls != 1 || session.framesCalls != 1 {
 		t.Fatalf("expected resume error to preserve active state: %#v", session)
 	}
 }
 
-func debugEvent(reason ferret.DebugReason, file string, line int, span source.Span) *ferret.DebugEvent {
-	return &ferret.DebugEvent{
+func debugEvent(reason apidebug.Reason, file string, line int, span source.Span) *apidebug.Event {
+	return &apidebug.Event{
 		Reason:   reason,
 		Location: debugLocation(file, line, 1, span),
+	}
+}
+
+func TestRunTerminalOperationFailure(t *testing.T) {
+	opErr, closeErr := errors.New("operation failed"), errors.New("session close failed")
+	for _, command := range []string{"start", "continue", "step", "next", "out"} {
+		for _, reason := range []apidebug.Reason{apidebug.ReasonCompleted, apidebug.ReasonTerminated} {
+			t.Run(command+"/"+string(reason), func(t *testing.T) {
+				entry := debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{})
+				terminal := &apidebug.Event{Reason: reason, Error: opErr, Output: &result.Content{Data: []byte("42")}}
+				want := "Program terminated.\nResult:\n42\n"
+				if reason == apidebug.ReasonCompleted {
+					want = "Program completed.\nResult:\n42\n"
+				}
+
+				session := &fakeSession{startEvent: entry, continueEvent: terminal, continueErr: opErr, closeErr: closeErr}
+				if command == "start" {
+					session.startEvent, session.startErr = terminal, opErr
+				}
+
+				input := &fakeLineReader{results: []lineResult{{line: command}, {line: "help"}}}
+				var out bytes.Buffer
+				err := Run(t.Context(), session, source.New("demo.fql", "RETURN 42"), input, &out)
+				if !errors.Is(err, opErr) || !errors.Is(err, closeErr) || session.closeCalls != 1 {
+					t.Fatalf("error=%v closes=%d", err, session.closeCalls)
+				}
+
+				if !strings.Contains(out.String(), want) || strings.Contains(out.String(), "Commands:") || strings.Contains(out.String(), opErr.Error()) {
+					t.Fatalf("terminal transcript: %s", &out)
+				}
+			})
+		}
+	}
+}
+
+func TestRunStoppedEventWithErrorStaysInspectable(t *testing.T) {
+	session := &fakeSession{
+		startEvent:    debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{}),
+		continueEvent: debugEvent(apidebug.ReasonStep, "demo.fql", 2, source.Span{}),
+		continueErr:   errors.New("command warning"),
+	}
+	var out bytes.Buffer
+	input := &fakeLineReader{results: []lineResult{{line: "step"}, {line: "where"}, {line: "q"}}}
+	err := Run(t.Context(), session, source.New("demo.fql", "LET x = 1\nRETURN x"), input, &out)
+	if err != nil || session.framesCalls != 1 || session.closeCalls != 1 {
+		t.Fatalf("error=%v session=%+v", err, session)
+	}
+
+	stop, diagnostic := strings.Index(out.String(), "Paused after step"), strings.Index(out.String(), "Debugger error: command warning")
+	if stop < 0 || diagnostic <= stop {
+		t.Fatalf("missing stop or error: %s", &out)
+	}
+}
+
+func TestRunLostSessionDuringInspection(t *testing.T) {
+	lost := &client.Error{Category: failure.CategoryDebugSessionNotFound, Message: "session was lost"}
+	session := &fakeSession{
+		startEvent:     debugEvent(apidebug.ReasonEntry, "demo.fql", 1, source.Span{}),
+		breakpointsErr: lost,
+	}
+	var out bytes.Buffer
+	input := &fakeLineReader{results: []lineResult{{line: "bl"}, {line: "continue"}}}
+	err := Run(t.Context(), session, source.New("demo.fql", "RETURN 1"), input, &out)
+	if !errors.Is(err, lost) || session.continueCalls != 0 || session.closeCalls != 1 {
+		t.Fatalf("err=%v session=%+v", err, session)
+	}
+
+	if strings.Contains(out.String(), "session was lost") {
+		t.Fatalf("prompt also printed the returned fatal error: %s", &out)
 	}
 }

@@ -35,8 +35,8 @@ type Host struct {
 }
 
 // New starts a bounded, test-owned host with DEMO::IDENTITY and DEMO::WAIT.
-func New(t testing.TB) *Host {
-	return NewWithVersion(t, "test-core-version")
+func New(t testing.TB, opts ...ferret.Option) *Host {
+	return newHost(t, "test-core-version", nil, nil, opts...)
 }
 
 // NewWithVersion hosts an opaque runtime version, including an empty value.
@@ -54,12 +54,12 @@ func NewWithRun(t testing.TB, run func(context.Context, api.Source, ...api.Sessi
 	return newHost(t, "test-core-version", nil, run)
 }
 
-func newHost(t testing.TB, version api.Version, retrieve func(context.Context) (api.Version, error), run func(context.Context, api.Source, ...api.SessionOption) (api.Output, error)) *Host {
+func newHost(t testing.TB, version api.Version, retrieve func(context.Context) (api.Version, error), run func(context.Context, api.Source, ...api.SessionOption) (api.Output, error), opts ...ferret.Option) *Host {
 	t.Helper()
 	h := &Host{WaitStarted: make(chan struct{}), WaitFinished: make(chan struct{})}
 	var started, finished sync.Once
 	var err error
-	h.engine, err = ferret.New(ferret.WithFSRoot(t.TempDir()), ferret.WithFunctionsRegistrar(func(ns native.Namespace) {
+	opts = append(opts, ferret.WithFSRoot(t.TempDir()), ferret.WithFunctionsRegistrar(func(ns native.Namespace) {
 		demo := ns.Namespace("DEMO")
 		demo.Function().A1().Add("IDENTITY", func(_ context.Context, value native.Value) (native.Value, error) {
 			return value, nil
@@ -76,6 +76,8 @@ func newHost(t testing.TB, version api.Version, retrieve func(context.Context) (
 			return nil, ctx.Err()
 		})
 	}))
+
+	h.engine, err = ferret.New(opts...)
 	if err != nil {
 		t.Fatal(err)
 	}

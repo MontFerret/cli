@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/chzyer/readline"
 
@@ -15,6 +14,7 @@ import (
 
 	"github.com/MontFerret/cli/v2/internal/diagnostics"
 	"github.com/MontFerret/cli/v2/internal/output"
+	"github.com/MontFerret/cli/v2/internal/prompt"
 	"github.com/MontFerret/cli/v2/pkg/runtime"
 )
 
@@ -53,70 +53,17 @@ func StartWithIO(ctx context.Context, opts runtime.Options, params map[string]an
 		return err
 	}
 
-	input := readline.NewCancelableStdin(stdin)
-	defer input.Close()
+	ctx, stop := resources.CommandContext(ctx, opts.Endpoint)
+	defer stop()
 
-	readlineConfig := &readline.Config{
+	rl, closePrompt, err := prompt.Open(ctx, &readline.Config{
 		Prompt: "> ", InterruptPrompt: "^C", EOFPrompt: "exit",
-		Stdin: input, Stdout: stdout, Stderr: stderr,
-	}
-
-	if stdin != os.Stdin || stdout != os.Stdout {
-		// Injected streams must not manipulate the process terminal or depend
-		// on whether the calling test or embedding application has a TTY.
-		readlineConfig.FuncIsTerminal = func() bool { return false }
-		readlineConfig.FuncMakeRaw = func() error { return nil }
-		readlineConfig.FuncExitRaw = func() error { return nil }
-		readlineConfig.FuncOnWidthChanged = func(func()) {}
-	}
-
-	rl, err := readline.NewEx(readlineConfig)
+	}, stdin, stdout, stderr)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithCancelCause(ctx)
-	defer cancel(nil)
-
-	if resources.Disconnected != nil {
-		watched := make(chan struct{})
-		go func() {
-			defer close(watched)
-
-			select {
-			case <-ctx.Done():
-			case <-resources.Disconnected:
-				cancel(fmt.Errorf("wire runtime %s disconnected; check the runtime host", opts.Endpoint))
-			}
-		}()
-		defer func() {
-			cancel(nil)
-			<-watched
-		}()
-	}
-
-	var closeOnce sync.Once
-	var closeErr error
-	closeInput := func() {
-		closeOnce.Do(func() {
-			// Interrupt only input asynchronously. Close readline after Readline
-			// returns so its terminal goroutine has completed initialization.
-			closeErr = input.Close()
-		})
-	}
-	closed := make(chan struct{})
-	stop := context.AfterFunc(ctx, func() {
-		closeInput()
-		close(closed)
-	})
-	defer func() {
-		if !stop() {
-			<-closed
-		}
-
-		closeInput()
-		err = errors.Join(err, closeErr, rl.Close())
-	}()
+	defer func() { err = errors.Join(err, closePrompt()) }()
 
 	var commands []string
 	var multiline bool
